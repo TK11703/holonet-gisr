@@ -11,7 +11,7 @@ public class SqlScriptLoaderTests
 
         var sql = loader.Get("Migrations", "0001_create_extensions");
 
-        Assert.Contains("CREATE EXTENSION", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("THIS TEXT IS NOT THERE", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
