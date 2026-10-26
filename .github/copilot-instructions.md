@@ -32,7 +32,7 @@ military personnel, Jedi, bounty hunters, and others. The project constitution a
 - Logging/telemetry: `ILogger`/Serilog + OpenTelemetry.
 
 ## Solution layout and dependencies
-
+- Source projects will be organized within a src folder, tests projects within a tests folder. Infrastructure will be organized within an infra folder.
 - `Gisr.Web` -> references only `Gisr.Shared`; reaches data only via HTTP to `Gisr.Api`.
 - `Gisr.Api` -> references `Gisr.Shared` and `Gisr.Database`; never runs SQL directly.
 - `Gisr.Database` -> references no other Gisr project; holds repositories, SQL scripts, migrations.
