@@ -79,6 +79,7 @@ jobs:
             Add-Content $env:GITHUB_STEP_SUMMARY ''
             Add-Content $env:GITHUB_STEP_SUMMARY $failures
           }
+          Get-Content -LiteralPath $env:GITHUB_STEP_SUMMARY | Write-Host
 
       - name: Keep the detailed test results
         if: always()
