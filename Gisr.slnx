@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Gisr.Api/Gisr.Api.csproj" />
+    <Project Path="src/Gisr.AppHost/Gisr.AppHost.csproj" />
+    <Project Path="src/Gisr.Database/Gisr.Database.csproj" />
+    <Project Path="src/Gisr.Shared/Gisr.Shared.csproj" />
+    <Project Path="src/Gisr.Web/Gisr.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Gisr.Api.Tests/Gisr.Api.Tests.csproj" />
+    <Project Path="tests/Gisr.Database.Tests/Gisr.Database.Tests.csproj" />
+    <Project Path="tests/Gisr.Web.Tests/Gisr.Web.Tests.csproj" />
+  </Folder>
+</Solution>

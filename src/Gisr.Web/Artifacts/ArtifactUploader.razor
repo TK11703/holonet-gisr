@@ -1,0 +1,207 @@
+@inject ApiClient Api
+
+<section id="artifact-uploader" class="card mb-4" aria-labelledby="artifact-uploader-heading">
+    <div class="card-body">
+        <h2 id="artifact-uploader-heading" class="h5">Add files</h2>
+        <label for="artifact-file" class="form-label">Choose files or drag them here</label>
+        <InputFile id="artifact-file" class="form-control" multiple accept="@Accept" OnChange="OnFilesChosen" aria-describedby="artifact-file-help" />
+        <div id="artifact-file-help" class="form-text mb-3">
+            JPEG, PNG, WebP, GIF, PDF, DOCX, TXT or Markdown, up to 25 MB each. Images need a description; it is used as alt text.
+        </div>
+
+        @if (_items.Count > 0)
+        {
+            <ul id="artifact-queue" class="list-group mb-3">
+                @foreach (var item in _items)
+                {
+                    <li class="list-group-item artifact-item" @key="item.Id">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div class="flex-grow-1">
+                                <span class="fw-semibold">@item.Name</span>
+                                <span class="text-secondary small">@ArtifactDisplay.Size(item.Size)</span>
+                            </div>
+                            @if (item.State != UploadState.Uploading)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary artifact-dismiss" aria-label="@($"Remove {item.Name} from the list")"
+                                        @onclick="() => Dismiss(item)">Remove</button>
+                            }
+                        </div>
+
+                        @if (item.IsImage && item.State != UploadState.Done)
+                        {
+                            <input type="text" class="@(item.DescriptionInvalid ? "form-control form-control-sm mt-2 artifact-description is-invalid" : "form-control form-control-sm mt-2 artifact-description")"
+                                   maxlength="500" placeholder="Describe this image (alt text)"
+                                   aria-label="@($"Description for {item.Name}")" aria-required="true"
+                                   aria-invalid="@(item.DescriptionInvalid ? "true" : null)"
+                                   value="@item.Description" @oninput="e => item.Description = e.Value?.ToString() ?? string.Empty" />
+                        }
+
+                        @if (item.State == UploadState.Uploading)
+                        {
+                            <progress class="w-100 mt-2" value="@item.Sent" max="@item.Size" aria-label="@($"Uploading {item.Name}")"></progress>
+                            <div class="small text-secondary artifact-status" role="status">Uploading...</div>
+                        }
+                        else if (item.State == UploadState.Done)
+                        {
+                            <div class="small text-success artifact-status" role="status">Uploaded</div>
+                        }
+                        else if (item.Error is null)
+                        {
+                            <div class="small text-secondary artifact-status">Ready to upload</div>
+                        }
+
+                        @if (item.Error is not null)
+                        {
+                            <div class="small text-danger mt-1 artifact-error" role="alert">@item.Error</div>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+
+        <button type="button" id="upload-artifacts" class="btn btn-primary" disabled="@(_busy || !_items.Any(i => i.CanUpload))" @onclick="UploadAsync">Upload</button>
+    </div>
+</section>
+
+@code {
+    public const long MaxFileSize = 26_214_400;
+
+    private const int MaxFilesPerSelection = 100;
+    private const string Accept = ".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.txt,.md,.markdown";
+
+    private enum UploadState
+    {
+        Ready,
+        Uploading,
+        Done,
+        Failed,
+    }
+
+    private sealed class UploadItem(int id, IBrowserFile file)
+    {
+        public int Id { get; } = id;
+
+        public IBrowserFile File { get; } = file;
+
+        public string Name { get; } = file.Name;
+
+        public long Size { get; } = file.Size;
+
+        public bool IsImage { get; } = ArtifactDisplay.IsImageName(file.Name);
+
+        public string Description { get; set; } = string.Empty;
+
+        public UploadState State { get; set; } = UploadState.Ready;
+
+        public string? Error { get; set; }
+
+        public long Sent { get; set; }
+
+        public bool TooLarge => Size > MaxFileSize;
+
+        public bool CanUpload => !TooLarge && State is UploadState.Ready or UploadState.Failed;
+
+        public bool DescriptionInvalid => IsImage && Error is not null && string.IsNullOrWhiteSpace(Description);
+    }
+
+    private readonly List<UploadItem> _items = [];
+    private int _nextId;
+    private bool _busy;
+
+    [Parameter, EditorRequired]
+    public Guid RecordId { get; set; }
+
+    [Parameter]
+    public EventCallback<ArtifactDto> OnUploaded { get; set; }
+
+    private void OnFilesChosen(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles(MaxFilesPerSelection))
+        {
+            var item = new UploadItem(_nextId++, file);
+            if (item.TooLarge)
+            {
+                item.State = UploadState.Failed;
+                item.Error = "File is larger than 25 MB.";
+            }
+
+            _items.Add(item);
+        }
+    }
+
+    private void Dismiss(UploadItem item) => _items.Remove(item);
+
+    private async Task UploadAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            foreach (var item in _items.Where(i => i.CanUpload).ToList())
+            {
+                await UploadOneAsync(item);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task UploadOneAsync(UploadItem item)
+    {
+        item.Error = null;
+        if (item.IsImage && string.IsNullOrWhiteSpace(item.Description))
+        {
+            item.State = UploadState.Failed;
+            item.Error = "Describe this image; the description is used as alt text.";
+            return;
+        }
+
+        item.State = UploadState.Uploading;
+        item.Sent = 0;
+        StateHasChanged();
+        try
+        {
+            await using var stream = new ProgressStream(item.File.OpenReadStream(MaxFileSize), sent =>
+            {
+                item.Sent = sent;
+                _ = InvokeAsync(StateHasChanged);
+            });
+            var fields = string.IsNullOrWhiteSpace(item.Description)
+                ? null
+                : new Dictionary<string, string>(StringComparer.Ordinal) { ["description"] = item.Description.Trim() };
+
+            var created = await Api.UploadAsync<ArtifactDto>($"api/records/{RecordId}/artifacts", item.Name, stream, fields);
+            item.State = UploadState.Done;
+            if (created is not null)
+            {
+                await OnUploaded.InvokeAsync(created);
+            }
+        }
+        catch (ApiException ex)
+        {
+            item.State = UploadState.Failed;
+            item.Error = Describe(ex);
+        }
+        catch (IOException)
+        {
+            item.State = UploadState.Failed;
+            item.Error = "The file could not be read. Choose it again.";
+        }
+    }
+
+    private static string Describe(ApiException ex) => ex.Status switch
+    {
+        StatusCodes.Status400BadRequest => ex.Errors.Values.SelectMany(v => v).FirstOrDefault() ?? ex.Detail ?? "The file was rejected.",
+        StatusCodes.Status413PayloadTooLarge => "File is larger than 25 MB.",
+        StatusCodes.Status415UnsupportedMediaType => ex.Detail ?? "This file type is not allowed.",
+        StatusCodes.Status403Forbidden => "You are not allowed to add files to this record.",
+        StatusCodes.Status404NotFound => "The record could not be found.",
+        _ => "Upload failed. Try again.",
+    };
+}

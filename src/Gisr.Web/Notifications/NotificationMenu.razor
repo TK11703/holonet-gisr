@@ -1,0 +1,230 @@
+@implements IDisposable
+@implements IAsyncDisposable
+@inject ApiClient Api
+@inject NavigationManager Navigation
+@inject ShellInterop Shell
+
+<div class="notification-menu position-relative" @onkeydown="OnKeyDown">
+    <button type="button" class="btn btn-icon position-relative" id="notification-button" @ref="_trigger" aria-label="Notifications"
+            aria-haspopup="menu" aria-expanded="@(_open ? "true" : "false")" aria-controls="notification-menu" @onclick="Toggle">
+        <Icon Name="bell" Size="18" />
+        @if (_unread > 0)
+        {
+            <span id="notification-badge" class="badge rounded-pill text-bg-danger position-absolute top-0 start-100 translate-middle">
+                @(_unread > 99 ? "99+" : _unread.ToString())<span class="visually-hidden"> unread notifications</span>
+            </span>
+        }
+    </button>
+
+    @if (_open)
+    {
+        <div class="menu-backdrop" @onclick="CloseAsync"></div>
+        <div id="notification-menu" class="dropdown-menu dropdown-menu-end show p-0" role="menu" aria-labelledby="notification-button" @ref="_menu">
+            <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                <h2 class="h6 mb-0">Notifications</h2>
+                @if (_unread > 0)
+                {
+                    <button type="button" id="mark-all-read" class="btn btn-sm btn-link" @onclick="MarkAllReadAsync">Mark all read</button>
+                }
+            </div>
+            @if (_loadError)
+            {
+                <p class="px-3 py-3 mb-0 text-secondary" role="status">Notifications could not be loaded.</p>
+            }
+            else if (_items.Count == 0)
+            {
+                <p class="px-3 py-3 mb-0 text-secondary" role="status">No notifications.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var item in _items)
+                    {
+                        <li>
+                            <button type="button" role="menuitem" class="dropdown-item notification-item text-wrap @(item.IsRead ? null : "fw-semibold")"
+                                    @onclick="() => OpenAsync(item)">
+                                <span class="d-block">@item.Message</span>
+                                <small class="text-secondary">@RecordDisplay.Instant(item.CreatedAt)</small>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private const int PageSize = 20;
+
+    private ElementReference _trigger;
+    private ElementReference _menu;
+    private IAsyncDisposable? _trap;
+    private CancellationTokenSource? _polling;
+    private List<NotificationDto> _items = [];
+    private long _unread;
+    private bool _open;
+    private bool _wasOpen;
+    private bool _loadError;
+
+    [Parameter]
+    public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(60);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            var list = await Api.GetAsync<NotificationListDto>($"api/notifications?pageSize={PageSize}");
+            if (list is not null)
+            {
+                _items = [.. list.Items];
+                _unread = list.UnreadCount;
+                _loadError = false;
+            }
+        }
+        catch (ApiException)
+        {
+            _loadError = true;
+        }
+    }
+
+    private async Task PollAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(PollInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(async () =>
+                {
+                    await RefreshAsync();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The component was disposed.
+        }
+    }
+
+    private void Toggle() => _open = !_open;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && _open)
+        {
+            await CloseAsync();
+            await _trigger.FocusAsync();
+        }
+    }
+
+    private Task CloseAsync()
+    {
+        _open = false;
+        return Task.CompletedTask;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        _ = InvokeAsync(() =>
+        {
+            if (_open)
+            {
+                _open = false;
+                StateHasChanged();
+            }
+        });
+
+    private async Task OpenAsync(NotificationDto item)
+    {
+        if (!item.IsRead)
+        {
+            try
+            {
+                await Api.SendAsync(HttpMethod.Post, $"api/notifications/{item.Id}/read");
+                _items = [.. _items.Select(n => n.Id == item.Id ? n with { IsRead = true } : n)];
+                _unread = Math.Max(0, _unread - 1);
+            }
+            catch (ApiException)
+            {
+                // The notification stays unread; the record still opens.
+            }
+        }
+
+        _open = false;
+        if (item.RecordId is { } recordId)
+        {
+            Navigation.NavigateTo($"/records/{recordId}");
+        }
+    }
+
+    private async Task MarkAllReadAsync()
+    {
+        try
+        {
+            await Api.SendAsync(HttpMethod.Post, "api/notifications/read-all");
+            _items = [.. _items.Select(n => n with { IsRead = true })];
+            _unread = 0;
+        }
+        catch (ApiException)
+        {
+            _loadError = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _polling = new CancellationTokenSource();
+            _ = PollAsync(_polling.Token);
+        }
+
+        if (_open && !_wasOpen)
+        {
+            _trap = await Shell.TrapFocusAsync(_menu, async () =>
+            {
+                await InvokeAsync(() =>
+                {
+                    _open = false;
+                    StateHasChanged();
+                });
+            });
+        }
+        else if (!_open && _wasOpen && _trap is not null)
+        {
+            await _trap.DisposeAsync();
+            _trap = null;
+        }
+
+        _wasOpen = _open;
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        StopPolling();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        StopPolling();
+        if (_trap is not null)
+        {
+            await _trap.DisposeAsync();
+        }
+    }
+
+    private void StopPolling()
+    {
+        _polling?.Cancel();
+        _polling?.Dispose();
+        _polling = null;
+    }
+}

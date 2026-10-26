@@ -1,0 +1,1 @@
+SELECT COALESCE((SELECT pages_used FROM ocr_usage WHERE month = @Month), 0);

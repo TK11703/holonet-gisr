@@ -1,0 +1,473 @@
+@page "/records/{Id:guid}"
+@implements IAsyncDisposable
+@implements IDisposable
+@inject ApiClient Api
+@inject ViewGrantStore Grants
+
+<PageHeader Title="@(_record?.Title ?? "Record")" Crumbs="Crumbs" />
+
+@if (_notFound)
+{
+    <div class="alert alert-warning" role="alert">Record not found.</div>
+}
+else if (_loadError)
+{
+    <div class="alert alert-danger" role="alert">The record could not be loaded. Please try again.</div>
+}
+else if (_record is null && _locked)
+{
+    <div class="alert alert-danger" role="alert">Access denied. This record is sealed.</div>
+    <form id="override-form" class="card card-body mb-4" @onsubmit="UnlockAsync" novalidate>
+        <label for="override-code" class="form-label">Override code</label>
+        <div class="d-flex flex-wrap gap-2">
+            <input id="override-code" type="password" autocomplete="off" maxlength="64"
+                   class="@(_overrideError is null ? "form-control w-auto" : "form-control w-auto is-invalid")"
+                   aria-invalid="@(_overrideError is null ? null : "true")"
+                   aria-describedby="@(_overrideError is null ? null : "override-error")"
+                   disabled="@_lockedOut" value="@_code" @oninput="OnCodeInput" />
+            <button type="submit" class="btn btn-primary" disabled="@(_lockedOut || _submitting)">Unlock</button>
+        </div>
+        @if (_overrideError is not null)
+        {
+            <div id="override-error" class="invalid-feedback d-block" role="alert">@_overrideError</div>
+        }
+    </form>
+}
+else if (_record is null)
+{
+    <p class="text-secondary" role="status">Loading...</p>
+}
+else
+{
+    var record = _record;
+    var viewing = _viewingId is not null;
+    var affiliation = _affiliations.FirstOrDefault(a => string.Equals(a.Code, record.Affiliation, StringComparison.Ordinal));
+
+    if (viewing)
+    {
+        <div id="override-banner" class="alert alert-warning d-flex align-items-center gap-2" role="status">
+            <Icon Name="lock" /> <span>Viewing under override. Access ends when you leave this page.</span>
+        </div>
+        <span id="viewing-id" hidden data-viewing-id="@_viewingId"></span>
+    }
+
+    <div id="record-header" class="card mb-4">
+        <div class="card-body d-flex flex-wrap gap-3 justify-content-between align-items-start">
+            <div>
+                <span class="badge text-bg-secondary">@RecordDisplay.AffiliationName(_affiliations, record.Affiliation)</span>
+                @if (record.IsServiceRecord)
+                {
+                    <span class="badge text-bg-info ms-1">Service record</span>
+                }
+                @if (record.IsSealed)
+                {
+                    <span class="badge text-bg-warning ms-1">Sealed</span>
+                }
+                <dl class="row mb-0 mt-3">
+                    <dt class="col-sm-4">Subject</dt>
+                    <dd class="col-sm-8">@record.SubjectDisplayName</dd>
+                    <dt class="col-sm-4">Author</dt>
+                    <dd class="col-sm-8">@record.AuthorDisplayName</dd>
+                    <dt class="col-sm-4">Revision</dt>
+                    <dd class="col-sm-8 mb-0">Version @record.Version, updated @RecordDisplay.Instant(record.UpdatedAt)</dd>
+                </dl>
+            </div>
+            @if (record.CanEdit && !viewing)
+            {
+                <a id="edit-record" class="btn btn-primary" href="/records/@record.Id/edit">Edit</a>
+            }
+        </div>
+    </div>
+
+    <section id="engagement-details" class="card mb-4" aria-labelledby="engagement-heading">
+        <div class="card-body">
+            <h2 id="engagement-heading" class="h5">Engagement details</h2>
+            <dl class="mb-0">
+                <dt>Engagement period</dt>
+                <dd>@RecordDisplay.Engagement(record.EngagementStart, record.EngagementEnd)</dd>
+                @foreach (var field in affiliation?.Fields ?? [])
+                {
+                    @if (record.EngagementDetail.TryGetValue(field.Key, out var value) && value.Length > 0)
+                    {
+                        <dt>@field.Label</dt>
+                        <dd class="pre-wrap">@value</dd>
+                    }
+                }
+            </dl>
+        </div>
+    </section>
+
+    <section id="incidents" class="card mb-4" aria-labelledby="incidents-heading">
+        <div class="card-body">
+            <h2 id="incidents-heading" class="h5">Incidents</h2>
+            @if (record.Incidents.Count == 0)
+            {
+                <p class="text-secondary mb-0">No incidents recorded.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var incident in record.Incidents)
+                    {
+                        <li class="mb-3">
+                            <div><strong>@incident.Title</strong> <span class="text-secondary">@RecordDisplay.Date(incident.OccurredOn)</span></div>
+                            @if (!string.IsNullOrWhiteSpace(incident.Description))
+                            {
+                                <div class="pre-wrap">@incident.Description</div>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </section>
+
+    <section id="awards" class="card mb-4" aria-labelledby="awards-heading">
+        <div class="card-body">
+            <h2 id="awards-heading" class="h5">Awards</h2>
+            @if (record.Awards.Count == 0)
+            {
+                <p class="text-secondary mb-0">No awards recorded.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var award in record.Awards)
+                    {
+                        <li class="mb-3">
+                            <div>
+                                <strong>@award.Name</strong>
+                                <span class="text-secondary">@RecordDisplay.Date(award.AwardedOn)</span>
+                                @if (!string.IsNullOrWhiteSpace(award.Issuer))
+                                {
+                                    <span class="text-secondary">&middot; @award.Issuer</span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(award.Description))
+                            {
+                                <div class="pre-wrap">@award.Description</div>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </section>
+
+    <section id="artifacts" class="card mb-4" aria-labelledby="artifacts-heading">
+        <div class="card-body">
+            <h2 id="artifacts-heading" class="h5">Artifacts</h2>
+            <ArtifactList RecordId="record.Id" ViewingId="_viewingId" ViewToken="@ViewToken" OnAccessLost="OnArtifactAccessLost" />
+        </div>
+    </section>
+
+    @if (!viewing)
+    {
+    <section id="history" class="card mb-4" aria-labelledby="history-heading">
+        <div class="card-body">
+            <h2 id="history-heading" class="h5">History</h2>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Version</th>
+                            <th scope="col">Changed by</th>
+                            <th scope="col">Changed</th>
+                            <th scope="col">Title</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var revision in _history)
+                        {
+                            <tr>
+                                <td>@revision.Version</td>
+                                <td>@revision.ChangedByDisplayName</td>
+                                <td>@RecordDisplay.Instant(revision.ChangedAt)</td>
+                                <td>@revision.Title</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_history.Count < _historyTotal)
+            {
+                <button type="button" id="more-history" class="btn btn-outline-secondary btn-sm mt-3" @onclick="LoadMoreHistoryAsync">Show older revisions</button>
+            }
+        </div>
+    </section>
+    }
+}
+
+@code {
+    private const int HistoryPageSize = 20;
+
+    private Crumb[] Crumbs => [new("Citizen records", "/records"), new(_record?.Title ?? "Record")];
+
+    private IReadOnlyList<AffiliationDto> _affiliations = [];
+    private RecordDto? _record;
+    private List<RevisionDto> _history = [];
+    private long _historyTotal;
+    private int _historyPage;
+    private Guid _loadedId;
+    private bool _notFound;
+    private bool _loadError;
+    private bool _locked;
+    private bool _lockedOut;
+    private bool _submitting;
+    private bool _disposed;
+    private string _code = string.Empty;
+    private string? _overrideError;
+    private string _userKey = ViewGrantStore.UserKey(null);
+    private Guid? _viewingId;
+    private CancellationTokenSource? _pollCts;
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    [Parameter]
+    public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(20);
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedId == Id)
+        {
+            return;
+        }
+
+        await RevokeViewingAsync();
+        _loadedId = Id;
+        _record = null;
+        _history = [];
+        _historyPage = 0;
+        _notFound = false;
+        _loadError = false;
+        _locked = false;
+        _lockedOut = false;
+        _overrideError = null;
+        _code = string.Empty;
+        try
+        {
+            _affiliations = await Api.GetAsync<List<AffiliationDto>>("api/affiliations") ?? [];
+            _record = await Api.GetAsync<RecordDto>($"api/records/{Id}");
+            await LoadMoreHistoryAsync();
+        }
+        catch (ApiException ex) when (ex.Status == 403 && ex.IsSealed)
+        {
+            _record = null;
+            _locked = true;
+        }
+        catch (ApiException ex) when (ex.Status == 404)
+        {
+            _record = null;
+            _notFound = true;
+        }
+        catch (ApiException)
+        {
+            _record = null;
+            _loadError = true;
+        }
+    }
+
+    private async Task LoadMoreHistoryAsync()
+    {
+        var next = _historyPage + 1;
+        var page = await Api.GetAsync<PagedResult<RevisionDto>>($"api/records/{Id}/history?page={next}&pageSize={HistoryPageSize}");
+        if (page is not null)
+        {
+            _history = [.. _history, .. page.Items];
+            _historyTotal = page.TotalCount;
+            _historyPage = next;
+        }
+    }
+
+    private void OnCodeInput(ChangeEventArgs e) => _code = e.Value?.ToString() ?? string.Empty;
+
+    // The token never leaves the server; ArtifactList only sends it to the Api.
+    private string? ViewToken => _viewingId is { } viewingId && Grants.TryGet(_userKey, viewingId, out var entry) ? entry.Token : null;
+
+    private void OnArtifactAccessLost()
+    {
+        if (_viewingId is { } viewingId)
+        {
+            EndViewing(viewingId);
+        }
+    }
+
+    private async Task UnlockAsync()
+    {
+        if (_lockedOut || _submitting)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_code))
+        {
+            _overrideError = "Enter the override code.";
+            return;
+        }
+
+        _submitting = true;
+        _overrideError = null;
+        try
+        {
+            var unlocked = await Api.PostAsync<UnlockedRecordDto>($"api/records/{Id}/override", new OverrideCodeRequest(_code));
+            if (unlocked is null)
+            {
+                _overrideError = "The override code could not be checked. Please try again.";
+            }
+            else
+            {
+                await StartViewingAsync(unlocked);
+            }
+        }
+        catch (ApiException ex) when (ex.Status == 403)
+        {
+            _overrideError = ex.Extensions.TryGetValue("attemptsRemaining", out var remaining) && remaining.TryGetInt32(out var count)
+                ? $"Incorrect override code. {count} {(count == 1 ? "attempt" : "attempts")} remaining."
+                : "Incorrect override code.";
+        }
+        catch (ApiException ex) when (ex.Status == 429)
+        {
+            var minutes = (int)Math.Ceiling((ex.RetryAfter ?? TimeSpan.FromMinutes(15)).TotalMinutes);
+            _lockedOut = true;
+            _overrideError = $"Too many attempts. Try again in {minutes} {(minutes == 1 ? "minute" : "minutes")}.";
+        }
+        catch (ApiException ex) when (ex.Status == 404)
+        {
+            _locked = false;
+            _notFound = true;
+        }
+        catch (ApiException)
+        {
+            _overrideError = "The override code could not be checked. Please try again.";
+        }
+        finally
+        {
+            _submitting = false;
+            _code = string.Empty;
+        }
+    }
+
+    private async Task StartViewingAsync(UnlockedRecordDto unlocked)
+    {
+        var state = AuthState is null ? null : await AuthState;
+        _userKey = ViewGrantStore.UserKey(state?.User);
+        _viewingId = Grants.Register(_userKey, Id, unlocked.ViewToken);
+        _record = unlocked.Record;
+        _locked = false;
+        _pollCts = new CancellationTokenSource();
+        _ = PollAsync(_viewingId.Value, _pollCts.Token);
+    }
+
+    // The view token stays on the server; the poll only learns whether the grant is still valid.
+    private async Task PollAsync(Guid viewingId, CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(PollInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                if (!Grants.TryGet(_userKey, viewingId, out var entry))
+                {
+                    return;
+                }
+
+                try
+                {
+                    await Api.SendAsync(HttpMethod.Get, $"api/records/{entry.RecordId}/override/status", null, TokenHeader(entry.Token), cancellationToken);
+                }
+                catch (ApiException ex) when (ex.Status == 404)
+                {
+                    await InvokeAsync(() => EndViewing(viewingId));
+                    return;
+                }
+                catch (ApiException)
+                {
+                    // Transient failures never end a viewing; the next tick tries again.
+                }
+                catch (HttpRequestException)
+                {
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void EndViewing(Guid viewingId)
+    {
+        if (_disposed || _viewingId != viewingId)
+        {
+            return;
+        }
+
+        StopPolling();
+        Grants.Remove(_userKey, viewingId);
+        _viewingId = null;
+        _record = null;
+        _locked = true;
+        _overrideError = null;
+        StateHasChanged();
+    }
+
+    private void StopPolling()
+    {
+        _pollCts?.Cancel();
+        _pollCts?.Dispose();
+        _pollCts = null;
+    }
+
+    private async Task RevokeViewingAsync()
+    {
+        StopPolling();
+        if (_viewingId is not { } viewingId)
+        {
+            return;
+        }
+
+        _viewingId = null;
+        try
+        {
+            if (Grants.TryGet(_userKey, viewingId, out var entry))
+            {
+                await Api.SendAsync(HttpMethod.Delete, $"api/records/{entry.RecordId}/override", null, TokenHeader(entry.Token));
+            }
+        }
+        catch (ApiException)
+        {
+            // Best effort: the grant also expires on its own and is purged server-side.
+        }
+        catch (HttpRequestException)
+        {
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            Grants.Remove(_userKey, viewingId);
+        }
+    }
+
+    private static Dictionary<string, string> TokenHeader(string token) => new(StringComparer.Ordinal) { ["X-View-Token"] = token };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        await RevokeViewingAsync();
+    }
+
+    void IDisposable.Dispose() => StopPolling();
+}

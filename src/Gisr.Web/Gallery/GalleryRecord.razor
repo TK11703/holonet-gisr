@@ -1,0 +1,145 @@
+@page "/gallery/{RecordId:guid}"
+@inject ApiClient Api
+@inject NavigationManager Navigation
+
+<PageHeader Title="@(_title ?? "Gallery")" Crumbs="Crumbs" />
+
+@if (_notFound)
+{
+    <div class="alert alert-warning" role="alert">Record not found.</div>
+}
+else if (_loadError)
+{
+    <div class="alert alert-danger" role="alert">The images could not be loaded. Please try again.</div>
+}
+else if (_page is null)
+{
+    <p class="text-secondary" role="status">Loading...</p>
+}
+else
+{
+    <p><a id="open-record" href="/records/@RecordId">Open record</a></p>
+
+    @if (_page.TotalCount == 0)
+    {
+        <p id="gallery-record-empty" class="text-secondary">This record has no images.</p>
+    }
+    else
+    {
+        <ul class="gallery-grid list-unstyled mb-3">
+            @for (var i = 0; i < _page.Items.Count; i++)
+            {
+                var index = i;
+                var image = _page.Items[i];
+                <li>
+                    <button type="button" class="gallery-thumb" aria-label="@($"Open {Label(image)}")" @onclick="() => _lightbox = index">
+                        <img src="@ArtifactDisplay.MediaUrl(image.Id, true, null)" alt="@Label(image)" loading="lazy" />
+                    </button>
+                </li>
+            }
+        </ul>
+
+        @if (PageCount > 1)
+        {
+            <nav aria-label="Gallery pages" class="d-flex align-items-center gap-3">
+                <button type="button" id="previous-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber <= 1)" @onclick="PreviousAsync">Previous</button>
+                <span>Page @_pageNumber of @PageCount</span>
+                <button type="button" id="next-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber >= PageCount)" @onclick="NextAsync">Next</button>
+            </nav>
+        }
+    }
+
+    @if (_lightbox is { } open && open < _page.Items.Count)
+    {
+        <Lightbox Items="_page.Items" Index="open" RecordId="RecordId" IndexChanged="i => _lightbox = i" OnClose="() => _lightbox = null" />
+    }
+}
+
+@code {
+    private const int PageSize = 24;
+
+    private PagedResult<ArtifactDto>? _page;
+    private string? _title;
+    private Guid _loadedId;
+    private int _pageNumber = 1;
+    private int? _lightbox;
+    private bool _notFound;
+    private bool _loadError;
+
+    [Parameter]
+    public Guid RecordId { get; set; }
+
+    private Crumb[] Crumbs => [new("Home", "/records"), new("Gallery", "/gallery"), new(_title ?? "Record")];
+
+    private long PageCount => _page is null ? 1 : Math.Max(1, (_page.TotalCount + PageSize - 1) / PageSize);
+
+    private static string Label(ArtifactDto image) => string.IsNullOrWhiteSpace(image.Description) ? image.FileName : image.Description;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedId == RecordId)
+        {
+            return;
+        }
+
+        _loadedId = RecordId;
+        _page = null;
+        _title = null;
+        _lightbox = null;
+        _pageNumber = 1;
+        _notFound = false;
+        _loadError = false;
+        try
+        {
+            var record = await Api.GetAsync<RecordDto>($"api/records/{RecordId}");
+            if (record!.IsSealed)
+            {
+                SendToRecord();
+                return;
+            }
+
+            _title = record.Title;
+            await LoadAsync();
+        }
+        catch (ApiException ex) when (ex.Status == StatusCodes.Status403Forbidden && ex.IsSealed)
+        {
+            SendToRecord();
+        }
+        catch (ApiException ex) when (ex.Status == StatusCodes.Status404NotFound)
+        {
+            _notFound = true;
+        }
+        catch (ApiException)
+        {
+            _loadError = true;
+        }
+    }
+
+    // A sealed record's images are only reachable from its record page, where the override flow lives.
+    private void SendToRecord() => Navigation.NavigateTo($"/records/{RecordId}");
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _page = await Api.GetAsync<PagedResult<ArtifactDto>>($"api/records/{RecordId}/artifacts?kind=image&page={_pageNumber}&pageSize={PageSize}");
+            _loadError = false;
+        }
+        catch (ApiException)
+        {
+            _loadError = true;
+        }
+    }
+
+    private async Task PreviousAsync()
+    {
+        _pageNumber--;
+        await LoadAsync();
+    }
+
+    private async Task NextAsync()
+    {
+        _pageNumber++;
+        await LoadAsync();
+    }
+}

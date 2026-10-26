@@ -1,0 +1,78 @@
+<fieldset class="mb-4">
+    <legend class="h5">Awards</legend>
+    @if (RecordDisplay.ErrorText(Errors, "awards") is { } listError)
+    {
+        <div id="awards-error" class="invalid-feedback d-block mb-2">@listError</div>
+    }
+
+    @for (var i = 0; i < Items.Count; i++)
+    {
+        var index = i;
+        var item = Items[i];
+        var prefix = $"award-{index}";
+        var name = RecordDisplay.ErrorText(Errors, $"awards[{index}].name");
+        var date = RecordDisplay.ErrorText(Errors, $"awards[{index}].awardedOn");
+        var issuer = RecordDisplay.ErrorText(Errors, $"awards[{index}].issuer");
+        var description = RecordDisplay.ErrorText(Errors, $"awards[{index}].description");
+
+        <div class="card mb-3" @key="item">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="@($"{prefix}-name")" class="form-label">Name <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input id="@($"{prefix}-name")" type="text" class="@(name is null ? "form-control" : "form-control is-invalid")" maxlength="200"
+                               aria-required="true" aria-invalid="@(name is null ? null : "true")" aria-describedby="@(name is null ? null : $"{prefix}-name-error")"
+                               @bind="item.Name" />
+                        @if (name is not null)
+                        {
+                            <div id="@($"{prefix}-name-error")" class="invalid-feedback d-block">@name</div>
+                        }
+                    </div>
+                    <div class="col-md-3">
+                        <label for="@($"{prefix}-date")" class="form-label">Date awarded <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input id="@($"{prefix}-date")" type="date" class="@(date is null ? "form-control" : "form-control is-invalid")"
+                               aria-required="true" aria-invalid="@(date is null ? null : "true")" aria-describedby="@(date is null ? null : $"{prefix}-date-error")"
+                               @bind="item.AwardedOn" @bind:format="yyyy-MM-dd" />
+                        @if (date is not null)
+                        {
+                            <div id="@($"{prefix}-date-error")" class="invalid-feedback d-block">@date</div>
+                        }
+                    </div>
+                    <div class="col-md-3">
+                        <label for="@($"{prefix}-issuer")" class="form-label">Issuer</label>
+                        <input id="@($"{prefix}-issuer")" type="text" class="@(issuer is null ? "form-control" : "form-control is-invalid")" maxlength="200"
+                               aria-invalid="@(issuer is null ? null : "true")" aria-describedby="@(issuer is null ? null : $"{prefix}-issuer-error")"
+                               @bind="item.Issuer" />
+                        @if (issuer is not null)
+                        {
+                            <div id="@($"{prefix}-issuer-error")" class="invalid-feedback d-block">@issuer</div>
+                        }
+                    </div>
+                    <div class="col-12">
+                        <label for="@($"{prefix}-description")" class="form-label">Description</label>
+                        <textarea id="@($"{prefix}-description")" class="@(description is null ? "form-control" : "form-control is-invalid")" rows="2" maxlength="2000"
+                                  aria-invalid="@(description is null ? null : "true")" aria-describedby="@(description is null ? null : $"{prefix}-description-error")"
+                                  @bind="item.Description"></textarea>
+                        @if (description is not null)
+                        {
+                            <div id="@($"{prefix}-description-error")" class="invalid-feedback d-block">@description</div>
+                        }
+                    </div>
+                </div>
+                <button type="button" class="btn btn-outline-danger btn-sm mt-3" aria-label="@($"Remove award {index + 1}")"
+                        @onclick="@(() => Items.Remove(item))">Remove</button>
+            </div>
+        </div>
+    }
+
+    <button type="button" id="add-award" class="btn btn-outline-secondary btn-sm" disabled="@(Items.Count >= RecordFormModel.MaxItems)"
+            @onclick="@(() => Items.Add(new AwardModel()))">Add award</button>
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<AwardModel> Items { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyDictionary<string, string[]> Errors { get; set; } = new Dictionary<string, string[]>();
+}

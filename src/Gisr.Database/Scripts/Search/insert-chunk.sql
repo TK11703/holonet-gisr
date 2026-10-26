@@ -1,0 +1,2 @@
+INSERT INTO search_chunk (id, record_id, source_type, artifact_id, chunk_index, content, embedding, created_at)
+VALUES (@Id, @RecordId, @SourceType, @ArtifactId::uuid, @ChunkIndex, @Content, @Embedding, now());

@@ -1,0 +1,60 @@
+@page "/records/new"
+@inject ApiClient Api
+@inject CurrentUserState User
+@inject NavigationManager Navigation
+
+<PageHeader Title="New record" Crumbs="Crumbs" />
+
+@if (_loadError)
+{
+    <div class="alert alert-danger" role="alert">The form could not be loaded. Please try again.</div>
+}
+else if (_model is null)
+{
+    <p class="text-secondary" role="status">Loading...</p>
+}
+else
+{
+    <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" SubmitLabel="Create record" CancelHref="/records"
+                ShowCitizenPicker="User.IsOfficer" AllowSealing="User.IsOfficer" />
+}
+
+@code {
+    private static readonly Crumb[] Crumbs = [new("Citizen records", "/records"), new("New record")];
+
+    private IReadOnlyList<AffiliationDto> _affiliations = [];
+    private RecordFormModel? _model;
+    private bool _loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _affiliations = await Api.GetAsync<List<AffiliationDto>>("api/affiliations") ?? [];
+            _model = RecordFormModel.New(_affiliations.FirstOrDefault()?.Code ?? string.Empty);
+            await LoadUserAsync();
+        }
+        catch (ApiException)
+        {
+            _loadError = true;
+        }
+    }
+
+    private async Task LoadUserAsync()
+    {
+        try
+        {
+            await User.EnsureLoadedAsync();
+        }
+        catch (ApiException)
+        {
+            // Without the account the Officer-only citizen picker stays hidden; the Api enforces access either way.
+        }
+    }
+
+    private async Task SaveAsync(RecordFormModel model)
+    {
+        var created = await Api.PostAsync<RecordDto>("api/records", model.ToCreateRequest());
+        Navigation.NavigateTo($"/records/{created!.Id}");
+    }
+}

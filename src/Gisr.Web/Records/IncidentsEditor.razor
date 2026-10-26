@@ -1,0 +1,67 @@
+<fieldset class="mb-4">
+    <legend class="h5">Incidents</legend>
+    @if (RecordDisplay.ErrorText(Errors, "incidents") is { } listError)
+    {
+        <div id="incidents-error" class="invalid-feedback d-block mb-2">@listError</div>
+    }
+
+    @for (var i = 0; i < Items.Count; i++)
+    {
+        var index = i;
+        var item = Items[i];
+        var prefix = $"incident-{index}";
+        var date = RecordDisplay.ErrorText(Errors, $"incidents[{index}].occurredOn");
+        var title = RecordDisplay.ErrorText(Errors, $"incidents[{index}].title");
+        var description = RecordDisplay.ErrorText(Errors, $"incidents[{index}].description");
+
+        <div class="card mb-3" @key="item">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="@($"{prefix}-date")" class="form-label">Date <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input id="@($"{prefix}-date")" type="date" class="@(date is null ? "form-control" : "form-control is-invalid")"
+                               aria-required="true" aria-invalid="@(date is null ? null : "true")" aria-describedby="@(date is null ? null : $"{prefix}-date-error")"
+                               @bind="item.OccurredOn" @bind:format="yyyy-MM-dd" />
+                        @if (date is not null)
+                        {
+                            <div id="@($"{prefix}-date-error")" class="invalid-feedback d-block">@date</div>
+                        }
+                    </div>
+                    <div class="col-md-9">
+                        <label for="@($"{prefix}-title")" class="form-label">Title <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input id="@($"{prefix}-title")" type="text" class="@(title is null ? "form-control" : "form-control is-invalid")" maxlength="200"
+                               aria-required="true" aria-invalid="@(title is null ? null : "true")" aria-describedby="@(title is null ? null : $"{prefix}-title-error")"
+                               @bind="item.Title" />
+                        @if (title is not null)
+                        {
+                            <div id="@($"{prefix}-title-error")" class="invalid-feedback d-block">@title</div>
+                        }
+                    </div>
+                    <div class="col-12">
+                        <label for="@($"{prefix}-description")" class="form-label">Description</label>
+                        <textarea id="@($"{prefix}-description")" class="@(description is null ? "form-control" : "form-control is-invalid")" rows="3" maxlength="4000"
+                                  aria-invalid="@(description is null ? null : "true")" aria-describedby="@(description is null ? null : $"{prefix}-description-error")"
+                                  @bind="item.Description"></textarea>
+                        @if (description is not null)
+                        {
+                            <div id="@($"{prefix}-description-error")" class="invalid-feedback d-block">@description</div>
+                        }
+                    </div>
+                </div>
+                <button type="button" class="btn btn-outline-danger btn-sm mt-3" aria-label="@($"Remove incident {index + 1}")"
+                        @onclick="@(() => Items.Remove(item))">Remove</button>
+            </div>
+        </div>
+    }
+
+    <button type="button" id="add-incident" class="btn btn-outline-secondary btn-sm" disabled="@(Items.Count >= RecordFormModel.MaxItems)"
+            @onclick="@(() => Items.Add(new IncidentModel()))">Add incident</button>
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<IncidentModel> Items { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyDictionary<string, string[]> Errors { get; set; } = new Dictionary<string, string[]>();
+}

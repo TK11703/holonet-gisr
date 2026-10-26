@@ -1,12 +1,3 @@
-<!--
-Sync Impact Report (temporary; remove before commit)
-- Version change: (unversioned template) -> 1.0.0
-- Modified principles: none renamed (initial ratification; all placeholders replaced)
-- Added sections: Core Principles I-VIII, Technology & Architecture Constraints,
-  Development Workflow & Quality Gates, Governance
-- Removed sections: none
-- Deferred items: none
--->
 # HoloNet GISR Constitution
 
 The Galactic Identity and Service Records (GISR) system archives authoritative records for
@@ -26,6 +17,8 @@ Every project MUST be organized by feature (for example `Citizens/`, `Jedi/`, `B
 not by technical layer. Code, DTOs, validators, endpoints, components, repositories, and SQL
 scripts for a feature MUST live together in that feature's folder within each project. Shared
 cross-feature code MUST live in an explicitly named `Common/` (or equivalent) folder.
+In `Gisr.Database` the SQL scripts of every feature are tracked together under `Scripts/`, in that
+feature's subfolder (see VI).
 Rationale: a feature can be understood, changed, and removed in one place.
 
 ### III. Solution Structure and Dependency Direction
@@ -61,8 +54,9 @@ grouped per feature (for example `MapGroup` + one registration extension per fea
 ### VI. Dapper, PostgreSQL, and Plain SQL Scripts
 
 Persistence MUST use PostgreSQL accessed through Npgsql and Dapper; no other ORM is permitted.
-All SQL MUST be written as individual `.sql` files stored in the owning feature folder of
-`Gisr.Database`; SQL MUST NOT be embedded as string literals in C# code. Queries and commands
+All SQL MUST be written as individual `.sql` files stored in the feature's subfolder of
+`Gisr.Database/Scripts/` (for example `Scripts/Records/`); SQL MUST NOT be embedded as string
+literals in C# code. Queries and commands
 MUST be loaded and cached at runtime and executed with Dapper. All SQL MUST be parameterized;
 string concatenation or interpolation of values into SQL is prohibited. Each feature MUST expose
 its data access through a repository in `Gisr.Database` (repository pattern); `Gisr.Api` MUST
@@ -126,4 +120,4 @@ redefinitions, MINOR for added principles/sections or materially expanded guidan
 clarifications and wording fixes. Every pull request and review MUST verify compliance with this
 constitution, and Spec Kit plans MUST pass a Constitution Check against it before design begins.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-23
+**Version**: 1.0.1 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-26

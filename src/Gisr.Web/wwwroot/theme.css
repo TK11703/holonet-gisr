@@ -1,0 +1,408 @@
+/* Dark-only theme: deep teal-green surfaces with a teal accent. No light variant exists. */
+:root,
+[data-bs-theme="dark"] {
+    color-scheme: dark;
+    --gisr-bg: #06201f;
+    --gisr-bg-2: #0a2a28;
+    --gisr-surface: #0d3330;
+    --gisr-surface-2: #11403c;
+    --gisr-border: #1d5650;
+    --gisr-text: #d8ece8;
+    --gisr-muted: #9bbab5;
+    --gisr-accent: #2dd4bf;
+    --gisr-accent-strong: #14b8a6;
+    --gisr-topbar-height: 3rem;
+    --gisr-sidenav-width: 14.5rem;
+
+    --bs-body-bg: var(--gisr-bg);
+    --bs-body-color: var(--gisr-text);
+    --bs-emphasis-color: #f1faf8;
+    --bs-secondary-color: var(--gisr-muted);
+    --bs-secondary-bg: var(--gisr-surface);
+    --bs-tertiary-bg: var(--gisr-surface-2);
+    --bs-border-color: var(--gisr-border);
+    --bs-link-color: var(--gisr-accent);
+    --bs-link-color-rgb: 45, 212, 191;
+    --bs-link-hover-color: #7ff0e0;
+    --bs-link-hover-color-rgb: 127, 240, 224;
+    --bs-primary: var(--gisr-accent-strong);
+    --bs-primary-rgb: 20, 184, 166;
+    --bs-focus-ring-color: rgba(45, 212, 191, 0.4);
+}
+
+body {
+    background: radial-gradient(1200px 600px at 20% -10%, #0d3a36 0%, var(--gisr-bg) 60%) fixed;
+    min-height: 100vh;
+}
+
+:focus-visible {
+    outline: 2px solid #5eead4;
+    outline-offset: 2px;
+}
+
+.btn-primary {
+    --bs-btn-color: #031a18;
+    --bs-btn-bg: var(--gisr-accent-strong);
+    --bs-btn-border-color: var(--gisr-accent-strong);
+    --bs-btn-hover-color: #031a18;
+    --bs-btn-hover-bg: var(--gisr-accent);
+    --bs-btn-hover-border-color: var(--gisr-accent);
+    --bs-btn-active-color: #031a18;
+    --bs-btn-active-bg: #5eead4;
+    --bs-btn-active-border-color: #5eead4;
+    --bs-btn-disabled-bg: #0f6d63;
+    --bs-btn-disabled-border-color: #0f6d63;
+    --bs-btn-disabled-color: #9bbab5;
+}
+
+.btn-icon {
+    --bs-btn-color: var(--gisr-text);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--gisr-surface-2);
+    --bs-btn-active-bg: var(--gisr-surface-2);
+    border: 0;
+    padding: 0.35rem 0.5rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.card,
+.list-group-item,
+.dropdown-menu,
+.modal-content {
+    --bs-card-bg: var(--gisr-surface);
+    --bs-card-border-color: var(--gisr-border);
+    --bs-dropdown-bg: var(--gisr-surface);
+    --bs-dropdown-border-color: var(--gisr-border);
+    --bs-dropdown-link-hover-bg: var(--gisr-surface-2);
+    border-radius: 0.75rem;
+}
+
+.form-control,
+.form-select {
+    background-color: var(--gisr-bg-2);
+    border-color: var(--gisr-border);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--gisr-bg-2);
+    border-color: var(--gisr-accent);
+}
+
+.skip-link {
+    position: fixed;
+    top: -4rem;
+    left: 0.5rem;
+    z-index: 2000;
+    background: var(--gisr-accent-strong);
+    color: #031a18;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+}
+
+.skip-link:focus {
+    top: 0.5rem;
+}
+
+/* Top bar: full width, compact */
+.topbar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: var(--gisr-topbar-height);
+    z-index: 1030;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 1rem;
+    background: var(--gisr-bg-2);
+    border-bottom: 1px solid var(--gisr-border);
+}
+
+.topbar-start {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: var(--gisr-sidenav-width);
+}
+
+.topbar-brand {
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+}
+
+.topbar-search {
+    position: relative;
+    flex: 1 1 auto;
+    max-width: 32rem;
+    margin: 0 auto;
+}
+
+.topbar-search .form-control {
+    border-radius: 999px;
+    padding-left: 2.25rem;
+    padding-right: 4rem;
+    height: 2.1rem;
+}
+
+.topbar-search-icon {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gisr-muted);
+    pointer-events: none;
+    display: inline-flex;
+}
+
+.topbar-search-hint {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    color: var(--gisr-muted);
+    font-size: 0.7rem;
+    padding: 0;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+}
+
+/* Shell: left nav is full height under the top bar */
+.app-shell {
+    padding-top: var(--gisr-topbar-height);
+    min-height: 100vh;
+}
+
+.sidenav {
+    position: fixed;
+    top: var(--gisr-topbar-height);
+    bottom: 0;
+    left: 0;
+    width: var(--gisr-sidenav-width);
+    overflow-y: auto;
+    padding: 1rem 0.75rem;
+    background: var(--gisr-bg-2);
+    border-right: 1px solid var(--gisr-border);
+    z-index: 1020;
+}
+
+.sidenav-heading {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--gisr-muted);
+    padding: 0.5rem 0.75rem 0.25rem;
+}
+
+.sidenav-list {
+    list-style: none;
+    margin: 0 0 0.75rem;
+    padding: 0;
+}
+
+.sidenav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    color: var(--gisr-text);
+    text-decoration: none;
+}
+
+.sidenav-link:hover {
+    background: var(--gisr-surface-2);
+    color: #fff;
+}
+
+.sidenav-link[aria-current="page"] {
+    background: var(--gisr-surface-2);
+    color: var(--gisr-accent);
+    font-weight: 600;
+}
+
+.app-content {
+    margin-left: var(--gisr-sidenav-width);
+    padding: 1.25rem 1.5rem 2rem;
+    outline: none;
+}
+
+.sidenav-backdrop {
+    position: fixed;
+    inset: var(--gisr-topbar-height) 0 0 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 1010;
+}
+
+.page-header {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.page-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.pre-wrap {
+    white-space: pre-wrap;
+}
+
+.breadcrumb {
+    --bs-breadcrumb-divider-color: var(--gisr-muted);
+    --bs-breadcrumb-item-active-color: var(--gisr-muted);
+    font-size: 0.85rem;
+}
+
+.avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gisr-accent-strong);
+    color: #031a18;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.gallery-covers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--gisr-surface);
+    border-radius: var(--bs-card-inner-border-radius) var(--bs-card-inner-border-radius) 0 0;
+}
+
+.gallery-covers img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.gallery-covers img:only-child {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: 0.75rem;
+}
+
+.gallery-thumb {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 1px solid var(--gisr-border);
+    border-radius: 0.375rem;
+    overflow: hidden;
+    background: var(--gisr-surface);
+}
+
+.gallery-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lightbox-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.85);
+    animation: lightbox-fade 0.15s ease-out;
+}
+
+.lightbox {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: min(64rem, 100%);
+    max-height: 100%;
+    padding: 1rem;
+    border: 1px solid var(--gisr-border);
+    border-radius: 0.5rem;
+    background: var(--gisr-bg);
+}
+
+.lightbox-toolbar,
+.lightbox-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.lightbox-figure {
+    margin: 0;
+    min-height: 0;
+    text-align: center;
+}
+
+.lightbox-image {
+    max-width: 100%;
+    max-height: 65vh;
+    object-fit: contain;
+}
+
+@keyframes lightbox-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .topbar-start {
+        min-width: 0;
+    }
+
+    .sidenav {
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+        box-shadow: 0 0 2rem rgba(0, 0, 0, 0.5);
+    }
+
+    .sidenav.open {
+        transform: none;
+    }
+
+    .app-content {
+        margin-left: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition: none !important;
+        animation: none !important;
+        scroll-behavior: auto !important;
+    }
+}

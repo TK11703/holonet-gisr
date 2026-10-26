@@ -32,7 +32,7 @@ military personnel, Jedi, bounty hunters, and others. The project constitution a
 - Logging/telemetry: `ILogger`/Serilog + OpenTelemetry.
 
 ## Solution layout and dependencies
-
+- Source projects will be organized within a src folder, tests projects within a tests folder. Infrastructure will be organized within an infra folder.
 - `Gisr.Web` -> references only `Gisr.Shared`; reaches data only via HTTP to `Gisr.Api`.
 - `Gisr.Api` -> references `Gisr.Shared` and `Gisr.Database`; never runs SQL directly.
 - `Gisr.Database` -> references no other Gisr project; holds repositories, SQL scripts, migrations.
@@ -51,7 +51,8 @@ military personnel, Jedi, bounty hunters, and others. The project constitution a
 - Use dependency injection and small focused services over static mutable state.
 - Validate untrusted input at system boundaries before database or external-service operations.
 - Store system timestamps and absolute instants as UTC using DateTimeOffset and PostgreSQL timestamptz. For user-entered zoned times, persist the local wall-clock value, the IANA time-zone ID, and the derived UTC instant. Use DateOnly and PostgreSQL date for date-only values.
-- SQL lives in individual `.sql` files in the feature folder of `Gisr.Database`, loaded and
+- SQL lives in individual `.sql` files in `Gisr.Database/Scripts/<Feature>/` (one subfolder per feature,
+  migrations in `Scripts/Migrations/`), loaded and
   cached at runtime and executed through Dapper. Always parameterize; never concatenate or
   interpolate values into SQL. No SQL string literals in C#.
 - Schema changes only via new numbered, forward-only migration scripts recorded in the migration

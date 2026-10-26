@@ -1,0 +1,246 @@
+<EditForm Model="Model" OnSubmit="SubmitAsync" FormName="record-form" novalidate>
+    @if (_errors.Count > 0)
+    {
+        <div class="alert alert-danger" role="alert">Please fix the highlighted fields.</div>
+    }
+    @if (_conflict)
+    {
+        <div id="conflict-alert" class="alert alert-warning" role="alert">
+            <p class="mb-2">This record changed since you opened it. Your entries are kept below. Reload to get the latest version, then re-apply them.</p>
+            <button type="button" class="btn btn-sm btn-outline-light" @onclick="OnReload">Reload latest version</button>
+        </div>
+    }
+    @if (_forbidden)
+    {
+        <div class="alert alert-danger" role="alert">You are not permitted to save this record.</div>
+    }
+    @if (_failed)
+    {
+        <div class="alert alert-danger" role="alert">The record could not be saved. Please try again.</div>
+    }
+
+    @if (ShowCitizenPicker)
+    {
+        <CitizenPicker Model="Model" OnChanged="StateHasChanged" />
+    }
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-8">
+            <label for="record-title" class="form-label">Title <span class="text-danger" aria-hidden="true">*</span></label>
+            <input id="record-title" type="text" class="@(TitleError is null ? "form-control" : "form-control is-invalid")" maxlength="200"
+                   aria-required="true" aria-invalid="@(TitleError is null ? null : "true")" aria-describedby="@(TitleError is null ? null : "record-title-error")"
+                   @bind="Model.Title" />
+            @if (TitleError is not null)
+            {
+                <div id="record-title-error" class="invalid-feedback d-block">@TitleError</div>
+            }
+        </div>
+        <div class="col-lg-4">
+            <label for="record-affiliation" class="form-label">Affiliation <span class="text-danger" aria-hidden="true">*</span></label>
+            <select id="record-affiliation" class="@(AffiliationError is null ? "form-select" : "form-select is-invalid")"
+                    aria-required="true" aria-invalid="@(AffiliationError is null ? null : "true")" aria-describedby="@(AffiliationError is null ? null : "record-affiliation-error")"
+                    @bind="Model.Affiliation">
+                @foreach (var affiliation in Affiliations)
+                {
+                    <option value="@affiliation.Code">@affiliation.Name</option>
+                }
+            </select>
+            @if (AffiliationError is not null)
+            {
+                <div id="record-affiliation-error" class="invalid-feedback d-block">@AffiliationError</div>
+            }
+        </div>
+        <div class="col-md-6">
+            <label for="engagement-start" class="form-label">Engagement start</label>
+            <input id="engagement-start" type="date" class="form-control" @bind="Model.EngagementStart" @bind:format="yyyy-MM-dd" />
+        </div>
+        <div class="col-md-6">
+            <label for="engagement-end" class="form-label">Engagement end</label>
+            <input id="engagement-end" type="date" class="@(EndError is null ? "form-control" : "form-control is-invalid")"
+                   aria-invalid="@(EndError is null ? null : "true")" aria-describedby="@(EndError is null ? null : "engagement-end-error")"
+                   @bind="Model.EngagementEnd" @bind:format="yyyy-MM-dd" />
+            @if (EndError is not null)
+            {
+                <div id="engagement-end-error" class="invalid-feedback d-block">@EndError</div>
+            }
+        </div>
+    </div>
+
+    <AffiliationFields Affiliation="Selected" Detail="Model.Detail" Errors="_errors" />
+    @if (RecordDisplay.ErrorText(_errors, "engagementDetail") is { } detailError)
+    {
+        <div class="invalid-feedback d-block mb-3">@detailError</div>
+    }
+
+    <IncidentsEditor Items="Model.Incidents" Errors="_errors" />
+    <AwardsEditor Items="Model.Awards" Errors="_errors" />
+
+    @if (ShowSealControls)
+    {
+        <fieldset id="seal-section" class="mb-4">
+            <legend class="h5">Sealing</legend>
+            <div class="form-check form-switch mb-2">
+                <input id="seal-record" type="checkbox" role="switch" class="form-check-input" checked="@Model.IsSealed" @onchange="OnSealChanged" />
+                <label for="seal-record" class="form-check-label">Seal this record</label>
+            </div>
+            @if (SealError is not null)
+            {
+                <div class="invalid-feedback d-block mb-2">@SealError</div>
+            }
+            @if (Model.IsSealed)
+            {
+                @if (Model.HasOverrideCode && !Model.ChangingCode)
+                {
+                    <p id="override-code-set" class="mb-2">An override code is set.</p>
+                    <button type="button" id="change-code" class="btn btn-sm btn-outline-secondary" @onclick="ChangeCode">Change code</button>
+                }
+                else
+                {
+                    <label for="override-code" class="form-label">Override code <span class="text-danger" aria-hidden="true">*</span></label>
+                    <input id="override-code" type="password" autocomplete="new-password" maxlength="64"
+                           class="@(CodeError is null ? "form-control" : "form-control is-invalid")"
+                           aria-required="true" aria-invalid="@(CodeError is null ? null : "true")"
+                           aria-describedby="@(CodeError is null ? "override-code-help" : "override-code-error")"
+                           value="@Model.OverrideCode" @oninput="OnCodeInput" />
+                    @if (CodeError is not null)
+                    {
+                        <div id="override-code-error" class="invalid-feedback d-block">@CodeError</div>
+                    }
+                    <div id="override-code-help" class="form-text">
+                        8 to 64 characters. The code is shown to no one afterwards and must be shared with the citizen out of band.
+                    </div>
+                }
+            }
+        </fieldset>
+    }
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@_saving">@SubmitLabel</button>
+        @if (CancelHref is not null)
+        {
+            <a class="btn btn-outline-secondary" href="@CancelHref">Cancel</a>
+        }
+    </div>
+</EditForm>
+
+@code {
+    private static readonly IReadOnlyDictionary<string, string[]> NoErrors = new Dictionary<string, string[]>();
+
+    private IReadOnlyDictionary<string, string[]> _errors = NoErrors;
+    private RecordFormModel? _shown;
+    private bool _conflict;
+    private bool _forbidden;
+    private bool _failed;
+    private bool _saving;
+
+    [Parameter, EditorRequired]
+    public RecordFormModel Model { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<AffiliationDto> Affiliations { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public Func<RecordFormModel, Task> OnSave { get; set; } = _ => Task.CompletedTask;
+
+    [Parameter]
+    public EventCallback OnReload { get; set; }
+
+    [Parameter]
+    public string SubmitLabel { get; set; } = "Save record";
+
+    [Parameter]
+    public string? CancelHref { get; set; }
+
+    [Parameter]
+    public bool ShowCitizenPicker { get; set; }
+
+    [Parameter]
+    public bool AllowSealing { get; set; }
+
+    private AffiliationDto? Selected => Affiliations.FirstOrDefault(a => string.Equals(a.Code, Model.Affiliation, StringComparison.Ordinal));
+
+    // New records need a chosen citizen (a service record); existing ones are checked by the page.
+    private bool ShowSealControls => AllowSealing && (Model.SubjectObjectId is not null || Model.ExpectedVersion > 0);
+
+    private string? CodeError => RecordDisplay.ErrorText(_errors, "overrideCode");
+
+    private string? SealError => RecordDisplay.ErrorText(_errors, "isSealed");
+
+    private string? TitleError => RecordDisplay.ErrorText(_errors, "title");
+
+    private string? AffiliationError => RecordDisplay.ErrorText(_errors, "affiliation");
+
+    private string? EndError => RecordDisplay.ErrorText(_errors, "engagementEnd");
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_shown, Model))
+        {
+            _shown = Model;
+            ResetStatus();
+        }
+    }
+
+    private void ResetStatus()
+    {
+        _errors = NoErrors;
+        _conflict = false;
+        _forbidden = false;
+        _failed = false;
+    }
+
+    private void OnSealChanged(ChangeEventArgs e)
+    {
+        Model.IsSealed = e.Value is true;
+        if (!Model.IsSealed)
+        {
+            Model.OverrideCode = null;
+            Model.ChangingCode = false;
+        }
+    }
+
+    private void OnCodeInput(ChangeEventArgs e) => Model.OverrideCode = e.Value?.ToString();
+
+    private void ChangeCode() => Model.ChangingCode = true;
+
+    private async Task SubmitAsync()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        ResetStatus();
+        if (Model.NeedsCode && Model.OverrideCode is not { Length: >= 8 and <= 64 })
+        {
+            _errors = new Dictionary<string, string[]> { ["overrideCode"] = ["Enter an override code of 8 to 64 characters."] };
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            await OnSave(Model);
+        }
+        catch (ApiException ex) when (ex.Status == 400)
+        {
+            _errors = ex.Errors;
+        }
+        catch (ApiException ex) when (ex.Status == 409)
+        {
+            _conflict = true;
+        }
+        catch (ApiException ex) when (ex.Status == 403)
+        {
+            _forbidden = true;
+        }
+        catch (ApiException)
+        {
+            _failed = true;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

@@ -1,0 +1,25 @@
+@page "/Error"
+@attribute [AllowAnonymous]
+@using System.Diagnostics
+
+<PageTitle>Error - GISR</PageTitle>
+
+<main class="container py-5">
+    <h1 class="h3">Something went wrong</h1>
+    <p>An error occurred while processing your request.</p>
+    @if (!string.IsNullOrEmpty(RequestId))
+    {
+        <p class="text-secondary small">Request ID: <code>@RequestId</code></p>
+    }
+    <a class="btn btn-primary" href="/records">Back to records</a>
+</main>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

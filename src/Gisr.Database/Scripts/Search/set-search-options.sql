@@ -1,0 +1,1 @@
+SET LOCAL hnsw.iterative_scan = relaxed_order;

@@ -1,0 +1,149 @@
+@implements IDisposable
+@implements IAsyncDisposable
+@inject CurrentUserState User
+@inject NavigationManager Navigation
+@inject ShellInterop Shell
+
+<div class="profile-menu position-relative" @onkeydown="OnKeyDown">
+    <button type="button" class="btn btn-icon profile-trigger" id="profile-menu-button" @ref="_trigger"
+            aria-haspopup="menu" aria-expanded="@(_open ? "true" : "false")" aria-controls="profile-menu"
+            @onclick="Toggle" @onkeydown="OnTriggerKeyDown">
+        <span class="avatar" aria-hidden="true">@Initials</span>
+        <span class="d-none d-md-inline ms-2">@DisplayLabel</span>
+        <Icon Name="chevron" />
+    </button>
+
+    @if (_open)
+    {
+        <div class="menu-backdrop" @onclick="CloseAsync"></div>
+        <ul id="profile-menu" class="dropdown-menu dropdown-menu-end show" role="menu" aria-labelledby="profile-menu-button"
+            @ref="_menu">
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" role="menuitem" href="/account">
+                    <Icon Name="settings" /> Account settings
+                </a>
+            </li>
+            <li>
+                <form method="post" action="/auth/logout">
+                    <AntiforgeryToken />
+                    <button type="submit" class="dropdown-item d-flex align-items-center gap-2" role="menuitem">
+                        <Icon Name="logout" /> Sign out
+                    </button>
+                </form>
+            </li>
+        </ul>
+    }
+</div>
+
+@code {
+    private ElementReference _trigger;
+    private ElementReference _menu;
+    private IAsyncDisposable? _trap;
+    private bool _open;
+    private bool _wasOpen;
+
+    private string DisplayLabel => User.Account?.DisplayName ?? "Account";
+
+    private string Initials
+    {
+        get
+        {
+            var name = User.Account?.DisplayName;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return "?";
+            }
+
+            var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var letters = parts.Length == 1 ? parts[0][..1] : $"{parts[0][0]}{parts[^1][0]}";
+            return letters.ToUpperInvariant();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        User.Changed += OnUserChanged;
+        Navigation.LocationChanged += OnLocationChanged;
+        try
+        {
+            await User.EnsureLoadedAsync();
+        }
+        catch (ApiException)
+        {
+            // The menu still works without a name; the page itself reports API failures.
+        }
+    }
+
+    private void OnUserChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        _ = InvokeAsync(() =>
+        {
+            if (_open)
+            {
+                _open = false;
+                StateHasChanged();
+            }
+        });
+
+    private void Toggle() => _open = !_open;
+
+    private void OnTriggerKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "ArrowDown")
+        {
+            _open = true;
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && _open)
+        {
+            await CloseAsync();
+            await _trigger.FocusAsync();
+        }
+    }
+
+    private Task CloseAsync()
+    {
+        _open = false;
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_open && !_wasOpen)
+        {
+            _trap = await Shell.TrapFocusAsync(_menu, async () =>
+            {
+                await InvokeAsync(() =>
+                {
+                    _open = false;
+                    StateHasChanged();
+                });
+            });
+        }
+        else if (!_open && _wasOpen && _trap is not null)
+        {
+            await _trap.DisposeAsync();
+            _trap = null;
+        }
+
+        _wasOpen = _open;
+    }
+
+    public void Dispose()
+    {
+        User.Changed -= OnUserChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_trap is not null)
+        {
+            await _trap.DisposeAsync();
+        }
+    }
+}
