@@ -38,6 +38,21 @@ $env:GISR_RUN_SCALE_TESTS = "1"; dotnet test tests/Gisr.Database.Tests --filter 
 
 Stop the AppHost before building; it locks the output assemblies.
 
+## Continuous integration
+
+Two GitHub Actions workflows live in `.github/workflows/`. They need no secrets, use a read-only token, and pin every action to a commit SHA.
+
+| Workflow | Runs | What it does |
+|----------|------|--------------|
+| `ci.yml` ("CI", job `build-and-test`) | Every pull request to `main`, every push to `main`, and manually | Restores, builds with `-warnaserror`, and runs every test (PostgreSQL and Azurite start as containers). The run summary lists failed tests, the detailed results are kept as the `test-results` artifact for 14 days, and a newer pull request run cancels an older one. The scale test is reported as skipped. |
+| `scale.yml` ("Scale check", job `scale`) | Mondays at 06:00 UTC and manually | Runs only the scale test, as in the command above. |
+
+The local equivalent of the standard check is `dotnet build Gisr.slnx -warnaserror` followed by `dotnet test Gisr.slnx`. Start the scale check with `gh workflow run scale.yml`, and re-run a failed run with `gh run rerun <run-id> --failed`.
+
+To make the standard check mandatory, a repository administrator adds a rule for `main` (Settings, Rules, Rulesets) that requires a pull request and the status check `build-and-test`. The workflows cannot do this themselves.
+
+Update the pinned actions deliberately: look up the new release's commit SHA with `gh api repos/<owner>/<action>/commits/<tag> --jq .sha` and change the SHA and the version comment together.
+
 ## Workflow
 
 Work is spec-driven with Spec Kit: `/speckit-specify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-implement`. Each spec lives on its own sequentially numbered branch (for example `001-gisr-core-records`); never commit to `main`, merge by pull request. Write tests first and watch them fail. The constitution in `.specify/memory/constitution.md` is authoritative, and [.github/copilot-instructions.md](.github/copilot-instructions.md) summarises the rules. Commits use Conventional Commits.
