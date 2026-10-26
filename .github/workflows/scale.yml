@@ -1,6 +1,8 @@
 name: Scale check
 
 on:
+  pull_request:
+    branches: [main]
   schedule:
     - cron: '0 6 * * 1'
   workflow_dispatch:
