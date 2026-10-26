@@ -1,0 +1,613 @@
+openapi: 3.1.0
+info:
+  title: GISR API
+  version: 1.0.0
+  description: >
+    HTTP contract between Gisr.Web and Gisr.Api. All endpoints require a valid Microsoft Entra access
+    token (scope access_as_user). Identity and the Officer credential (app role "Officer", `roles`
+    claim) are derived from the token only. All errors are RFC 9457 ProblemDetails.
+servers:
+  - url: https://localhost:7100
+security:
+  - entra: [access_as_user]
+
+tags:
+  - name: Accounts
+  - name: Affiliations
+  - name: Records
+  - name: Artifacts
+  - name: Gallery
+  - name: Search
+  - name: Notifications
+
+paths:
+  /api/me:
+    get:
+      tags: [Accounts]
+      operationId: getMe
+      summary: Current account (created on first call) and credential state
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AccountDto" } } } }
+        "401": { $ref: "#/components/responses/Problem" }
+  /api/me/settings:
+    put:
+      tags: [Accounts]
+      operationId: updateMySettings
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateAccountSettingsRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AccountDto" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "401": { $ref: "#/components/responses/Problem" }
+  /api/accounts:
+    get:
+      tags: [Accounts]
+      operationId: searchAccounts
+      summary: Officer only. Search the Entra tenant directory (name or email) for the record subject picker; results are identified by Entra object id.
+      parameters:
+        - { name: query, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 100 } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 25, default: 10 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/DirectoryUserDto" } } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "503": { description: Tenant directory unavailable, content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetails" } } } }
+
+  /api/affiliations:
+    get:
+      tags: [Affiliations]
+      operationId: listAffiliations
+      summary: Affiliations and their engagement field definitions
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AffiliationDto" } } } } }
+
+  /api/records:
+    get:
+      tags: [Records]
+      operationId: listRecords
+      parameters:
+        - { $ref: "#/components/parameters/Scope" }
+        - { name: affiliation, in: query, schema: { type: string } }
+        - { name: subjectAccountId, in: query, description: Officer only with scope=all, schema: { type: string, format: uuid } }
+        - { name: sort, in: query, schema: { type: string, enum: [updatedDesc, updatedAsc, titleAsc, titleDesc], default: updatedDesc } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PagedRecordSummaries" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "403": { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [Records]
+      operationId: createRecord
+      summary: Create a record for self; Officer may set subjectObjectId (Entra object id of a tenant member) to create a service record.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateRecordRequest" } } }
+      responses:
+        "201":
+          description: Created
+          headers: { Location: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/RecordDto" } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { description: Subject account not found, content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetails" } } } }
+  /api/records/{recordId}:
+    parameters: [ { $ref: "#/components/parameters/RecordId" } ]
+    get:
+      tags: [Records]
+      operationId: getRecord
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RecordDto" } } } }
+        "403": { description: "Record is sealed and locked for the caller (subject without an active override viewing)", content: { application/problem+json: { schema: { $ref: "#/components/schemas/SealedProblemDetails" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+    put:
+      tags: [Records]
+      operationId: updateRecord
+      summary: Replaces fields, incidents, and awards; bumps version and writes a revision.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateRecordRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RecordDto" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { description: Version conflict, content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetails" } } } }
+  /api/records/{recordId}/override:
+    parameters: [ { $ref: "#/components/parameters/RecordId" } ]
+    post:
+      tags: [Records]
+      operationId: submitOverrideCode
+      summary: >
+        Subject enters the override code for their own locked sealed record. Success returns the record for a single
+        viewing plus a view token (shown only to the Web server) valid until revoked or 15 minutes. A new visit must
+        call this again.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/OverrideCodeRequest" } } }
+      responses:
+        "200": { description: Viewing granted, content: { application/json: { schema: { $ref: "#/components/schemas/UnlockedRecordDto" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "403": { description: Incorrect code, content: { application/problem+json: { schema: { $ref: "#/components/schemas/OverrideFailedProblemDetails" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+        "429": { description: Too many failed attempts; includes Retry-After, content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetails" } } } }
+    delete:
+      tags: [Records]
+      operationId: endOverrideViewing
+      summary: Revokes the view grant identified by X-View-Token (called when the viewer leaves the page).
+      parameters:
+        - { $ref: "#/components/parameters/ViewToken" }
+      responses:
+        "204": { description: Revoked (idempotent) }
+  /api/records/{recordId}/override/status:
+    parameters: [ { $ref: "#/components/parameters/RecordId" } ]
+    get:
+      tags: [Records]
+      operationId: getOverrideStatus
+      summary: Whether the view grant identified by X-View-Token is still valid. Polled by the record page every 20 seconds.
+      parameters:
+        - { $ref: "#/components/parameters/ViewToken" }
+      responses:
+        "204": { description: Grant is valid }
+        "404": { description: Grant is revoked, expired, deleted by a seal or code change, or not for this record, content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetails" } } } }
+  /api/records/{recordId}/history:
+    parameters: [ { $ref: "#/components/parameters/RecordId" } ]
+    get:
+      tags: [Records]
+      operationId: getRecordHistory
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PagedRevisions" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /api/records/{recordId}/artifacts:
+    parameters: [ { $ref: "#/components/parameters/RecordId" } ]
+    get:
+      tags: [Artifacts]
+      operationId: listArtifacts
+      description: Returns 404 when the record is sealed and locked for the caller and no valid X-View-Token is presented.
+      parameters:
+        - { $ref: "#/components/parameters/ViewToken" }
+        - { name: kind, in: query, schema: { type: string, enum: [all, image], default: all } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PagedArtifacts" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [Artifacts]
+      operationId: uploadArtifact
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary, description: "Max 25 MB. JPEG, PNG, WebP, GIF, PDF, DOCX, TXT, MD. PDF, DOCX, TXT, and MD are indexed for search (scanned PDFs via OCR within a monthly budget); images are not." }
+                description: { type: string, maxLength: 500, description: "Required for images (alt text)" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ArtifactDto" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "413": { $ref: "#/components/responses/Problem" }
+        "415": { $ref: "#/components/responses/Problem" }
+  /api/artifacts/{artifactId}:
+    parameters: [ { $ref: "#/components/parameters/ArtifactId" } ]
+    patch:
+      tags: [Artifacts]
+      operationId: updateArtifactDescription
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateArtifactRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ArtifactDto" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [Artifacts]
+      operationId: removeArtifact
+      responses:
+        "204": { description: Removed }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/artifacts/{artifactId}/content:
+    parameters: [ { $ref: "#/components/parameters/ArtifactId" }, { $ref: "#/components/parameters/ViewToken" } ]
+    get:
+      tags: [Artifacts]
+      operationId: getArtifactContent
+      responses:
+        "200": { description: File bytes, content: { "*/*": { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/artifacts/{artifactId}/thumbnail:
+    parameters: [ { $ref: "#/components/parameters/ArtifactId" }, { $ref: "#/components/parameters/ViewToken" } ]
+    get:
+      tags: [Artifacts]
+      operationId: getArtifactThumbnail
+      responses:
+        "200": { description: JPEG thumbnail, content: { image/jpeg: { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /api/gallery:
+    get:
+      tags: [Gallery]
+      operationId: listGalleryGroups
+      summary: One group per record that has images. Sealed records are never included, for any caller.
+      parameters:
+        - { $ref: "#/components/parameters/Scope" }
+        - { $ref: "#/components/parameters/Page" }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 12 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PagedGalleryGroups" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  /api/search:
+    get:
+      tags: [Search]
+      operationId: search
+      summary: Semantic search across record text and PDF/text file content, access-scoped in SQL. A locked sealed record never matches for its subject.
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 500 } }
+        - { $ref: "#/components/parameters/Scope" }
+        - { name: affiliation, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Page" }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PagedSearchResults" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "503": { description: Embedding service unavailable, content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetails" } } } }
+
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      parameters:
+        - { name: unreadOnly, in: query, schema: { type: boolean, default: false } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/NotificationListDto" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+  /api/notifications/{notificationId}/read:
+    post:
+      tags: [Notifications]
+      operationId: markNotificationRead
+      parameters: [ { name: notificationId, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        "204": { description: Marked read }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/notifications/read-all:
+    post:
+      tags: [Notifications]
+      operationId: markAllNotificationsRead
+      responses:
+        "204": { description: Marked read }
+
+components:
+  securitySchemes:
+    entra:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize
+          tokenUrl: https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
+          scopes:
+            access_as_user: Access GISR as the signed-in user
+  parameters:
+    RecordId: { name: recordId, in: path, required: true, schema: { type: string, format: uuid } }
+    ArtifactId: { name: artifactId, in: path, required: true, schema: { type: string, format: uuid } }
+    Scope:
+      name: scope
+      in: query
+      description: "`all` requires the Officer role; otherwise 403."
+      schema: { type: string, enum: [mine, all], default: mine }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PageSize: { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    ViewToken:
+      name: X-View-Token
+      in: header
+      required: false
+      description: >
+        Issued by POST /api/records/{id}/override and held only by the Web server. Required to read a locked sealed
+        record's artifacts during an override viewing; never accepted for history.
+      schema: { type: string, minLength: 43, maxLength: 64 }
+  responses:
+    Problem:
+      description: Error
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetails" } } }
+    ValidationProblem:
+      description: Validation failure
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/ValidationProblemDetails" } } }
+  schemas:
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+    ValidationProblemDetails:
+      allOf:
+        - $ref: "#/components/schemas/ProblemDetails"
+        - type: object
+          properties:
+            errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+    SealedProblemDetails:
+      allOf:
+        - $ref: "#/components/schemas/ProblemDetails"
+        - type: object
+          required: [sealed]
+          properties:
+            sealed: { type: boolean, const: true }
+    OverrideFailedProblemDetails:
+      allOf:
+        - $ref: "#/components/schemas/ProblemDetails"
+        - type: object
+          properties:
+            attemptsRemaining: { type: integer, minimum: 0 }
+    OverrideCodeRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 64, writeOnly: true }
+    UnlockedRecordDto:
+      type: object
+      required: [record, viewToken, expiresAt]
+      properties:
+        record: { $ref: "#/components/schemas/RecordDto" }
+        viewToken: { type: string, description: "Opaque; for the Web server only. Never forward to the browser." }
+        expiresAt: { type: string, format: date-time }
+    PagedBase:
+      type: object
+      required: [page, pageSize, totalCount]
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        totalCount: { type: integer, format: int64 }
+
+    AccountDto:
+      type: object
+      required: [id, displayName, isOfficer, notifyOnServiceRecord]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        signInEmail: { type: [string, "null"] }
+        contactEmail: { type: [string, "null"] }
+        notifyOnServiceRecord: { type: boolean }
+        isOfficer: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    DirectoryUserDto:
+      type: object
+      required: [objectId, displayName]
+      properties:
+        objectId: { type: string, format: uuid, description: "Entra object id (not a GISR account id)" }
+        displayName: { type: string }
+        email: { type: [string, "null"] }
+    UpdateAccountSettingsRequest:
+      type: object
+      required: [displayName, notifyOnServiceRecord]
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 100 }
+        contactEmail: { type: [string, "null"], format: email, maxLength: 254 }
+        notifyOnServiceRecord: { type: boolean }
+
+    AffiliationDto:
+      type: object
+      required: [code, name, fields]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        fields: { type: array, items: { $ref: "#/components/schemas/FieldDefinitionDto" } }
+    FieldDefinitionDto:
+      type: object
+      required: [key, label, inputType, required]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        inputType: { type: string, enum: [text, multiline, select] }
+        required: { type: boolean }
+        maxLength: { type: integer }
+        options: { type: array, items: { type: string } }
+
+    RecordSummaryDto:
+      type: object
+      description: >
+        When isLocked is true (sealed record, caller is its subject without an active override viewing) only id, isSealed,
+        isLocked, isServiceRecord, and createdAt are populated; all other fields are null/omitted.
+      required: [id, isSealed, isLocked, isServiceRecord, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: [string, "null"] }
+        affiliation: { type: [string, "null"] }
+        subjectAccountId: { type: [string, "null"], format: uuid }
+        subjectDisplayName: { type: [string, "null"] }
+        authorDisplayName: { type: [string, "null"] }
+        isServiceRecord: { type: boolean }
+        isSealed: { type: boolean }
+        isLocked: { type: boolean }
+        engagementStart: { type: [string, "null"], format: date }
+        engagementEnd: { type: [string, "null"], format: date }
+        artifactCount: { type: [integer, "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: [string, "null"], format: date-time }
+    PagedRecordSummaries:
+      allOf:
+        - $ref: "#/components/schemas/PagedBase"
+        - type: object
+          required: [items]
+          properties: { items: { type: array, items: { $ref: "#/components/schemas/RecordSummaryDto" } } }
+    IncidentDto:
+      type: object
+      required: [occurredOn, title]
+      properties:
+        id: { type: [string, "null"], format: uuid, description: "Omit for new incidents" }
+        occurredOn: { type: string, format: date }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: [string, "null"], maxLength: 4000 }
+    AwardDto:
+      type: object
+      required: [name, awardedOn]
+      properties:
+        id: { type: [string, "null"], format: uuid }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        awardedOn: { type: string, format: date }
+        issuer: { type: [string, "null"], maxLength: 200 }
+        description: { type: [string, "null"], maxLength: 2000 }
+    RecordDto:
+      type: object
+      required: [id, title, affiliation, engagementDetail, incidents, awards, version, subjectAccountId, authorAccountId, isServiceRecord, canEdit]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        affiliation: { type: string }
+        engagementStart: { type: [string, "null"], format: date }
+        engagementEnd: { type: [string, "null"], format: date }
+        engagementDetail: { type: object, additionalProperties: { type: string } }
+        incidents: { type: array, items: { $ref: "#/components/schemas/IncidentDto" } }
+        awards: { type: array, items: { $ref: "#/components/schemas/AwardDto" } }
+        subjectAccountId: { type: string, format: uuid }
+        subjectDisplayName: { type: string }
+        authorAccountId: { type: string, format: uuid }
+        authorDisplayName: { type: string }
+        isServiceRecord: { type: boolean }
+        canEdit: { type: boolean }
+        isSealed: { type: boolean }
+        artifactCount: { type: integer, description: "Active artifacts on the record" }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateRecordRequest:
+      type: object
+      required: [title, affiliation, engagementDetail]
+      properties:
+        subjectObjectId: { type: [string, "null"], format: uuid, description: "Entra object id of a member of the caller's tenant. Null or the caller's own id = self. Other values require Officer; 404 when not in the tenant directory, 503 when the directory is unavailable." }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        affiliation: { type: string }
+        engagementStart: { type: [string, "null"], format: date }
+        engagementEnd: { type: [string, "null"], format: date }
+        engagementDetail: { type: object, additionalProperties: { type: string } }
+        incidents: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/IncidentDto" } }
+        awards: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/AwardDto" } }
+        isSealed: { type: boolean, default: false, description: "Officer only; only valid for service records" }
+        overrideCode: { type: [string, "null"], minLength: 8, maxLength: 64, writeOnly: true, description: "Required when isSealed is true" }
+    UpdateRecordRequest:
+      type: object
+      required: [title, affiliation, engagementDetail, expectedVersion]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        affiliation: { type: string }
+        engagementStart: { type: [string, "null"], format: date }
+        engagementEnd: { type: [string, "null"], format: date }
+        engagementDetail: { type: object, additionalProperties: { type: string } }
+        incidents: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/IncidentDto" } }
+        awards: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/AwardDto" } }
+        isSealed: { type: boolean, default: false, description: "Officer only; only valid for service records" }
+        overrideCode: { type: [string, "null"], minLength: 8, maxLength: 64, writeOnly: true, description: "Required when sealing a record that is not yet sealed; optional afterwards (omitted = unchanged, provided = replaced). Unsealing clears the code." }
+        expectedVersion: { type: integer, minimum: 1 }
+    RevisionDto:
+      type: object
+      required: [version, changedByDisplayName, changedAt]
+      properties:
+        version: { type: integer }
+        changedByDisplayName: { type: string }
+        changedAt: { type: string, format: date-time }
+        affiliation: { type: string }
+        title: { type: string }
+    PagedRevisions:
+      allOf:
+        - $ref: "#/components/schemas/PagedBase"
+        - type: object
+          required: [items]
+          properties: { items: { type: array, items: { $ref: "#/components/schemas/RevisionDto" } } }
+
+    ArtifactDto:
+      type: object
+      required: [id, recordId, fileName, contentType, sizeBytes, isImage, uploadedAt, indexStatus]
+      properties:
+        id: { type: string, format: uuid }
+        recordId: { type: string, format: uuid }
+        fileName: { type: string }
+        contentType: { type: string }
+        sizeBytes: { type: integer, format: int64 }
+        isImage: { type: boolean }
+        description: { type: [string, "null"] }
+        uploadedByDisplayName: { type: string }
+        uploadedAt: { type: string, format: date-time }
+        indexStatus: { type: string, enum: [pending, indexed, failed, skipped], description: "skipped = not searchable by content; see indexDetail (images, no readable text, OCR disabled or monthly OCR budget reached)" }
+        indexDetail: { type: [string, "null"], enum: [unsupported_type, no_text, ocr_disabled, ocr_budget_exhausted, ocr_page_limit, parse_error, too_large, null], description: "Reason shown next to Not searchable, or a partial-indexing note" }
+    UpdateArtifactRequest:
+      type: object
+      required: [description]
+      properties:
+        description: { type: string, minLength: 1, maxLength: 500 }
+    PagedArtifacts:
+      allOf:
+        - $ref: "#/components/schemas/PagedBase"
+        - type: object
+          required: [items]
+          properties: { items: { type: array, items: { $ref: "#/components/schemas/ArtifactDto" } } }
+
+    GalleryGroupDto:
+      type: object
+      required: [recordId, title, affiliation, imageCount, coverArtifactIds]
+      properties:
+        recordId: { type: string, format: uuid }
+        title: { type: string }
+        affiliation: { type: string }
+        subjectDisplayName: { type: string }
+        imageCount: { type: integer }
+        coverArtifactIds: { type: array, maxItems: 4, items: { type: string, format: uuid } }
+    PagedGalleryGroups:
+      allOf:
+        - $ref: "#/components/schemas/PagedBase"
+        - type: object
+          required: [items]
+          properties: { items: { type: array, items: { $ref: "#/components/schemas/GalleryGroupDto" } } }
+
+    SearchResultDto:
+      type: object
+      required: [recordId, recordTitle, affiliation, sourceType, snippet, score]
+      properties:
+        recordId: { type: string, format: uuid }
+        recordTitle: { type: string }
+        affiliation: { type: string }
+        subjectDisplayName: { type: string }
+        isSealed: { type: boolean, description: "True only for Officers, who may match sealed records; open them on the record page" }
+        sourceType: { type: string, enum: [record, artifact] }
+        artifactId: { type: [string, "null"], format: uuid }
+        artifactFileName: { type: [string, "null"] }
+        snippet: { type: string, maxLength: 500 }
+        score: { type: number, minimum: 0, maximum: 1, description: "Cosine similarity" }
+    PagedSearchResults:
+      allOf:
+        - $ref: "#/components/schemas/PagedBase"
+        - type: object
+          required: [items]
+          properties: { items: { type: array, items: { $ref: "#/components/schemas/SearchResultDto" } } }
+
+    NotificationDto:
+      type: object
+      required: [id, kind, message, createdAt, isRead]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [service_record_created] }
+        message: { type: string }
+        recordId: { type: [string, "null"], format: uuid }
+        createdAt: { type: string, format: date-time }
+        isRead: { type: boolean }
+    NotificationListDto:
+      type: object
+      required: [unreadCount, items]
+      properties:
+        unreadCount: { type: integer }
+        items: { type: array, items: { $ref: "#/components/schemas/NotificationDto" } }
