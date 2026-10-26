@@ -64,11 +64,10 @@ images never appear in the gallery. Details: [research.md](research.md).
 | Tech: Data protection and attribution | PASS | Immutable `record_revision` history plus `record_access_log` for cross-citizen reads; sealed-record view grants and override attempts are audited (`record_view_grant`, `record_override_attempt`); override codes are stored only as PBKDF2 hashes and never logged; view tokens are held only on the Web server and stored hashed. |
 | Tech: Dependencies justified | PASS | See "Dependency Justification" below. |
 
-No violations of a MUST. Three deviations from the plain reading of the constitution are recorded here for review:
+No violations of a MUST. Two deviations from the plain reading of the constitution are recorded here for review. The `Scripts/<Feature>/` layout of `Gisr.Database` is not one of them: constitution 1.0.1 states it in principles II and VI.
 
 | Deviation | Why it is needed | Simpler alternative rejected because |
 |-----------|------------------|--------------------------------------|
-| In `Gisr.Database` the SQL scripts live in `Scripts/<Feature>/` (including `Scripts/Migrations/`) instead of beside each feature's repository. | The product owner wants every database script tracked in one place, which also makes the embedded-resource rule a single glob and lets a test assert that no SQL sits elsewhere. The feature subfolders keep each feature's scripts together, so a feature is still one folder plus its repository. | Keeping the scripts next to the repositories is the literal reading of principles II and VI; it scatters the scripts across seven folders. |
 | `Gisr.Web` has anonymous endpoints: `GET /auth/login` and the static assets (`MapStaticAssets().AllowAnonymous()`). The Api has none. | `/auth/login` is the Entra challenge a signed-out user is sent to, and the framework assets are what the Blazor shell and error pages need to render. Neither returns or accepts record data. | With the fallback policy alone, `/auth/login` would challenge twice: once for the policy and again in the handler after sign-in. |
 | `Gisr.Web` has `Auth/`, `Layout/` and `Components/` folders that are not features and not named `Common/`. | They hold the sign-in plumbing, the page shell (top bar, side navigation, page header) and the app root, none of which belongs to one feature. They are explicitly named and contain no feature code. | Moving them under `Common/` renames folders without making any feature easier to find or remove. |
 
