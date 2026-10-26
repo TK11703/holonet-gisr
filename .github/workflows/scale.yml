@@ -1,0 +1,81 @@
+name: Scale check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  GISR_RUN_SCALE_TESTS: '1'
+
+jobs:
+  scale:
+    name: scale
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check the Docker engine (the database tests start containers)
+        run: docker version
+
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      - name: Build
+        run: dotnet build tests/Gisr.Database.Tests/Gisr.Database.Tests.csproj -warnaserror
+
+      - name: Scale tests (10,000 records and 50,000 artifacts)
+        run: dotnet test tests/Gisr.Database.Tests/Gisr.Database.Tests.csproj --no-build --filter "Category=Scale" --logger trx --results-directory TestResults
+
+      - name: Summarise the test results
+        if: always()
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem TestResults -Filter *.trx -ErrorAction SilentlyContinue
+          if (-not $files) {
+            Add-Content $env:GITHUB_STEP_SUMMARY '### Scale tests did not run (see the build step).'
+            return
+          }
+          $passed = 0; $failed = 0; $skipped = 0; $failures = @()
+          foreach ($file in $files) {
+            [xml]$trx = Get-Content -LiteralPath $file.FullName
+            foreach ($result in $trx.TestRun.Results.UnitTestResult) {
+              switch ($result.outcome) {
+                'Passed' { $passed++ }
+                'NotExecuted' { $skipped++ }
+                default {
+                  $failed++
+                  $message = ($result.Output.ErrorInfo.Message -split "`n" | Select-Object -First 3) -join ' '
+                  $failures += "- ``$($result.testName)``: $message"
+                }
+              }
+            }
+          }
+          Add-Content $env:GITHUB_STEP_SUMMARY "### Scale tests: $passed passed, $failed failed, $skipped skipped"
+          if ($failures) {
+            Add-Content $env:GITHUB_STEP_SUMMARY ''
+            Add-Content $env:GITHUB_STEP_SUMMARY $failures
+          }
+          Get-Content -LiteralPath $env:GITHUB_STEP_SUMMARY | Write-Host
+
+      - name: Keep the detailed test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scale-test-results
+          path: TestResults/
+          retention-days: 14
+          if-no-files-found: ignore
