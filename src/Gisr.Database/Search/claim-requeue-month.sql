@@ -1,0 +1,1 @@
+UPDATE ocr_usage SET requeued_at = now() WHERE month = @Month AND requeued_at IS NULL;

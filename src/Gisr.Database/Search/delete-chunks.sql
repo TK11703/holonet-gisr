@@ -1,0 +1,1 @@
+DELETE FROM search_chunk WHERE record_id = @RecordId AND artifact_id IS NOT DISTINCT FROM @ArtifactId::uuid;

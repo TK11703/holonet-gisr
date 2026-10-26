@@ -1,0 +1,1 @@
+UPDATE search_index_job SET status = 'succeeded', updated_at = now() WHERE id = @Id;

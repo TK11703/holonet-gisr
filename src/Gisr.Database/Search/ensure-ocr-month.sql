@@ -1,0 +1,1 @@
+INSERT INTO ocr_usage (month, pages_used) VALUES (@Month, 0) ON CONFLICT (month) DO NOTHING;
