@@ -69,7 +69,7 @@ else
     [Parameter]
     public Guid RecordId { get; set; }
 
-    private Crumb[] Crumbs => [new("Home", "/records"), new("Gallery", "/gallery"), new(_title ?? "Record")];
+    private Crumb[] Crumbs => [new("Home", "/"), new("Gallery", "/gallery"), new(_title ?? "Record")];
 
     private long PageCount => _page is null ? 1 : Math.Max(1, (_page.TotalCount + PageSize - 1) / PageSize);
 

@@ -60,6 +60,19 @@ public class MainLayoutTests : BunitContext
     }
 
     [Fact]
+    public void ThemeCss_StylesSelectPickers_WithThemeColors()
+    {
+        var css = File.ReadAllText(RepoFile("src", "Gisr.Web", "wwwroot", "theme.css"));
+
+        Assert.Contains("@supports (appearance: base-select)", css, StringComparison.Ordinal);
+        Assert.Contains(".form-select::picker(select)", css, StringComparison.Ordinal);
+        Assert.Contains("border: 1px solid var(--gisr-border)", css, StringComparison.Ordinal);
+        Assert.Contains(".form-select option:hover", css, StringComparison.Ordinal);
+        Assert.Contains(".form-select option:checked", css, StringComparison.Ordinal);
+        Assert.Contains("box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color)", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ThemeCss_DisablesMotion_ForReducedMotionUsers()
     {
         var css = File.ReadAllText(RepoFile("src", "Gisr.Web", "wwwroot", "theme.css"));

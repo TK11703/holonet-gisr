@@ -8,7 +8,7 @@
     <button type="button" class="btn btn-icon profile-trigger" id="profile-menu-button" @ref="_trigger"
             aria-haspopup="menu" aria-expanded="@(_open ? "true" : "false")" aria-controls="profile-menu"
             @onclick="Toggle" @onkeydown="OnTriggerKeyDown">
-        <span class="avatar" aria-hidden="true">@Initials</span>
+        <span class="avatar" aria-hidden="true"><Icon Name="user" Size="20" /></span>
         <span class="d-none d-md-inline ms-2">@DisplayLabel</span>
         <Icon Name="chevron" />
     </button>
@@ -43,22 +43,6 @@
     private bool _wasOpen;
 
     private string DisplayLabel => User.Account?.DisplayName ?? "Account";
-
-    private string Initials
-    {
-        get
-        {
-            var name = User.Account?.DisplayName;
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return "?";
-            }
-
-            var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var letters = parts.Length == 1 ? parts[0][..1] : $"{parts[0][0]}{parts[^1][0]}";
-            return letters.ToUpperInvariant();
-        }
-    }
 
     protected override async Task OnInitializedAsync()
     {

@@ -7,7 +7,10 @@
                 @onclick="OnMenuClick">
             <Icon Name="menu" Size="20" />
         </button>
-        <a class="topbar-brand" href="/records">GISR</a>
+        <a class="topbar-brand" href="/" aria-label="GISR home">
+            <img src="gisr-mark.svg" alt="" width="30" height="30" />
+            <span class="d-none d-sm-inline">GISR</span>
+        </a>
     </div>
 
     <form class="topbar-search" role="search" @onsubmit="SearchAsync">
@@ -20,9 +23,8 @@
 
     <div class="topbar-actions">
         @Notifications
-        <a class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" href="/records/new">
+        <a class="btn btn-primary btn-sm btn-icon" href="/records/new" title="New record" aria-label="New record">
             <Icon Name="plus" />
-            <span>New record</span>
         </a>
         @Profile
     </div>

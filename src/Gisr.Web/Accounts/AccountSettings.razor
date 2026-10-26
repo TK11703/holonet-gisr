@@ -98,7 +98,7 @@ else
         public bool NotifyOnServiceRecord { get; set; }
     }
 
-    private static readonly Crumb[] Crumbs = [new("Home", "/records"), new("Account settings")];
+    private static readonly Crumb[] Crumbs = [new("Home", "/"), new("Account settings")];
 
     private SettingsModel _model = new();
     private EditContext _editContext = default!;

@@ -74,7 +74,7 @@ else
 @code {
     private const int PageSize = 12;
 
-    private static readonly Crumb[] Crumbs = [new("Home", "/records"), new("Gallery")];
+    private static readonly Crumb[] Crumbs = [new("Home", "/"), new("Gallery")];
 
     private IReadOnlyList<AffiliationDto> _affiliations = [];
     private PagedResult<GalleryGroupDto>? _page;

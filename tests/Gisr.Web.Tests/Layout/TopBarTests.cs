@@ -14,13 +14,18 @@ public class TopBarTests : BunitContext
     }
 
     [Fact]
-    public void SiteName_LinksToRecords()
+    public void SiteBrand_HasSealAndAccessibleName_AndLinksHome()
     {
         var cut = Render<TopBar>();
 
         var brand = cut.Find("a.topbar-brand");
         Assert.Equal("GISR", brand.TextContent.Trim());
-        Assert.Equal("/records", brand.GetAttribute("href"));
+        Assert.Equal("/", brand.GetAttribute("href"));
+        Assert.Equal("GISR home", brand.GetAttribute("aria-label"));
+        var image = brand.QuerySelector("img");
+        Assert.NotNull(image);
+        Assert.Equal("gisr-mark.svg", image.GetAttribute("src"));
+        Assert.Equal(string.Empty, image.GetAttribute("alt"));
     }
 
     [Fact]
@@ -53,12 +58,16 @@ public class TopBarTests : BunitContext
     }
 
     [Fact]
-    public void NewRecordButton_LinksToNewRecordPage()
+    public void NewRecordButton_IsIconOnly_WithTitleAndAccessibleName_AndLinksToNewRecordPage()
     {
         var cut = Render<TopBar>();
 
         var link = cut.Find("a.btn-primary");
-        Assert.Contains("New record", link.TextContent, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, link.TextContent.Trim());
+        Assert.Equal("New record", link.GetAttribute("title"));
+        Assert.Equal("New record", link.GetAttribute("aria-label"));
+        Assert.Contains("btn-icon", link.ClassList);
+        Assert.Single(link.QuerySelectorAll("svg"));
         Assert.Equal("/records/new", link.GetAttribute("href"));
     }
 
