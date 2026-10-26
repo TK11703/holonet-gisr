@@ -47,8 +47,8 @@
 - [x] T009 [P] Document in `README.md` a "Continuous integration" section: what each workflow runs, the equivalent local commands, `gh workflow run scale.yml`, re-running a run, and which job (`build-and-test` in workflow "CI") to require in the repository rules for `main`
 - [x] T010 Push the branch, open the pull request, and confirm quickstart steps 2 and 8 (green run, summary shows the skipped scale test, cache hit on a re-run)
 - [x] T011 Prove SC-001 with two throwaway draft pull requests: one adding a compiler warning, one with a failing test (quickstart steps 3 and 4); confirm red status, readable summary and artifact; close both unmerged and delete the branches
-- [ ] T012 Confirm quickstart steps 5, 6 and 7 (cancellation of a superseded run, a run on `main` after merge, a manual scale run), recording any step that can only be confirmed after merge as a note on the pull request
-- [ ] T013 Record the results in `specs/002-ci-workflow/quickstart.md` notes and mark the tasks done
+- [x] T012 Confirm quickstart steps 5, 6 and 7 (cancellation of a superseded run, a run on `main` after merge, a manual scale run), recording any step that can only be confirmed after merge as a note on the pull request
+- [x] T013 Record the results in `specs/002-ci-workflow/quickstart.md` notes and mark the tasks done
 
 ## Dependencies
 
