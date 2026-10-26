@@ -25,12 +25,16 @@ public class ProfileMenuTests : BunitContext
     private IRenderedComponent<ProfileMenu> RenderMenu() => Render<ProfileMenu>();
 
     [Fact]
-    public void Trigger_ShowsInitialsAndDisplayName()
+    public void Trigger_ShowsUserIconAndDisplayName()
     {
         var cut = RenderMenu();
 
         var trigger = cut.Find("button.profile-trigger");
-        Assert.Equal("LO", cut.Find(".avatar").TextContent.Trim());
+        var avatar = cut.Find(".avatar");
+        Assert.Empty(avatar.TextContent.Trim());
+        Assert.Equal("true", avatar.GetAttribute("aria-hidden"));
+        var userIcon = Assert.Single(cut.FindComponents<Icon>(), icon => icon.Instance.Name == "user");
+        Assert.Equal(userIcon.Find("svg").OuterHtml, avatar.QuerySelector("svg")?.OuterHtml);
         Assert.Contains("Leia Organa", trigger.TextContent, StringComparison.Ordinal);
         Assert.Equal("false", trigger.GetAttribute("aria-expanded"));
         Assert.Empty(cut.FindAll(".dropdown-menu"));

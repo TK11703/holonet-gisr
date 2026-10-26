@@ -118,7 +118,7 @@ else if (_results is not null)
         Failed,
     }
 
-    private static readonly Crumb[] Crumbs = [new("Home", "/records"), new("Search")];
+    private static readonly Crumb[] Crumbs = [new("Home", "/"), new("Search")];
 
     private IReadOnlyList<AffiliationDto> _affiliations = [];
     private PagedResult<SearchResultDto>? _results;

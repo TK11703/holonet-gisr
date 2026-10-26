@@ -20,13 +20,26 @@ public class SideNavTests : BunitContext
 
         Assert.Equal("Primary", cut.Find("nav").GetAttribute("aria-label"));
         var headings = cut.FindAll(".sidenav-heading").Select(h => h.TextContent.Trim()).ToArray();
-        Assert.Equal(["Records", "Find", "Account"], headings);
+        Assert.Equal(["Databank", "Records", "Find", "Account"], headings);
 
         var links = cut.FindAll("a.sidenav-link").ToDictionary(a => a.TextContent.Trim(), a => a.GetAttribute("href"));
+        Assert.Equal("/", links["Home"]);
         Assert.Equal("/records", links["Citizen Records"]);
         Assert.Equal("/gallery", links["Gallery"]);
         Assert.Equal("/search", links["Search"]);
         Assert.Equal("/account", links["Account Settings"]);
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/?source=brand")]
+    public void Home_IsActiveOnlyAtRoot(string path)
+    {
+        Services.GetRequiredService<NavigationManager>().NavigateTo(path);
+
+        var cut = Render<SideNav>();
+
+        Assert.Equal("/", cut.Find("a[aria-current=page]").GetAttribute("href"));
     }
 
     [Fact]

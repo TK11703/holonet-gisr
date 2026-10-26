@@ -4,13 +4,40 @@
 
 <PageHeader Title="Citizen records" Crumbs="Crumbs" />
 
-@if (User.IsOfficer && !_loadError)
+@if (!_loadError && _page is not null && (User.IsOfficer || _page.TotalCount > 0 || _affiliation.Length > 0))
 {
-    <div class="btn-group mb-3" role="group" aria-label="Record scope">
-        <button type="button" id="scope-mine" class="@(_allScope ? "btn btn-outline-secondary" : "btn btn-secondary")"
-                aria-pressed="@(_allScope ? "false" : "true")" @onclick="() => SetScopeAsync(false)">My records</button>
-        <button type="button" id="scope-all" class="@(_allScope ? "btn btn-secondary" : "btn btn-outline-secondary")"
-                aria-pressed="@(_allScope ? "true" : "false")" @onclick="() => SetScopeAsync(true)">All records</button>
+    <div class="d-flex flex-wrap gap-3 align-items-end mb-3">
+        @if (User.IsOfficer)
+        {
+            <div>
+                <label for="filter-scope" class="form-label">Records</label>
+                <select id="filter-scope" class="form-select" value="@(_allScope ? "all" : "mine")"
+                        @onchange="OnScopeChanged">
+                    <option value="mine">My records</option>
+                    <option value="all">All records</option>
+                </select>
+            </div>
+        }
+        <div>
+            <label for="filter-affiliation" class="form-label">Affiliation</label>
+            <select id="filter-affiliation" class="form-select" value="@_affiliation" @onchange="OnAffiliationChanged">
+                <option value="">All affiliations</option>
+                @foreach (var affiliation in _affiliations)
+                {
+                    <option value="@affiliation.Code">@affiliation.Name</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="sort" class="form-label">Sort by</label>
+            <select id="sort" class="form-select" value="@_sort" @onchange="OnSortChanged">
+                @foreach (var (value, label) in SortOptions)
+                {
+                    <option value="@value">@label</option>
+                }
+            </select>
+        </div>
+        <a class="btn btn-primary ms-auto" href="/records/new">New record</a>
     </div>
 }
 
@@ -34,29 +61,6 @@ else if (_page.TotalCount == 0 && _affiliation.Length == 0 && !_allScope)
 }
 else
 {
-    <div class="d-flex flex-wrap gap-3 align-items-end mb-3">
-        <div>
-            <label for="filter-affiliation" class="form-label">Affiliation</label>
-            <select id="filter-affiliation" class="form-select" value="@_affiliation" @onchange="OnAffiliationChanged">
-                <option value="">All affiliations</option>
-                @foreach (var affiliation in _affiliations)
-                {
-                    <option value="@affiliation.Code">@affiliation.Name</option>
-                }
-            </select>
-        </div>
-        <div>
-            <label for="sort" class="form-label">Sort by</label>
-            <select id="sort" class="form-select" value="@_sort" @onchange="OnSortChanged">
-                @foreach (var (value, label) in SortOptions)
-                {
-                    <option value="@value">@label</option>
-                }
-            </select>
-        </div>
-        <a class="btn btn-primary ms-auto" href="/records/new">New record</a>
-    </div>
-
     @if (_subjectId is not null)
     {
         <p id="subject-filter" class="mb-3">
@@ -149,7 +153,7 @@ else
 @code {
     private const int PageSize = 20;
 
-    private static readonly Crumb[] Crumbs = [new("Home", "/records"), new("Citizen records")];
+    private static readonly Crumb[] Crumbs = [new("Home", "/"), new("Citizen records")];
 
     private static readonly (string Value, string Label)[] SortOptions =
     [
@@ -224,6 +228,8 @@ else
             _loadError = true;
         }
     }
+
+    private Task OnScopeChanged(ChangeEventArgs e) => SetScopeAsync(e.Value?.ToString() == "all");
 
     private async Task SetScopeAsync(bool all)
     {

@@ -35,7 +35,7 @@ public class RecordListScopeTests : BunitContext
 
         var cut = Render<RecordList>();
 
-        Assert.Empty(cut.FindAll("#scope-mine"));
+        Assert.Empty(cut.FindAll("#filter-scope"));
         Assert.Empty(cut.FindAll("#scope-all"));
     }
 
@@ -47,7 +47,7 @@ public class RecordListScopeTests : BunitContext
 
         var cut = Render<RecordList>();
 
-        Assert.Empty(cut.FindAll("#scope-all"));
+        Assert.Empty(cut.FindAll("#filter-scope"));
         Assert.Contains("Still here", cut.Find("tbody").TextContent, StringComparison.Ordinal);
     }
 
@@ -59,11 +59,13 @@ public class RecordListScopeTests : BunitContext
 
         var cut = Render<RecordList>();
 
-        Assert.Equal("My records", cut.Find("#scope-mine").TextContent.Trim());
-        Assert.Equal("All records", cut.Find("#scope-all").TextContent.Trim());
-        Assert.Equal("true", cut.Find("#scope-mine").GetAttribute("aria-pressed"));
-        Assert.Equal("false", cut.Find("#scope-all").GetAttribute("aria-pressed"));
-        Assert.NotNull(cut.Find("[role=group][aria-label='Record scope']"));
+        Assert.Equal(["My records", "All records"],
+            cut.FindAll("#filter-scope option").Select(option => option.TextContent.Trim()).ToArray());
+        Assert.Equal("mine", cut.Find("#filter-scope").GetAttribute("value"));
+        Assert.Equal("Records", cut.Find("label[for='filter-scope']").TextContent.Trim());
+        var toolbar = cut.Find("#filter-affiliation").ParentElement!.ParentElement!;
+        Assert.Equal(["filter-scope", "filter-affiliation", "sort"],
+            toolbar.QuerySelectorAll("select").Select(select => select.Id ?? string.Empty).ToArray());
     }
 
     [Fact]
@@ -74,14 +76,14 @@ public class RecordListScopeTests : BunitContext
         _api.OnJson(HttpMethod.Get, All, Page(Samples.ListItem(title: "Rex record"), Samples.ListItem(title: "Cody record", subjectName: "Cody")));
         var cut = Render<RecordList>();
 
-        cut.Find("#scope-all").Click();
+        cut.Find("#filter-scope").Change("all");
 
         cut.WaitForAssertion(() =>
         {
             var body = cut.Find("tbody").TextContent;
             Assert.Contains("Rex record", body, StringComparison.Ordinal);
             Assert.Contains("Cody record", body, StringComparison.Ordinal);
-            Assert.Equal("true", cut.Find("#scope-all").GetAttribute("aria-pressed"));
+            Assert.Equal("all", cut.Find("#filter-scope").GetAttribute("value"));
         });
         Assert.Contains(_api.Calls, c => c.PathAndQuery == All);
     }
@@ -97,7 +99,7 @@ public class RecordListScopeTests : BunitContext
             Samples.ListItem(title: "Cody record", subjectName: "Cody")));
         _api.OnJson(HttpMethod.Get, $"{All}&subjectAccountId={rex}", Page(Samples.ListItem(title: "Rex record", subjectId: rex)));
         var cut = Render<RecordList>();
-        cut.Find("#scope-all").Click();
+        cut.Find("#filter-scope").Change("all");
         cut.WaitForAssertion(() => Assert.Contains("Cody record", cut.Find("tbody").TextContent, StringComparison.Ordinal));
 
         cut.Find("tbody tr button.subject-filter").Click();
@@ -136,11 +138,11 @@ public class RecordListScopeTests : BunitContext
         _api.OnJson(HttpMethod.Get, All, Page(Samples.ListItem(title: "Rex record", subjectId: rex)));
         _api.OnJson(HttpMethod.Get, $"{All}&subjectAccountId={rex}", Page(Samples.ListItem(title: "Rex record", subjectId: rex)));
         var cut = Render<RecordList>();
-        cut.Find("#scope-all").Click();
+        cut.Find("#filter-scope").Change("all");
         cut.WaitForAssertion(() => cut.Find("tbody tr button.subject-filter").Click());
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#subject-filter")));
 
-        cut.Find("#scope-mine").Click();
+        cut.Find("#filter-scope").Change("mine");
 
         cut.WaitForAssertion(() =>
         {
@@ -157,14 +159,29 @@ public class RecordListScopeTests : BunitContext
         _api.OnJson(HttpMethod.Get, All, Page());
         var cut = Render<RecordList>();
 
-        cut.Find("#scope-all").Click();
+        cut.Find("#filter-scope").Change("all");
 
         cut.WaitForAssertion(() =>
         {
             Assert.Contains("No records match", cut.Markup, StringComparison.Ordinal);
             Assert.DoesNotContain("Create your first record", cut.Markup, StringComparison.Ordinal);
-            Assert.NotNull(cut.Find("#scope-mine"));
+            Assert.NotNull(cut.Find("#filter-scope"));
         });
+    }
+
+    [Fact]
+    public void OfficersWithNoPersonalRecords_CanStillChooseAllRecords()
+    {
+        SignInAs(officer: true);
+        _api.OnJson(HttpMethod.Get, Mine, Page());
+        _api.OnJson(HttpMethod.Get, All, Page(Samples.ListItem(title: "Other record")));
+
+        var cut = Render<RecordList>();
+
+        Assert.Contains("Create your first record", cut.Markup, StringComparison.Ordinal);
+        cut.Find("#filter-scope").Change("all");
+
+        cut.WaitForAssertion(() => Assert.Contains("Other record", cut.Find("tbody").TextContent, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -175,7 +192,7 @@ public class RecordListScopeTests : BunitContext
         _api.OnJson(HttpMethod.Get, All, Page(Samples.ListItem(service: true)));
         var cut = Render<RecordList>();
 
-        cut.Find("#scope-all").Click();
+        cut.Find("#filter-scope").Change("all");
 
         cut.WaitForAssertion(() => Assert.Contains("Service record", cut.Find("tbody").TextContent, StringComparison.Ordinal));
     }

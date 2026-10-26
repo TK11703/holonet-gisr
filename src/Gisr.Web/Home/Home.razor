@@ -1,0 +1,114 @@
+@page "/"
+
+<PageTitle>GISR | Galactic Identity and Service Records</PageTitle>
+
+<div class="home-page mx-auto">
+    <nav aria-label="System hierarchy" class="mb-4">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">HoloNet</li>
+            <li class="breadcrumb-item">Databank</li>
+            <li class="breadcrumb-item active" aria-current="page">GISR</li>
+        </ol>
+    </nav>
+
+    <section class="home-hero card mb-4" aria-labelledby="home-title">
+        <div class="card-body p-4 p-xl-5">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-8">
+                    <p class="home-eyebrow mb-3">The Databank / Identity &amp; service archive</p>
+                    <h1 id="home-title" class="home-title mb-3">Galactic Identity and Service Records</h1>
+                    <p class="home-intro text-secondary mb-4">
+                        Every identity has a history. Every service leaves a record.
+                        Preserve the people, affiliations, and defining moments of the galaxy
+                        in one enduring archive.
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="/records" class="btn btn-primary d-inline-flex align-items-center gap-2">
+                            <Icon Name="records" Size="18" />
+                            <span>Browse records</span>
+                        </a>
+                        <a href="/records/new" class="btn btn-outline-light d-inline-flex align-items-center gap-2">
+                            <Icon Name="plus" Size="18" />
+                            <span>New record</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="home-identity text-center py-3">
+                        <img src="gisr-mark.svg" alt="" width="192" height="192" class="home-seal mb-3" />
+                        <p class="home-wordmark mb-1" aria-hidden="true">GISR</p>
+                        <p class="small text-secondary mb-0">A Databank subsystem on the HoloNet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="archive-access" class="mb-5">
+        <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-3">
+            <h2 id="archive-access" class="h5 mb-0">Enter the archive</h2>
+            <p class="small text-secondary mb-0">Your starting point for galactic records</p>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <article class="card h-100">
+                    <div class="card-body d-flex flex-column align-items-start p-4">
+                        <span class="home-feature-icon mb-3"><Icon Name="records" Size="24" /></span>
+                        <h3 class="h5">Identity &amp; service records</h3>
+                        <p class="text-secondary">Open the dossiers that connect people, affiliations, and the service they perform.</p>
+                        <a href="/records" class="mt-auto">Open records<span class="ms-2" aria-hidden="true">&rarr;</span></a>
+                    </div>
+                </article>
+            </div>
+            <div class="col-md-4">
+                <article class="card h-100">
+                    <div class="card-body d-flex flex-column align-items-start p-4">
+                        <span class="home-feature-icon mb-3"><Icon Name="search" Size="24" /></span>
+                        <h3 class="h5">Find a connection</h3>
+                        <p class="text-secondary">Search records and supporting files to find the details behind a name, event, or engagement.</p>
+                        <a href="/search" class="mt-auto">Search the archive<span class="ms-2" aria-hidden="true">&rarr;</span></a>
+                    </div>
+                </article>
+            </div>
+            <div class="col-md-4">
+                <article class="card h-100">
+                    <div class="card-body d-flex flex-column align-items-start p-4">
+                        <span class="home-feature-icon mb-3"><Icon Name="gallery" Size="24" /></span>
+                        <h3 class="h5">The visual archive</h3>
+                        <p class="text-secondary">Explore the images attached to records and return to the dossiers that give them context.</p>
+                        <a href="/gallery" class="mt-auto">Explore gallery<span class="ms-2" aria-hidden="true">&rarr;</span></a>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="archive-overview" class="mb-4">
+        <p class="home-eyebrow mb-2">People. Service. Provenance.</p>
+        <h2 id="archive-overview" class="h4 mb-3">A record beyond a name</h2>
+        <p class="text-secondary mb-4 home-description">
+            From citizens and military personnel to Jedi and bounty hunters, GISR brings
+            identity and service history together. As part of the greater Databank,
+            it gives each dossier a place within the HoloNet's wider body of knowledge.
+        </p>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <h3 class="h6">Identity &amp; affiliation</h3>
+                <p class="text-secondary small mb-0">Document who a record concerns, the affiliation they serve, and the engagement that connects them.</p>
+            </div>
+            <div class="col-md-4">
+                <h3 class="h6">Service &amp; distinction</h3>
+                <p class="text-secondary small mb-0">Keep incidents, awards, and service details alongside the record, with revision history preserving its changes.</p>
+            </div>
+            <div class="col-md-4">
+                <h3 class="h6">Evidence &amp; provenance</h3>
+                <p class="text-secondary small mb-0">Support the narrative with files and images. Existing record permissions and sealed-record controls still apply.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="border-top pt-3 mt-5 d-flex flex-wrap justify-content-between gap-2 small text-secondary">
+        <span>HoloNet / Databank / GISR</span>
+        <span>Galactic Identity and Service Records</span>
+    </footer>
+</div>

@@ -103,6 +103,11 @@ public partial class AccessibilityTests : BunitContext
             found.Add($"{Describe(image)} has no alt attribute");
         }
 
+        foreach (var home in cut.FindAll(".breadcrumb a").Where(a => a.TextContent.Trim() == "Home" && a.GetAttribute("href") != "/"))
+        {
+            found.Add($"{Describe(home)} Home breadcrumb does not point to the home page");
+        }
+
         foreach (var invalid in cut.FindAll(".is-invalid").Where(i => !HasText(i.GetAttribute("aria-describedby"))))
         {
             found.Add($"{Describe(invalid)} is invalid but has no aria-describedby error message");
@@ -119,6 +124,14 @@ public partial class AccessibilityTests : BunitContext
         var navigation = Services.GetRequiredService<NavigationManager>();
         navigation.NavigateTo(navigation.GetUriWithQueryParameter("q", query));
         return Render<SearchResults>();
+    }
+
+    [Fact]
+    public void Home_HasNamedControls_AndSemanticHeadings()
+    {
+        var cut = Render<Gisr.Web.Home.Home>();
+
+        AssertClean(Violations(cut));
     }
 
     [Fact]

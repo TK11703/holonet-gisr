@@ -3,6 +3,20 @@ The Galactic Identity and Service Records (GISR) system is a fictitious system t
 
 Citizens and Officers keep records with incidents, awards, revision history, file attachments, an image gallery, and semantic search. Officers can write service records about others and seal them behind an override code.
 
+## Home and identity
+
+The signed-in home page at `/` introduces GISR as **HoloNet / Databank / GISR** and
+provides shortcuts to records, record creation, search, and the image gallery.
+It is an archival landing page, not a live dashboard: it makes no record requests
+and displays no invented statistics or activity. Parent-system labels describe
+GISR's context rather than linking to services that are not yet integrated.
+
+The original [GISR seal](src/Gisr.Web/wwwroot/gisr-mark.svg) combines an identity
+dossier with orbital rings. The same scalable asset appears on home, in the site
+brand, and as the favicon. The site brand, sidebar Home entry, and Home breadcrumbs
+all return to `/`. Feature requirements and validation are in
+[the home and identity spec](specs/003-home-branding/spec.md).
+
 ## Solution layout
 
 | Project | Role | References |
