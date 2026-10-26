@@ -1,0 +1,85 @@
+@implements IAsyncDisposable
+@inject ShellInterop Shell
+
+<div class="lightbox-backdrop" @onclick="CloseAsync">
+    <div class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer" tabindex="-1" @ref="_dialog"
+         @onclick:stopPropagation="true" @onkeydown="OnKeyDown">
+        <div class="lightbox-toolbar">
+            <span class="lightbox-counter" aria-live="polite">@(Index + 1) of @Items.Count</span>
+            <div class="d-flex gap-2 ms-auto">
+                <a class="btn btn-sm btn-outline-secondary lightbox-open-record" href="/records/@RecordId">Open record</a>
+                <button type="button" id="lightbox-close" class="btn btn-sm btn-outline-secondary" aria-label="Close image viewer" @onclick="CloseAsync">
+                    <Icon Name="close" Size="16" />
+                </button>
+            </div>
+        </div>
+        <figure class="lightbox-figure">
+            <img class="lightbox-image" src="@ArtifactDisplay.MediaUrl(Current.Id, false, null)" alt="@Alt" />
+            @if (!string.IsNullOrWhiteSpace(Current.Description))
+            {
+                <figcaption class="pre-wrap">@Current.Description</figcaption>
+            }
+        </figure>
+        <div class="lightbox-nav">
+            <button type="button" id="lightbox-previous" class="btn btn-outline-secondary" aria-label="Previous image"
+                    disabled="@(Index <= 0)" @onclick="PreviousAsync">Previous</button>
+            <button type="button" id="lightbox-next" class="btn btn-outline-secondary" aria-label="Next image"
+                    disabled="@(Index >= Items.Count - 1)" @onclick="NextAsync">Next</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ElementReference _dialog;
+    private IAsyncDisposable? _trap;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ArtifactDto> Items { get; set; } = [];
+
+    [Parameter]
+    public int Index { get; set; }
+
+    [Parameter, EditorRequired]
+    public Guid RecordId { get; set; }
+
+    [Parameter]
+    public EventCallback<int> IndexChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private ArtifactDto Current => Items[Index];
+
+    private string Alt => string.IsNullOrWhiteSpace(Current.Description) ? Current.FileName : Current.Description;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _trap = await Shell.TrapFocusAsync(_dialog, CloseAsync);
+        }
+    }
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+
+    private Task PreviousAsync() => Index > 0 ? IndexChanged.InvokeAsync(Index - 1) : Task.CompletedTask;
+
+    private Task NextAsync() => Index < Items.Count - 1 ? IndexChanged.InvokeAsync(Index + 1) : Task.CompletedTask;
+
+    // Escape is handled by the focus trap, which also keeps Tab inside the dialog.
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key switch
+    {
+        "ArrowRight" => NextAsync(),
+        "ArrowLeft" => PreviousAsync(),
+        _ => Task.CompletedTask,
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_trap is not null)
+        {
+            await _trap.DisposeAsync();
+            _trap = null;
+        }
+    }
+}

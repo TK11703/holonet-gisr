@@ -1,0 +1,62 @@
+@inject NavigationManager Navigation
+@inject ShellInterop Shell
+
+<header class="topbar">
+    <div class="topbar-start">
+        <button type="button" class="btn btn-icon d-lg-none" aria-label="Open navigation" aria-controls="side-nav"
+                @onclick="OnMenuClick">
+            <Icon Name="menu" Size="20" />
+        </button>
+        <a class="topbar-brand" href="/records">GISR</a>
+    </div>
+
+    <form class="topbar-search" role="search" @onsubmit="SearchAsync">
+        <label for="topbar-search-input" class="visually-hidden">Search</label>
+        <span class="topbar-search-icon"><Icon Name="search" /></span>
+        <input id="topbar-search-input" type="search" class="form-control" placeholder="Search records and files..."
+               autocomplete="off" maxlength="500" @ref="_searchInput" @bind="_query" @bind:event="oninput" />
+        <kbd class="topbar-search-hint d-none d-md-inline" aria-hidden="true">Ctrl K</kbd>
+    </form>
+
+    <div class="topbar-actions">
+        @Notifications
+        <a class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" href="/records/new">
+            <Icon Name="plus" />
+            <span>New record</span>
+        </a>
+        @Profile
+    </div>
+</header>
+
+@code {
+    private ElementReference _searchInput;
+    private string _query = string.Empty;
+
+    [Parameter]
+    public EventCallback OnMenuClick { get; set; }
+
+    [Parameter]
+    public RenderFragment? Notifications { get; set; }
+
+    [Parameter]
+    public RenderFragment? Profile { get; set; }
+
+    private void SearchAsync()
+    {
+        var query = _query.Trim();
+        if (query.Length == 0)
+        {
+            return;
+        }
+
+        Navigation.NavigateTo($"/search?q={Uri.EscapeDataString(query)}");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Shell.RegisterSearchShortcutAsync(_searchInput);
+        }
+    }
+}

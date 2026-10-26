@@ -1,0 +1,202 @@
+@page "/account"
+@implements IDisposable
+@inject ApiClient Api
+@inject CurrentUserState User
+
+<PageHeader Title="Account settings" Crumbs="@Crumbs" />
+
+@if (_loadError)
+{
+    <div class="alert alert-danger" role="alert">Your account settings could not be loaded. Please try again.</div>
+}
+else if (User.Account is null)
+{
+    <p class="text-secondary" role="status">Loading...</p>
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <section class="card" aria-labelledby="identity-heading">
+                <div class="card-body">
+                    <h2 id="identity-heading" class="h6 mb-3">Sign-in identity</h2>
+                    <dl id="identity" class="mb-0">
+                        <dt>Sign-in email</dt>
+                        <dd>@(User.Account.SignInEmail ?? "Not provided")</dd>
+                        <dt>Officer credential</dt>
+                        <dd>@(User.Account.IsOfficer ? "Held" : "Not held")</dd>
+                    </dl>
+                    <p class="text-secondary small mt-3 mb-0">These details come from your organization's sign-in and cannot be changed here.</p>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-7">
+            <section class="card" aria-labelledby="settings-heading">
+                <div class="card-body">
+                    <h2 id="settings-heading" class="h6 mb-3">Preferences</h2>
+
+                    @if (_errors.Count > 0 || _saveFailed)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @if (_saveFailed)
+                            {
+                                <span>Your settings could not be saved. Please try again.</span>
+                            }
+                            else
+                            {
+                                <span>Please fix the highlighted fields.</span>
+                            }
+                        </div>
+                    }
+                    @if (_saved)
+                    {
+                        <div class="alert alert-success" role="status">Settings saved.</div>
+                    }
+
+                    <EditForm EditContext="_editContext" OnSubmit="SaveAsync" FormName="account-settings">
+                        <div class="mb-3">
+                            <label for="display-name" class="form-label">Display name</label>
+                            <InputText id="display-name" class="@FieldClass("displayName")" @bind-Value="_model.DisplayName"
+                                       aria-describedby="@Described("displayName", "display-name-error")" />
+                            @if (_errors.TryGetValue("displayName", out var nameErrors))
+                            {
+                                <div id="display-name-error" class="invalid-feedback d-block">@string.Join(" ", nameErrors)</div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="contact-email" class="form-label">Contact email (optional)</label>
+                            <InputText id="contact-email" type="email" class="@FieldClass("contactEmail")" @bind-Value="_model.ContactEmail"
+                                       aria-describedby="@Described("contactEmail", "contact-email-error")" />
+                            @if (_errors.TryGetValue("contactEmail", out var emailErrors))
+                            {
+                                <div id="contact-email-error" class="invalid-feedback d-block">@string.Join(" ", emailErrors)</div>
+                            }
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <InputCheckbox id="notify" class="form-check-input" @bind-Value="_model.NotifyOnServiceRecord" />
+                            <label for="notify" class="form-check-label">Notify me when a service record is created for me</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" disabled="@_saving">Save settings</button>
+                    </EditForm>
+                </div>
+            </section>
+        </div>
+    </div>
+}
+
+@code {
+    private sealed class SettingsModel
+    {
+        public string DisplayName { get; set; } = string.Empty;
+
+        public string? ContactEmail { get; set; }
+
+        public bool NotifyOnServiceRecord { get; set; }
+    }
+
+    private static readonly Crumb[] Crumbs = [new("Home", "/records"), new("Account settings")];
+
+    private SettingsModel _model = new();
+    private EditContext _editContext = default!;
+    private ValidationMessageStore _messages = default!;
+    private Dictionary<string, string[]> _errors = [];
+    private bool _loadError;
+    private bool _saved;
+    private bool _saveFailed;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ResetEditContext();
+        User.Changed += OnUserChanged;
+        try
+        {
+            await User.EnsureLoadedAsync();
+            Reset();
+        }
+        catch (ApiException)
+        {
+            _loadError = true;
+        }
+    }
+
+    private void Reset()
+    {
+        if (User.Account is { } account)
+        {
+            _model = new SettingsModel
+            {
+                DisplayName = account.DisplayName,
+                ContactEmail = account.ContactEmail,
+                NotifyOnServiceRecord = account.NotifyOnServiceRecord,
+            };
+            ResetEditContext();
+        }
+    }
+
+    private void ResetEditContext()
+    {
+        _editContext = new EditContext(_model);
+        _messages = new ValidationMessageStore(_editContext);
+    }
+
+    private void OnUserChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _saved = false;
+        _saveFailed = false;
+        _errors = [];
+        _messages.Clear();
+
+        try
+        {
+            var updated = await Api.PutAsync<Gisr.Shared.Accounts.AccountDto>(
+                "api/me/settings",
+                new Gisr.Shared.Accounts.UpdateAccountSettingsRequest(_model.DisplayName, _model.ContactEmail, _model.NotifyOnServiceRecord));
+            if (updated is not null)
+            {
+                User.Update(updated);
+                _saved = true;
+            }
+        }
+        catch (ApiException ex) when (ex.Status == 400)
+        {
+            _errors = ex.Errors.ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
+            foreach (var (field, messages) in _errors)
+            {
+                var property = field switch
+                {
+                    "displayName" => nameof(SettingsModel.DisplayName),
+                    "contactEmail" => nameof(SettingsModel.ContactEmail),
+                    _ => null,
+                };
+                if (property is not null)
+                {
+                    _messages.Add(_editContext.Field(property), messages);
+                }
+            }
+
+            _editContext.NotifyValidationStateChanged();
+        }
+        catch (ApiException)
+        {
+            _saveFailed = true;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private string FieldClass(string field) => _errors.ContainsKey(field) ? "form-control is-invalid" : "form-control";
+
+    private string? Described(string field, string id) => _errors.ContainsKey(field) ? id : null;
+
+    public void Dispose() => User.Changed -= OnUserChanged;
+}

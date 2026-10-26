@@ -1,0 +1,27 @@
+@inherits LayoutComponentBase
+
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<TopBar OnMenuClick="OpenNav">
+    <Notifications>
+        <Gisr.Web.Notifications.NotificationMenu />
+    </Notifications>
+    <Profile>
+        <Gisr.Web.Accounts.ProfileMenu />
+    </Profile>
+</TopBar>
+
+<div class="app-shell">
+    <SideNav IsOpen="_navOpen" IsOpenChanged="SetNavOpen" />
+    <main id="main-content" class="app-content" tabindex="-1">
+        @Body
+    </main>
+</div>
+
+@code {
+    private bool _navOpen;
+
+    private void OpenNav() => _navOpen = true;
+
+    private void SetNavOpen(bool open) => _navOpen = open;
+}

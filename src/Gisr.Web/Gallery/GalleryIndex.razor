@@ -1,0 +1,155 @@
+@page "/gallery"
+@inject ApiClient Api
+@inject CurrentUserState User
+
+<PageHeader Title="Gallery" Crumbs="Crumbs" />
+
+@if (User.IsOfficer && !_loadError)
+{
+    <div class="btn-group mb-3" role="group" aria-label="Gallery scope">
+        <button type="button" id="scope-mine" class="@(_allScope ? "btn btn-outline-secondary" : "btn btn-secondary")"
+                aria-pressed="@(_allScope ? "false" : "true")" @onclick="() => SetScopeAsync(false)">My records</button>
+        <button type="button" id="scope-all" class="@(_allScope ? "btn btn-secondary" : "btn btn-outline-secondary")"
+                aria-pressed="@(_allScope ? "true" : "false")" @onclick="() => SetScopeAsync(true)">All records</button>
+    </div>
+}
+
+@if (_loadError)
+{
+    <div class="alert alert-danger" role="alert">The gallery could not be loaded. Please try again.</div>
+}
+else if (_page is null)
+{
+    <p class="text-secondary" role="status">Loading...</p>
+}
+else if (_page.TotalCount == 0)
+{
+    <section id="gallery-empty" class="card">
+        <div class="card-body">
+            <h2 class="h5">No images yet</h2>
+            <p class="text-secondary">Images you add to a record appear here, grouped by record. Open a record, choose Edit, and add an image under Artifacts.</p>
+            <a class="btn btn-primary" href="/records">Go to citizen records</a>
+        </div>
+    </section>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-3">
+        @foreach (var group in _page.Items)
+        {
+            <div class="col">
+                <div class="card gallery-card h-100">
+                    <div class="gallery-covers">
+                        @foreach (var cover in group.CoverArtifactIds.Take(4))
+                        {
+                            <img src="@ArtifactDisplay.MediaUrl(cover, true, null)" alt="" loading="lazy" />
+                        }
+                    </div>
+                    <div class="card-body">
+                        <h2 class="h6 card-title mb-1">
+                            <a class="gallery-card-link stretched-link" href="/gallery/@group.RecordId">@group.Title</a>
+                        </h2>
+                        <span class="badge text-bg-secondary">@RecordDisplay.AffiliationName(_affiliations, group.Affiliation)</span>
+                        <span class="small text-secondary ms-1">@(group.ImageCount == 1 ? "1 image" : $"{group.ImageCount} images")</span>
+                        @if (_allScope)
+                        {
+                            <div class="small text-secondary">@group.SubjectDisplayName</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (PageCount > 1)
+    {
+        <nav aria-label="Gallery pages" class="d-flex align-items-center gap-3">
+            <button type="button" id="previous-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber <= 1)" @onclick="PreviousAsync">Previous</button>
+            <span>Page @_pageNumber of @PageCount</span>
+            <button type="button" id="next-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber >= PageCount)" @onclick="NextAsync">Next</button>
+        </nav>
+    }
+}
+
+@code {
+    private const int PageSize = 12;
+
+    private static readonly Crumb[] Crumbs = [new("Home", "/records"), new("Gallery")];
+
+    private IReadOnlyList<AffiliationDto> _affiliations = [];
+    private PagedResult<GalleryGroupDto>? _page;
+    private int _pageNumber = 1;
+    private bool _allScope;
+    private bool _loadError;
+
+    private long PageCount => _page is null ? 1 : Math.Max(1, (_page.TotalCount + PageSize - 1) / PageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _affiliations = await Api.GetAsync<List<AffiliationDto>>("api/affiliations") ?? [];
+            await LoadUserAsync();
+            await LoadAsync();
+        }
+        catch (ApiException)
+        {
+            _loadError = true;
+        }
+    }
+
+    private async Task LoadUserAsync()
+    {
+        try
+        {
+            await User.EnsureLoadedAsync();
+        }
+        catch (ApiException)
+        {
+            // Without the account the Officer-only scope switch stays hidden; the Api enforces access either way.
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        var path = $"api/gallery?page={_pageNumber}&pageSize={PageSize}";
+        if (_allScope)
+        {
+            path += "&scope=all";
+        }
+
+        try
+        {
+            _page = await Api.GetAsync<PagedResult<GalleryGroupDto>>(path);
+            _loadError = false;
+        }
+        catch (ApiException)
+        {
+            _loadError = true;
+        }
+    }
+
+    private async Task SetScopeAsync(bool all)
+    {
+        if (_allScope == all)
+        {
+            return;
+        }
+
+        _allScope = all;
+        _pageNumber = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousAsync()
+    {
+        _pageNumber--;
+        await LoadAsync();
+    }
+
+    private async Task NextAsync()
+    {
+        _pageNumber++;
+        await LoadAsync();
+    }
+}

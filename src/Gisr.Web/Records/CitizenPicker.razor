@@ -1,0 +1,95 @@
+@inject ApiClient Api
+
+<fieldset id="citizen-picker" class="mb-3">
+    <label for="citizen-search" class="form-label">Citizen</label>
+    <p class="mb-2">
+        Record for <strong id="citizen-selected">@(Model.SubjectObjectId is null ? "Myself" : Model.SubjectDisplayName)</strong>
+        @if (Model.SubjectObjectId is not null)
+        {
+            <button type="button" id="citizen-myself" class="btn btn-sm btn-outline-secondary ms-2" @onclick="UseMyself">Use myself</button>
+        }
+    </p>
+    <input id="citizen-search" type="search" class="form-control" autocomplete="off" maxlength="100"
+           placeholder="Search the tenant directory by name or email..." aria-describedby="citizen-results-status"
+           value="@_query" @oninput="OnInputAsync" />
+    @if (_results.Count > 0)
+    {
+        <ul class="list-group mt-2">
+            @foreach (var account in _results)
+            {
+                <li class="list-group-item p-0">
+                    <button type="button" class="list-group-item list-group-item-action border-0 citizen-option" @onclick="() => Select(account)"><span>@account.DisplayName</span>
+                        @if (account.Email is not null)
+                        {
+                            <small class="d-block text-secondary">@account.Email</small>
+                        }
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+    <p id="citizen-results-status" class="small text-secondary mt-2 mb-0" role="status">@_status</p>
+</fieldset>
+
+@code {
+    private const int MinQueryLength = 2;
+
+    private IReadOnlyList<DirectoryUserDto> _results = [];
+    private string _query = string.Empty;
+    private string? _status;
+
+    [Parameter, EditorRequired]
+    public RecordFormModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private async Task OnInputAsync(ChangeEventArgs e)
+    {
+        var query = e.Value?.ToString()?.Trim() ?? string.Empty;
+        _query = query;
+        if (query.Length < MinQueryLength)
+        {
+            _results = [];
+            _status = null;
+            return;
+        }
+
+        try
+        {
+            var found = await Api.GetAsync<List<DirectoryUserDto>>($"api/accounts?query={Uri.EscapeDataString(query)}&pageSize=10") ?? [];
+            if (query != _query)
+            {
+                return;
+            }
+
+            _results = found;
+            _status = found.Count == 0 ? "No matching citizens." : null;
+        }
+        catch (ApiException)
+        {
+            _results = [];
+            _status = "The citizen search is unavailable.";
+        }
+    }
+
+    private Task Select(DirectoryUserDto account)
+    {
+        Model.SubjectObjectId = account.ObjectId;
+        Model.SubjectDisplayName = account.DisplayName;
+        _results = [];
+        _query = string.Empty;
+        _status = null;
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task UseMyself()
+    {
+        Model.SubjectObjectId = null;
+        Model.SubjectDisplayName = null;
+        Model.IsSealed = false;
+        Model.OverrideCode = null;
+        Model.ChangingCode = false;
+        return OnChanged.InvokeAsync();
+    }
+}

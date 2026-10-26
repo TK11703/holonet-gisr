@@ -1,0 +1,120 @@
+@page "/records/{Id:guid}/edit"
+@inject ApiClient Api
+@inject CurrentUserState User
+@inject NavigationManager Navigation
+
+<PageHeader Title="Edit record" Crumbs="Crumbs" />
+
+@if (_notFound)
+{
+    <div class="alert alert-warning" role="alert">Record not found.</div>
+}
+else if (_loadError)
+{
+    <div class="alert alert-danger" role="alert">The record could not be loaded. Please try again.</div>
+}
+else if (_model is null)
+{
+    <p class="text-secondary" role="status">Loading...</p>
+}
+else if (!_canEdit)
+{
+    <div class="alert alert-warning" role="alert">You are not permitted to edit this record.</div>
+}
+else
+{
+    <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" OnReload="ReloadAsync"
+                SubmitLabel="Save changes" CancelHref="@($"/records/{Id}")" AllowSealing="@(User.IsOfficer && _isServiceRecord)" />
+
+    <section id="artifacts" class="card mt-4 mb-4" aria-labelledby="artifacts-heading">
+        <div class="card-body">
+            <h2 id="artifacts-heading" class="h5">Artifacts</h2>
+            <ArtifactList RecordId="Id" Editable="true" RefreshKey="_artifactRefresh" />
+        </div>
+    </section>
+
+    <ArtifactUploader RecordId="Id" OnUploaded="OnArtifactUploaded" />
+}
+
+@code {
+    private Crumb[] Crumbs => [new("Citizen records", "/records"), new("Record", $"/records/{Id}"), new("Edit")];
+
+    private IReadOnlyList<AffiliationDto> _affiliations = [];
+    private RecordFormModel? _model;
+    private Guid _loadedId;
+    private bool _canEdit;
+    private bool _isServiceRecord;
+    private bool _notFound;
+    private bool _loadError;
+    private int _artifactRefresh;
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedId == Id)
+        {
+            return;
+        }
+
+        _loadedId = Id;
+        _model = null;
+        _notFound = false;
+        _loadError = false;
+        try
+        {
+            _affiliations = await Api.GetAsync<List<AffiliationDto>>("api/affiliations") ?? [];
+            await LoadUserAsync();
+            await LoadRecordAsync();
+        }
+        catch (ApiException ex) when (ex.Status == 404)
+        {
+            _notFound = true;
+        }
+        catch (ApiException)
+        {
+            _loadError = true;
+        }
+    }
+
+    private async Task LoadUserAsync()
+    {
+        try
+        {
+            await User.EnsureLoadedAsync();
+        }
+        catch (ApiException)
+        {
+            // Without the account the Officer-only seal controls stay hidden; the Api enforces access either way.
+        }
+    }
+
+    private async Task LoadRecordAsync()
+    {
+        var record = await Api.GetAsync<RecordDto>($"api/records/{Id}");
+        _canEdit = record!.CanEdit;
+        _isServiceRecord = record.IsServiceRecord;
+        _model = RecordFormModel.FromDto(record);
+    }
+
+    private async Task ReloadAsync()
+    {
+        try
+        {
+            await LoadRecordAsync();
+        }
+        catch (ApiException)
+        {
+            _loadError = true;
+        }
+    }
+
+    private void OnArtifactUploaded() => _artifactRefresh++;
+
+    private async Task SaveAsync(RecordFormModel model)
+    {
+        await Api.PutAsync<RecordDto>($"api/records/{Id}", model.ToUpdateRequest());
+        Navigation.NavigateTo($"/records/{Id}");
+    }
+}

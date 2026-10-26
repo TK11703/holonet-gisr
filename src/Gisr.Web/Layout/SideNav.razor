@@ -1,0 +1,104 @@
+@implements IDisposable
+@implements IAsyncDisposable
+@inject NavigationManager Navigation
+@inject ShellInterop Shell
+
+@if (IsOpen)
+{
+    <div class="sidenav-backdrop" @onclick="CloseAsync"></div>
+}
+<nav id="side-nav" class="sidenav @(IsOpen ? "open" : null)" aria-label="Primary" @ref="_nav">
+    <div class="sidenav-top d-lg-none">
+        <button type="button" class="btn btn-icon sidenav-close" aria-label="Close navigation" @onclick="CloseAsync">
+            <Icon Name="close" Size="18" />
+        </button>
+    </div>
+    @foreach (var group in Groups)
+    {
+        <div class="sidenav-group">
+            <div class="sidenav-heading">@group.Heading</div>
+            <ul class="sidenav-list">
+                @foreach (var item in group.Items)
+                {
+                    <li>
+                        <a class="sidenav-link" href="@item.Href" aria-current="@(IsActive(item.Href) ? "page" : null)">
+                            <Icon Name="@item.Icon" />
+                            <span>@item.Label</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+</nav>
+
+@code {
+    private sealed record NavItem(string Label, string Href, string Icon);
+
+    private sealed record NavGroup(string Heading, NavItem[] Items);
+
+    private static readonly NavGroup[] Groups =
+    [
+        new("Records", [new("Citizen Records", "/records", "records"), new("Gallery", "/gallery", "gallery")]),
+        new("Find", [new("Search", "/search", "search")]),
+        new("Account", [new("Account Settings", "/account", "settings")]),
+    ];
+
+    private ElementReference _nav;
+    private IAsyncDisposable? _trap;
+    private bool _wasOpen;
+
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    private bool IsActive(string href)
+    {
+        var path = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].TrimEnd('/');
+        return path == href || path.StartsWith(href + "/", StringComparison.Ordinal);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (IsOpen)
+            {
+                await CloseAsync();
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private Task CloseAsync() => IsOpenChanged.InvokeAsync(false);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && !_wasOpen)
+        {
+            _trap = await Shell.TrapFocusAsync(_nav, CloseAsync);
+        }
+        else if (!IsOpen && _wasOpen && _trap is not null)
+        {
+            await _trap.DisposeAsync();
+            _trap = null;
+        }
+
+        _wasOpen = IsOpen;
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_trap is not null)
+        {
+            await _trap.DisposeAsync();
+        }
+    }
+}

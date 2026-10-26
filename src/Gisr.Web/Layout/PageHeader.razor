@@ -1,0 +1,32 @@
+<PageTitle>@Title - GISR</PageTitle>
+<div class="page-header">
+    <h1 class="page-title">@Title</h1>
+    @if (Crumbs is { Count: > 0 })
+    {
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                @for (var i = 0; i < Crumbs.Count; i++)
+                {
+                    var crumb = Crumbs[i];
+                    var isLast = i == Crumbs.Count - 1;
+                    @if (isLast || crumb.Href is null)
+                    {
+                        <li class="breadcrumb-item active" aria-current="@(isLast ? "page" : null)">@crumb.Label</li>
+                    }
+                    else
+                    {
+                        <li class="breadcrumb-item"><a href="@crumb.Href">@crumb.Label</a></li>
+                    }
+                }
+            </ol>
+        </nav>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public IReadOnlyList<Crumb>? Crumbs { get; set; }
+}

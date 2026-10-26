@@ -1,0 +1,275 @@
+@page "/search"
+@inject ApiClient Api
+@inject CurrentUserState User
+@inject NavigationManager Navigation
+
+<PageHeader Title="Search" Crumbs="Crumbs" />
+
+<form role="search" class="d-flex flex-wrap gap-2 align-items-end mb-3" @onsubmit="SubmitAsync">
+    <div class="flex-grow-1">
+        <label for="search-query" class="form-label">Search</label>
+        <input id="search-query" type="search" class="form-control" maxlength="500" autocomplete="off"
+               placeholder="Search records and files by meaning..." @bind="_input" @bind:event="oninput" />
+    </div>
+    <div>
+        <label for="search-affiliation" class="form-label">Affiliation</label>
+        <select id="search-affiliation" class="form-select" value="@_affiliation" @onchange="OnAffiliationChangedAsync">
+            <option value="">All affiliations</option>
+            @foreach (var affiliation in _affiliations)
+            {
+                <option value="@affiliation.Code">@affiliation.Name</option>
+            }
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Search</button>
+</form>
+
+@if (User.IsOfficer)
+{
+    <div class="btn-group mb-3" role="group" aria-label="Search scope">
+        <button type="button" id="scope-mine" class="@(_allScope ? "btn btn-outline-secondary" : "btn btn-secondary")"
+                aria-pressed="@(_allScope ? "false" : "true")" @onclick="() => SetScopeAsync(false)">My records</button>
+        <button type="button" id="scope-all" class="@(_allScope ? "btn btn-secondary" : "btn btn-outline-secondary")"
+                aria-pressed="@(_allScope ? "true" : "false")" @onclick="() => SetScopeAsync(true)">All records</button>
+    </div>
+}
+
+@if (_state == SearchState.Prompt)
+{
+    <p id="search-prompt" class="text-secondary">Enter at least 2 characters to search.</p>
+}
+else if (_state == SearchState.Loading)
+{
+    <p class="text-secondary" role="status">Searching...</p>
+}
+else if (_state == SearchState.Unavailable)
+{
+    <div id="search-unavailable" class="alert alert-warning d-flex align-items-center gap-3" role="alert">
+        <span>Search is temporarily unavailable. Try again shortly.</span>
+        <button type="button" id="search-retry" class="btn btn-sm btn-outline-secondary ms-auto" @onclick="RetryAsync">Try again</button>
+    </div>
+}
+else if (_state == SearchState.Failed)
+{
+    <div class="alert alert-danger" role="alert">The search could not be completed. Please try again.</div>
+}
+else if (_results is not null)
+{
+    @if (_results.TotalCount == 0)
+    {
+        <p id="search-empty" class="text-secondary">No results for &ldquo;@_searched&rdquo;. Try different words; search matches by meaning, not only exact text.</p>
+    }
+    else
+    {
+        <p id="search-summary" class="text-secondary" role="status">@(_results.TotalCount == 1 ? "1 result" : $"{_results.TotalCount} results")</p>
+        <ul class="list-unstyled">
+            @foreach (var hit in _results.Items)
+            {
+                <li class="search-result card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                            <h2 class="h6 mb-0"><a class="search-result-link" href="/records/@hit.RecordId">@hit.RecordTitle</a></h2>
+                            <span class="badge text-bg-secondary">@RecordDisplay.AffiliationName(_affiliations, hit.Affiliation)</span>
+                            @if (hit.IsSealed)
+                            {
+                                <span class="badge text-bg-warning badge-sealed">Sealed</span>
+                            }
+                            <span class="small text-secondary ms-auto search-score" title="Similarity to your search">@ScoreText(hit.Score) match</span>
+                        </div>
+                        <div class="small text-secondary search-result-source">@(hit.SourceType == "artifact" ? $"File: {hit.ArtifactFileName}" : "Record")</div>
+                        <p class="search-snippet mb-0 pre-wrap">
+                            @foreach (var (text, match) in SearchHighlight.Split(hit.Snippet, _searched))
+                            {
+                                @if (match)
+                                {
+                                    <mark>@text</mark>
+                                }
+                                else
+                                {
+                                    @text
+                                }
+                            }
+                        </p>
+                    </div>
+                </li>
+            }
+        </ul>
+
+        @if (PageCount > 1)
+        {
+            <nav aria-label="Search pages" class="d-flex align-items-center gap-3">
+                <button type="button" id="previous-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber <= 1)" @onclick="PreviousAsync">Previous</button>
+                <span>Page @_pageNumber of @PageCount</span>
+                <button type="button" id="next-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber >= PageCount)" @onclick="NextAsync">Next</button>
+            </nav>
+        }
+    }
+}
+
+@code {
+    private const int PageSize = 10;
+
+    private enum SearchState
+    {
+        Prompt,
+        Loading,
+        Results,
+        Unavailable,
+        Failed,
+    }
+
+    private static readonly Crumb[] Crumbs = [new("Home", "/records"), new("Search")];
+
+    private IReadOnlyList<AffiliationDto> _affiliations = [];
+    private PagedResult<SearchResultDto>? _results;
+    private SearchState _state = SearchState.Prompt;
+    private string _input = string.Empty;
+    private string _searched = string.Empty;
+    private string _affiliation = string.Empty;
+    private string? _handledQuery;
+    private int _pageNumber = 1;
+    private bool _allScope;
+    private bool _started;
+
+    [Parameter, SupplyParameterFromQuery(Name = "q")]
+    public string? Q { get; set; }
+
+    private long PageCount => _results is null ? 1 : Math.Max(1, (_results.TotalCount + PageSize - 1) / PageSize);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_started)
+        {
+            _started = true;
+            await LoadSupportDataAsync();
+        }
+
+        if (_handledQuery == Q)
+        {
+            return;
+        }
+
+        _handledQuery = Q;
+        _input = Q ?? string.Empty;
+        _pageNumber = 1;
+        await SearchAsync();
+    }
+
+    private async Task LoadSupportDataAsync()
+    {
+        try
+        {
+            _affiliations = await Api.GetAsync<List<AffiliationDto>>("api/affiliations") ?? [];
+        }
+        catch (ApiException)
+        {
+            // Filters fall back to codes; searching still works.
+        }
+
+        try
+        {
+            await User.EnsureLoadedAsync();
+            _allScope = User.IsOfficer;
+        }
+        catch (ApiException)
+        {
+            // Without the account the Officer-only scope switch stays hidden; the Api enforces access either way.
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        var query = (Q ?? string.Empty).Trim();
+        if (query.Length < 2)
+        {
+            _results = null;
+            _state = SearchState.Prompt;
+            return;
+        }
+
+        _searched = query;
+        _state = SearchState.Loading;
+        var path = $"api/search?q={Uri.EscapeDataString(query)}&page={_pageNumber}&pageSize={PageSize}";
+        if (_affiliation.Length > 0)
+        {
+            path += $"&affiliation={Uri.EscapeDataString(_affiliation)}";
+        }
+
+        if (_allScope)
+        {
+            path += "&scope=all";
+        }
+
+        try
+        {
+            _results = await Api.GetAsync<PagedResult<SearchResultDto>>(path);
+            _state = SearchState.Results;
+        }
+        catch (ApiException ex) when (ex.Status == StatusCodes.Status503ServiceUnavailable)
+        {
+            _results = null;
+            _state = SearchState.Unavailable;
+        }
+        catch (ApiException)
+        {
+            _results = null;
+            _state = SearchState.Failed;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        var query = _input.Trim();
+        if (query.Length < 2)
+        {
+            Q = query;
+            _handledQuery = query;
+            await SearchAsync();
+            return;
+        }
+
+        if (string.Equals(query, Q, StringComparison.Ordinal))
+        {
+            _pageNumber = 1;
+            await SearchAsync();
+            return;
+        }
+
+        Navigation.NavigateTo($"/search?q={Uri.EscapeDataString(query)}");
+    }
+
+    private async Task RetryAsync() => await SearchAsync();
+
+    private async Task SetScopeAsync(bool all)
+    {
+        if (_allScope == all)
+        {
+            return;
+        }
+
+        _allScope = all;
+        _pageNumber = 1;
+        await SearchAsync();
+    }
+
+    private async Task OnAffiliationChangedAsync(ChangeEventArgs e)
+    {
+        _affiliation = e.Value?.ToString() ?? string.Empty;
+        _pageNumber = 1;
+        await SearchAsync();
+    }
+
+    private async Task PreviousAsync()
+    {
+        _pageNumber--;
+        await SearchAsync();
+    }
+
+    private async Task NextAsync()
+    {
+        _pageNumber++;
+        await SearchAsync();
+    }
+
+    private static string ScoreText(double score) => $"{Math.Round(score * 100):0}%";
+}
