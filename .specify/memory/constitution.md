@@ -1,12 +1,3 @@
-<!--
-Sync Impact Report (temporary; remove before commit)
-- Version change: (unversioned template) -> 1.0.0
-- Modified principles: none renamed (initial ratification; all placeholders replaced)
-- Added sections: Core Principles I-VIII, Technology & Architecture Constraints,
-  Development Workflow & Quality Gates, Governance
-- Removed sections: none
-- Deferred items: none
--->
 # HoloNet GISR Constitution
 
 The Galactic Identity and Service Records (GISR) system archives authoritative records for
