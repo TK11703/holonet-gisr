@@ -51,7 +51,7 @@ jobs:
           }
           $passed = 0; $failed = 0; $skipped = 0; $failures = @()
           foreach ($file in $files) {
-            [xml]$trx = Get-Content $file.FullName
+            [xml]$trx = Get-Content -LiteralPath $file.FullName
             foreach ($result in $trx.TestRun.Results.UnitTestResult) {
               switch ($result.outcome) {
                 'Passed' { $passed++ }
