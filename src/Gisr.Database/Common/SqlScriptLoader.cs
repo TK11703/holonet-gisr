@@ -22,7 +22,7 @@ public sealed class SqlScriptLoader(Assembly assembly) : ISqlScriptLoader
 
     private string Load(string key)
     {
-        var resource = $"{assembly.GetName().Name}.{key}.sql";
+        var resource = $"{assembly.GetName().Name}.Scripts.{key}.sql";
         using var stream = assembly.GetManifestResourceStream(resource)
             ?? throw new InvalidOperationException($"SQL script '{key}' was not found as an embedded resource.");
         using var reader = new StreamReader(stream, Encoding.UTF8);

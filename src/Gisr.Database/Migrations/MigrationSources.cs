@@ -17,7 +17,7 @@ public sealed class EmbeddedMigrationSource(Assembly assembly) : IMigrationSourc
 
     public IReadOnlyList<MigrationScript> GetScripts()
     {
-        var prefix = $"{assembly.GetName().Name}.Migrations.";
+        var prefix = $"{assembly.GetName().Name}.Scripts.Migrations.";
         var scripts = new List<MigrationScript>();
 
         foreach (var resource in assembly.GetManifestResourceNames())
