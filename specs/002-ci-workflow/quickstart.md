@@ -65,3 +65,19 @@ Expected: the restore step reports a cache hit and the whole run is faster than 
 Open the workflow files.
 
 Expected: top-level `permissions` is `contents: read`, there is no `secrets.` reference, and every `uses:` line is a full commit SHA.
+
+## Verification notes
+
+Results recorded while validating the pull request that introduced the workflows.
+
+| Step | Result |
+|------|--------|
+| 1 Lint | actionlint v1.7.12: no findings for both workflow files. |
+| 2 Clean pull request | Green in about 3 minutes; summary shows 1152 passed, 0 failed, 1 skipped; `test-results` artifact present. |
+| 3 Build warning | Throwaway pull request failed at "Build with warnings as errors". |
+| 4 Failing test | Throwaway pull request failed at "Test"; summary listed the failing test with its message; artifact downloadable. |
+| 5 Cancellation | Two pushes in quick succession; see the result noted on the pull request. |
+| 6 Run on main | Can only be confirmed after the pull request is merged. |
+| 7 Scale check | `gh workflow run` needs the workflow on the default branch, so the steps were proven on a throwaway pull request that also triggered the workflow: 1 scale test passed, 0 skipped, in about 1.3 minutes. A manual dispatch is confirmed after merge. |
+| 8 Dependency reuse | Re-run reported "Cache hit" and finished faster (about 3 minutes against 3.7). |
+| 9 Read-only, no secrets | `permissions: contents: read`, no `secrets.` reference, every `uses:` pinned to a full SHA. |
