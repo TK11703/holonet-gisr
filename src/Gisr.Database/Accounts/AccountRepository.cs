@@ -6,6 +6,14 @@ namespace Gisr.Database.Accounts;
 
 public sealed class AccountRepository(NpgsqlDataSource dataSource, ISqlScriptLoader sql)
 {
+    public async Task<AccountRow?> UpdateOperatingNumberAsync(Guid id, string? operatingNumber, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        return await connection.QuerySingleOrDefaultAsync<AccountRow>(new CommandDefinition(
+            sql.Get("Accounts", "update-operating-number"), new { Id = id, OperatingNumber = operatingNumber },
+            cancellationToken: cancellationToken));
+    }
+
     public async Task<AccountRow> UpsertAsync(
         Guid tenantId,
         Guid entraObjectId,

@@ -15,6 +15,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMigrationSource, EmbeddedMigrationSource>();
         services.AddSingleton<MigrationRunner>();
         services.AddSingleton<Accounts.AccountRepository>();
+        services.AddSingleton<Accounts.ChainCodeRepository>();
         services.AddSingleton<Records.RecordRepository>();
         services.AddSingleton<Records.RevisionRepository>();
         services.AddSingleton<Records.AccessLogRepository>();

@@ -4,7 +4,7 @@ using Gisr.Shared.Accounts;
 
 namespace Gisr.Api.Accounts;
 
-public sealed class AccountService(AccountRepository accounts, ITenantDirectory directory, ICurrentUser user)
+public sealed class AccountService(AccountRepository accounts, ITenantDirectory directory, ICurrentUser user, IAccountIdentityDirectory identity)
 {
     private const string FallbackDisplayName = "Citizen";
     private const int DefaultSearchPageSize = 10;
@@ -61,8 +61,20 @@ public sealed class AccountService(AccountRepository accounts, ITenantDirectory 
             ? displayName[..UpdateAccountSettingsRequestValidator.DisplayNameMaxLength]
             : displayName;
 
-    public async Task<AccountDto> GetMeAsync(CancellationToken cancellationToken) =>
-        AccountMapper.ToDto(await EnsureAccountAsync(cancellationToken), user.IsOfficer);
+    public async Task<AccountDto> GetMeAsync(CancellationToken cancellationToken)
+    {
+        var account = await EnsureAccountAsync(cancellationToken);
+        try
+        {
+            var number = await identity.GetOperatingNumberAsync(user.ObjectId, cancellationToken);
+            account = await accounts.UpdateOperatingNumberAsync(account.Id, number, cancellationToken) ?? account;
+        }
+        catch (DirectoryUnavailableException)
+        {
+        }
+
+        return AccountMapper.ToDto(account, user.IsOfficer);
+    }
 
     public async Task<AccountDto> UpdateSettingsAsync(UpdateAccountSettingsRequest request, CancellationToken cancellationToken)
     {
