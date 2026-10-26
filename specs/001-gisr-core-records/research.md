@@ -120,7 +120,7 @@ All Technical Context unknowns are resolved below. Format: Decision / Rationale 
 
 ## D-19 Migrations and SQL loading
 
-- **Decision**: Numbered scripts (`0001_create_extensions.sql`, `0002_accounts.sql`, ...) embedded as resources in `Gisr.Database/Migrations`; `MigrationRunner` applies pending scripts in order inside transactions, stores `(script_id, checksum_sha256, applied_at)` in `schema_migration`, and fails startup if an applied checksum differs. The whole run holds a PostgreSQL advisory lock so concurrently starting instances apply each script exactly once. Feature SQL is embedded under each feature folder and loaded once through `SqlScriptLoader` into a cache.
+- **Decision**: Numbered scripts (`0001_create_extensions.sql`, `0002_accounts.sql`, ...) embedded as resources in `Gisr.Database/Scripts/Migrations`; `MigrationRunner` applies pending scripts in order inside transactions, stores `(script_id, checksum_sha256, applied_at)` in `schema_migration`, and fails startup if an applied checksum differs. The whole run holds a PostgreSQL advisory lock so concurrently starting instances apply each script exactly once. Feature SQL is embedded from `Gisr.Database/Scripts/<Feature>` and loaded once through `SqlScriptLoader` into a cache.
 - **Rationale**: Directly implements constitution VI and VII.
 
 ## D-20 Sealed records and override codes

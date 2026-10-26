@@ -9,7 +9,7 @@ Citizens and Officers keep records with incidents, awards, revision history, fil
 |---------|------|-----------|
 | `src/Gisr.Web` | Blazor Web App (Interactive Server), Bootstrap 5.3 only; reaches data only through HTTP to the Api | `Gisr.Shared` |
 | `src/Gisr.Api` | ASP.NET Core minimal APIs, FluentValidation, ProblemDetails; authentication, authorization, orchestration | `Gisr.Shared`, `Gisr.Database` |
-| `src/Gisr.Database` | PostgreSQL (Npgsql + Dapper), plain `.sql` files, forward-only numbered migrations with a checksum ledger | none |
+| `src/Gisr.Database` | PostgreSQL (Npgsql + Dapper), plain `.sql` files under `Scripts/<Feature>/`, forward-only numbered migrations (`Scripts/Migrations/`) with a checksum ledger | none |
 | `src/Gisr.Shared` | DTOs and contracts only | none |
 | `src/Gisr.AppHost` | .NET Aspire host for local runs (PostgreSQL with pgvector, Azurite, Api, Web) | all |
 | `tests/*` | xUnit; real PostgreSQL (and Azurite) through Testcontainers, no mocked database | mirrors `src` |

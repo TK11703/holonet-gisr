@@ -56,7 +56,7 @@ images never appear in the gallery. Details: [research.md](research.md).
 | IV. DTO boundary | PASS | Database models (`*Row`/`*Model`) stay in `Gisr.Database` and API mappers; endpoints use `Gisr.Shared` DTOs; mapper tests required. |
 | V. Validated minimal APIs | PASS | FluentValidation endpoint filter on every body/query DTO, `MapGroup` per feature, `ProblemDetails` for every error, OpenAPI 3.1 metadata for all endpoints (see [contracts](contracts/)). |
 | VI. Dapper, PostgreSQL, plain SQL | PASS | Repositories per feature; embedded `.sql` files loaded and cached by `SqlScriptLoader`; no SQL in C#. pgvector accessed through the same Dapper path. |
-| VII. Versioned migrations | PASS | `Migrations/0001_*.sql` ... with `schema_migration` ledger (id, checksum, applied_at) and checksum-mismatch failure. `CREATE EXTENSION vector` is itself a migration. |
+| VII. Versioned migrations | PASS | `Scripts/Migrations/0001_*.sql` ... with `schema_migration` ledger (id, checksum, applied_at) and checksum-mismatch failure. `CREATE EXTENSION vector` is itself a migration. |
 | VIII. Test-first, real dependencies | PASS | Red-green per task; Testcontainers PostgreSQL (pgvector) and Azurite; every endpoint has success, validation-failure, and not-found/forbidden tests; bUnit for components with logic. |
 | Tech: Blazor Interactive Server + Bootstrap 5.3.x only | PASS | Dark theme via `data-bs-theme="dark"` plus CSS variable overrides; icons are inline SVG in an `Icon` component (no icon font/CSS framework added). |
 | Tech: Entra OIDC (Web) + JWT bearer (Api); authorize every endpoint | PASS (see Complexity Tracking) | Every Api endpoint requires authorization through the fallback policy, and so does every Web page. The only anonymous Web endpoints are the sign-in challenge `/auth/login` and the framework's static assets. Officer is an app role on the API app registration, read from the `roles` claim. |
@@ -64,10 +64,11 @@ images never appear in the gallery. Details: [research.md](research.md).
 | Tech: Data protection and attribution | PASS | Immutable `record_revision` history plus `record_access_log` for cross-citizen reads; sealed-record view grants and override attempts are audited (`record_view_grant`, `record_override_attempt`); override codes are stored only as PBKDF2 hashes and never logged; view tokens are held only on the Web server and stored hashed. |
 | Tech: Dependencies justified | PASS | See "Dependency Justification" below. |
 
-No violations of a MUST. Two deviations from the plain reading of the constitution are recorded here for review:
+No violations of a MUST. Three deviations from the plain reading of the constitution are recorded here for review:
 
 | Deviation | Why it is needed | Simpler alternative rejected because |
 |-----------|------------------|--------------------------------------|
+| In `Gisr.Database` the SQL scripts live in `Scripts/<Feature>/` (including `Scripts/Migrations/`) instead of beside each feature's repository. | The product owner wants every database script tracked in one place, which also makes the embedded-resource rule a single glob and lets a test assert that no SQL sits elsewhere. The feature subfolders keep each feature's scripts together, so a feature is still one folder plus its repository. | Keeping the scripts next to the repositories is the literal reading of principles II and VI; it scatters the scripts across seven folders. |
 | `Gisr.Web` has anonymous endpoints: `GET /auth/login` and the static assets (`MapStaticAssets().AllowAnonymous()`). The Api has none. | `/auth/login` is the Entra challenge a signed-out user is sent to, and the framework assets are what the Blazor shell and error pages need to render. Neither returns or accepts record data. | With the fallback policy alone, `/auth/login` would challenge twice: once for the policy and again in the handler after sign-in. |
 | `Gisr.Web` has `Auth/`, `Layout/` and `Components/` folders that are not features and not named `Common/`. | They hold the sign-in plumbing, the page shell (top bar, side navigation, page header) and the app root, none of which belongs to one feature. They are explicitly named and contain no feature code. | Moving them under `Common/` renames folders without making any feature easier to find or remove. |
 
@@ -107,13 +108,14 @@ src/
 │   └── Notifications/
 ├── Gisr.Database/                   # no Gisr project references
 │   ├── Common/                      # SqlScriptLoader, connection factory, Pgvector setup
-│   ├── Migrations/                  # 0001_*.sql, MigrationRunner, ledger
-│   ├── Accounts/                    # AccountRepository + *.sql
-│   ├── Records/                     # RecordRepository, RevisionRepository, AccessLog, ViewGrant/OverrideAttempt + *.sql (shared "locked for caller" predicate)
-│   ├── Artifacts/                   # ArtifactRepository, IArtifactStore (Blob), *.sql
-│   ├── Gallery/                     # GalleryRepository + *.sql
-│   ├── Search/                      # SearchRepository, IndexJobRepository + *.sql
-│   └── Notifications/               # NotificationRepository + *.sql
+│   ├── Migrations/                  # MigrationRunner, migration source, ledger (the scripts are in Scripts/Migrations)
+│   ├── Accounts/                    # AccountRepository
+│   ├── Records/                     # RecordRepository, RevisionRepository, AccessLog, ViewGrant/OverrideAttempt (shared "locked for caller" predicate)
+│   ├── Artifacts/                   # ArtifactRepository, IArtifactStore (Blob)
+│   ├── Gallery/                     # GalleryRepository
+│   ├── Search/                      # SearchRepository, IndexJobRepository
+│   ├── Notifications/               # NotificationRepository
+│   └── Scripts/                     # every .sql file, in one subfolder per feature: Accounts, Artifacts, Gallery, Migrations (0001_*.sql ...), Notifications, Records, Search
 ├── Gisr.Api/
 │   ├── Common/                      # auth policies, current-user, ProblemDetails, validation filter, OpenAPI
 │   ├── Accounts/                    # endpoints, validators, mappers, AccountService
