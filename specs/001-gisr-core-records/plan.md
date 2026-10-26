@@ -50,7 +50,7 @@ images never appear in the gallery. Details: [research.md](research.md).
 | Principle | Status | How the plan complies |
 |-----------|--------|-----------------------|
 | I. .NET 10 / C# only; nullable; warnings as errors; async + `CancellationToken` | PASS | `Directory.Build.props` sets `net10.0`, `Nullable=enable`, `TreatWarningsAsErrors=true`; all repository, storage, and AI calls are async with tokens. |
-| II. Feature-folder organization | PASS | `Accounts/`, `Affiliations/`, `Records/`, `Artifacts/`, `Gallery/`, `Search/`, `Notifications/` in every project; shared code in `Common/`; web shell in `Layout/`. |
+| II. Feature-folder organization | PASS | `Accounts/`, `Affiliations/`, `Records/`, `Artifacts/`, `Gallery/`, `Search/`, `Notifications/` in every project; shared code in `Common/`; web shell, sign-in plumbing and app root in `Layout/`, `Auth/` and `Components/` (see Complexity Tracking). |
 | III. Solution structure and dependency direction | PASS | `Gisr.Web` -> `Gisr.Shared` only; `Gisr.Api` -> `Shared` + `Database`; `Gisr.Database` references nothing from Gisr. The Web media proxy streams artifacts over HTTP from the API. |
 | III (addition). Orchestration project | PASS | `Gisr.AppHost` is outside the four application projects; it only launches Api and Web and nothing references it, so the dependency direction in principle III is unchanged. |
 | IV. DTO boundary | PASS | Database models (`*Row`/`*Model`) stay in `Gisr.Database` and API mappers; endpoints use `Gisr.Shared` DTOs; mapper tests required. |
@@ -59,12 +59,17 @@ images never appear in the gallery. Details: [research.md](research.md).
 | VII. Versioned migrations | PASS | `Migrations/0001_*.sql` ... with `schema_migration` ledger (id, checksum, applied_at) and checksum-mismatch failure. `CREATE EXTENSION vector` is itself a migration. |
 | VIII. Test-first, real dependencies | PASS | Red-green per task; Testcontainers PostgreSQL (pgvector) and Azurite; every endpoint has success, validation-failure, and not-found/forbidden tests; bUnit for components with logic. |
 | Tech: Blazor Interactive Server + Bootstrap 5.3.x only | PASS | Dark theme via `data-bs-theme="dark"` plus CSS variable overrides; icons are inline SVG in an `Icon` component (no icon font/CSS framework added). |
-| Tech: Entra OIDC (Web) + JWT bearer (Api); authorize every endpoint | PASS | No anonymous endpoints. Officer is an app role on the API app registration, read from the `roles` claim. |
+| Tech: Entra OIDC (Web) + JWT bearer (Api); authorize every endpoint | PASS (see Complexity Tracking) | Every Api endpoint requires authorization through the fallback policy, and so does every Web page. The only anonymous Web endpoints are the sign-in challenge `/auth/login` and the framework's static assets. Officer is an app role on the API app registration, read from the `roles` claim. |
 | Tech: Observability without sensitive data | PASS | Serilog + OpenTelemetry in Web and Api; log record ids and counts only, never titles, details, search text, or file names. |
 | Tech: Data protection and attribution | PASS | Immutable `record_revision` history plus `record_access_log` for cross-citizen reads; sealed-record view grants and override attempts are audited (`record_view_grant`, `record_override_attempt`); override codes are stored only as PBKDF2 hashes and never logged; view tokens are held only on the Web server and stored hashed. |
 | Tech: Dependencies justified | PASS | See "Dependency Justification" below. |
 
-No violations; Complexity Tracking is empty.
+No violations of a MUST. Two deviations from the plain reading of the constitution are recorded here for review:
+
+| Deviation | Why it is needed | Simpler alternative rejected because |
+|-----------|------------------|--------------------------------------|
+| `Gisr.Web` has anonymous endpoints: `GET /auth/login` and the static assets (`MapStaticAssets().AllowAnonymous()`). The Api has none. | `/auth/login` is the Entra challenge a signed-out user is sent to, and the framework assets are what the Blazor shell and error pages need to render. Neither returns or accepts record data. | With the fallback policy alone, `/auth/login` would challenge twice: once for the policy and again in the handler after sign-in. |
+| `Gisr.Web` has `Auth/`, `Layout/` and `Components/` folders that are not features and not named `Common/`. | They hold the sign-in plumbing, the page shell (top bar, side navigation, page header) and the app root, none of which belongs to one feature. They are explicitly named and contain no feature code. | Moving them under `Common/` renames folders without making any feature easier to find or remove. |
 
 ## Project Structure
 
@@ -157,6 +162,11 @@ dependency to them. It replaces a hand-written compose file for local PostgreSQL
 | `Azure.AI.DocumentIntelligence` | OCR fallback only for scanned PDFs that PdfPig cannot read, behind `IOcrClient`, managed-identity auth, monthly page budget (default 2,000 pages, about $3) and 100-page per-document cap | Skipping scanned PDFs would leave them unsearchable (product owner chose to include them); local OCR engines are heavy native dependencies. |
 | `SkiaSharp` (+ Linux native assets) | Thumbnail generation | MIT licensed; ImageSharp's split license is a compliance risk. |
 | `Serilog.AspNetCore`, `OpenTelemetry.*` | Required by constitution observability | n/a |
+| `Npgsql.OpenTelemetry` | Database spans for the required OpenTelemetry tracing (Npgsql ships its own instrumentation source) | First-party; without it database calls would be invisible in traces. |
+| `Microsoft.AspNetCore.OpenApi` | Generates the OpenAPI document the constitution requires and the conformance test compares with the contract | First-party and built into the framework; a third-party generator adds a dependency for the same output. |
+| `YamlDotNet` (test project only) | Reads `contracts/api.openapi.yaml` in the OpenAPI conformance test | The contract is YAML, and a hand-written parser for flow-style YAML would be fragile. Not referenced by any runtime project. |
+| `Microsoft.NET.Test.Sdk`, `xunit`, `xunit.runner.visualstudio`, `coverlet.collector` (test projects only) | The xUnit test stack required by constitution VIII | n/a |
+| Version pins in `Directory.Packages.props` (`Microsoft.Extensions.*`, `System.Security.Cryptography.*`, `Microsoft.AspNetCore.TestHost`, and similar) | Raise transitive packages that carry known vulnerabilities; they add no new dependency | Leaving the vulnerable versions would fail the zero-warning build through NuGet audit. |
 | `Aspire.AppHost.Sdk`, `Aspire.Hosting.PostgreSQL`, `Aspire.Hosting.Azure.Storage` (AppHost project only) | Local orchestration of PostgreSQL (pgvector image), the Azurite emulator, Api, and Web with injected configuration and a dashboard | First-party; a hand-written compose file does not wire Api/Web configuration or start the projects. Not referenced by any runtime project. |
 | `Testcontainers.PostgreSql`, `Testcontainers.Azurite`, `Microsoft.AspNetCore.Mvc.Testing`, `bunit` | Required real-dependency, API, and component tests | n/a |
 
