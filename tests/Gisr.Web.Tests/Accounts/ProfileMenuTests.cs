@@ -41,13 +41,15 @@ public class ProfileMenuTests : BunitContext
     }
 
     [Fact]
-    public void Click_OpensMenuWithAccountSettingsAndSignOut()
+    public void Click_OpensRightAnchoredMenuWithAccountSettingsAndSignOut()
     {
         var cut = RenderMenu();
 
         cut.Find("button.profile-trigger").Click();
 
         Assert.Equal("true", cut.Find("button.profile-trigger").GetAttribute("aria-expanded"));
+        Assert.Contains("end-0", cut.Find("#profile-menu").ClassList);
+        Assert.Contains("position-relative", cut.Find(".profile-menu").ClassList);
         var settings = cut.Find("a[role=menuitem]");
         Assert.Equal("/account", settings.GetAttribute("href"));
         Assert.Contains("Account settings", settings.TextContent, StringComparison.Ordinal);
