@@ -16,25 +16,33 @@ else if (User.Account is null)
 else
 {
     <div class="row g-4">
-        <div class="col-lg-5">
+        <div class="col-lg-6">
             <section class="card" aria-labelledby="identity-heading">
+                <header class="card-header">
+                    <h2 id="identity-heading" class="h6 mb-0">Account Information</h2>
+                </header>
                 <div class="card-body">
-                    <h2 id="identity-heading" class="h6 mb-3">Sign-in identity</h2>
+                    <div class="alert alert-info d-flex align-items-start gap-2" role="note">
+                        <span class="flex-shrink-0"><Icon Name="info" /></span>
+                        <span>These details come from the system's access control component and cannot be altered here.</span>
+                    </div>
                     <dl id="identity" class="mb-0">
-                        <dt>Sign-in email</dt>
+                        <dt>User Name</dt>
                         <dd>@(User.Account.SignInEmail ?? "Not provided")</dd>
+                        <dt>Operating Number</dt>
+                        <dd class="text-break">@(User.Account.OperatingNumber ?? "Not provided")</dd>
                         <dt>Officer credential</dt>
-                        <dd>@(User.Account.IsOfficer ? "Held" : "Not held")</dd>
+                        <dd><span class="badge @(User.Account.IsOfficer ? "text-bg-success" : "text-bg-secondary")">@(User.Account.IsOfficer ? "Held" : "Not held")</span></dd>
                     </dl>
-                    <p class="text-secondary small mt-3 mb-0">These details come from your organization's sign-in and cannot be changed here.</p>
                 </div>
             </section>
         </div>
-
-        <div class="col-lg-7">
+        <div class="col-lg-6">
             <section class="card" aria-labelledby="settings-heading">
+                <header class="card-header">
+                    <h2 id="settings-heading" class="h6 mb-0">Preferences</h2>
+                </header>
                 <div class="card-body">
-                    <h2 id="settings-heading" class="h6 mb-3">Preferences</h2>
 
                     @if (_errors.Count > 0 || _saveFailed)
                     {
@@ -49,12 +57,7 @@ else
                             }
                         </div>
                     }
-                    @if (_saved)
-                    {
-                        <div class="alert alert-success" role="status">Settings saved.</div>
-                    }
-
-                    <EditForm EditContext="_editContext" OnSubmit="SaveAsync" FormName="account-settings">
+                    <EditForm id="account-settings-form" EditContext="_editContext" OnSubmit="SaveAsync" FormName="account-settings">
                         <div class="mb-3">
                             <label for="display-name" class="form-label">Display name</label>
                             <InputText id="display-name" class="@FieldClass("displayName")" @bind-Value="_model.DisplayName"
@@ -66,7 +69,7 @@ else
                         </div>
 
                         <div class="mb-3">
-                            <label for="contact-email" class="form-label">Contact email (optional)</label>
+                            <label for="contact-email" class="form-label">Notification Account</label>
                             <InputText id="contact-email" type="email" class="@FieldClass("contactEmail")" @bind-Value="_model.ContactEmail"
                                        aria-describedby="@Described("contactEmail", "contact-email-error")" />
                             @if (_errors.TryGetValue("contactEmail", out var emailErrors))
@@ -80,10 +83,24 @@ else
                             <label for="notify" class="form-check-label">Notify me when a service record is created for me</label>
                         </div>
 
-                        <button type="submit" class="btn btn-primary" disabled="@_saving">Save settings</button>
                     </EditForm>
                 </div>
+                <footer class="card-footer">
+                    <button type="submit" form="account-settings-form" class="btn btn-primary" disabled="@_saving"><Icon Name="save" /> Save</button>
+                    <div aria-live="polite" aria-atomic="true">
+                        @if (_saved)
+                        {
+                            <div class="alert alert-success d-flex align-items-start gap-2 mt-3 mb-0 py-2" role="status">
+                                <span class="flex-shrink-0"><Icon Name="check-circle" /></span>
+                                <span>Preferences saved...</span>
+                            </div>
+                        }
+                    </div>
+                </footer>
             </section>
+        </div>
+        <div class="col-12">
+            <ChainCodeForm />
         </div>
     </div>
 }
@@ -108,6 +125,8 @@ else
     private bool _saved;
     private bool _saveFailed;
     private bool _saving;
+    private readonly CancellationTokenSource _lifetime = new();
+    private int _savedVersion;
 
     protected override async Task OnInitializedAsync()
     {
@@ -148,8 +167,10 @@ else
 
     private async Task SaveAsync()
     {
+        if (_saving) return;
         _saving = true;
         _saved = false;
+        _savedVersion++;
         _saveFailed = false;
         _errors = [];
         _messages.Clear();
@@ -158,11 +179,13 @@ else
         {
             var updated = await Api.PutAsync<Gisr.Shared.Accounts.AccountDto>(
                 "api/me/settings",
-                new Gisr.Shared.Accounts.UpdateAccountSettingsRequest(_model.DisplayName, _model.ContactEmail, _model.NotifyOnServiceRecord));
+                new Gisr.Shared.Accounts.UpdateAccountSettingsRequest(_model.DisplayName, _model.ContactEmail, _model.NotifyOnServiceRecord),
+                cancellationToken: _lifetime.Token);
             if (updated is not null)
             {
                 User.Update(updated);
                 _saved = true;
+                _ = HideSavedAsync(++_savedVersion);
             }
         }
         catch (ApiException ex) when (ex.Status == 400)
@@ -188,15 +211,38 @@ else
         {
             _saveFailed = true;
         }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
         finally
         {
             _saving = false;
         }
     }
 
+    private async Task HideSavedAsync(int version)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5), _lifetime.Token);
+            await InvokeAsync(() =>
+            {
+                if (!_lifetime.IsCancellationRequested && version == _savedVersion)
+                {
+                    _saved = false;
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+    }
+
     private string FieldClass(string field) => _errors.ContainsKey(field) ? "form-control is-invalid" : "form-control";
 
     private string? Described(string field, string id) => _errors.ContainsKey(field) ? id : null;
 
-    public void Dispose() => User.Changed -= OnUserChanged;
+    public void Dispose()
+    {
+        User.Changed -= OnUserChanged;
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+    }
 }

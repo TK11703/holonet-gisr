@@ -7,4 +7,5 @@ public sealed record AccountDto(
     string? ContactEmail,
     bool NotifyOnServiceRecord,
     bool IsOfficer,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? OperatingNumber = null);

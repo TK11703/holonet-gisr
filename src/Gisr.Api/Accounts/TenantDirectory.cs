@@ -15,5 +15,15 @@ public interface IGraphTokenProvider
     Task<string> GetTokenAsync(CancellationToken cancellationToken);
 }
 
+public interface IAccountIdentityDirectory
+{
+    Task<string?> GetOperatingNumberAsync(Guid objectId, CancellationToken cancellationToken);
+}
+
+public interface IAccountIdentityTokenProvider
+{
+    Task<string> GetTokenAsync(CancellationToken cancellationToken);
+}
+
 public sealed class DirectoryUnavailableException(string message, Exception? innerException = null)
     : Exception(message, innerException);

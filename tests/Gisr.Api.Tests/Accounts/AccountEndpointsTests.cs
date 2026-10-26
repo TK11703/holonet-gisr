@@ -10,6 +10,30 @@ namespace Gisr.Api.Tests.Accounts;
 public class AccountEndpointsTests(PostgresFixture postgres)
 {
     [Fact]
+    public async Task OperatingNumber_DirectoryRefreshCreatesUpdatesClearsAndPreservesOnFailure()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+        var objectId = Guid.NewGuid();
+        var client = factory.CreateUserClient(oid: objectId);
+        factory.Identity.Numbers[objectId] = "TK-11703";
+        Assert.Equal("TK-11703", (await client.GetFromJsonAsync<AccountDto>("/api/me"))!.OperatingNumber);
+        factory.Identity.Numbers[objectId] = "CT-7567";
+        Assert.Equal("CT-7567", (await client.GetFromJsonAsync<AccountDto>("/api/me"))!.OperatingNumber);
+        factory.Identity.Unavailable = true;
+        Assert.Equal("CT-7567", (await client.GetFromJsonAsync<AccountDto>("/api/me"))!.OperatingNumber);
+        var refreshCalls = factory.Identity.Calls;
+        var settings = await client.PutAsJsonAsync("/api/me/settings", new
+        {
+            displayName = "Rex", notifyOnServiceRecord = true, operatingNumber = "FORGED",
+        });
+        Assert.Equal("CT-7567", (await settings.Content.ReadFromJsonAsync<AccountDto>())!.OperatingNumber);
+        Assert.Equal(refreshCalls, factory.Identity.Calls);
+        factory.Identity.Unavailable = false;
+        factory.Identity.Numbers[objectId] = null;
+        Assert.Null((await client.GetFromJsonAsync<AccountDto>("/api/me"))!.OperatingNumber);
+    }
+
+    [Fact]
     public async Task GetMe_Anonymous_Returns401()
     {
         await using var factory = await ApiFactory.CreateAsync(postgres);

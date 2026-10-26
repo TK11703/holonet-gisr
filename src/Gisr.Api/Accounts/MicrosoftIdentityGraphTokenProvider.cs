@@ -4,15 +4,21 @@ using Microsoft.Identity.Web;
 namespace Gisr.Api.Accounts;
 
 // On-behalf-of: Graph is called as the signed-in Officer with the least-privilege User.ReadBasic.All scope.
-public sealed class MicrosoftIdentityGraphTokenProvider(ITokenAcquisition tokenAcquisition) : IGraphTokenProvider
+public sealed class MicrosoftIdentityGraphTokenProvider(ITokenAcquisition tokenAcquisition) : IGraphTokenProvider, IAccountIdentityTokenProvider
 {
     private static readonly string[] Scopes = ["https://graph.microsoft.com/User.ReadBasic.All"];
 
-    public async Task<string> GetTokenAsync(CancellationToken cancellationToken)
+    public Task<string> GetTokenAsync(CancellationToken cancellationToken) => AcquireAsync(Scopes, cancellationToken);
+
+    Task<string> IAccountIdentityTokenProvider.GetTokenAsync(CancellationToken cancellationToken) =>
+        AcquireAsync(["https://graph.microsoft.com/User.Read"], cancellationToken);
+
+    private async Task<string> AcquireAsync(string[] scopes, CancellationToken cancellationToken)
     {
         try
         {
-            return await tokenAcquisition.GetAccessTokenForUserAsync(Scopes);
+            cancellationToken.ThrowIfCancellationRequested();
+            return await tokenAcquisition.GetAccessTokenForUserAsync(scopes).WaitAsync(cancellationToken);
         }
         catch (Exception ex) when (ex is MicrosoftIdentityWebChallengeUserException or MsalException or InvalidOperationException)
         {

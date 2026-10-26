@@ -26,6 +26,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public FakeTenantDirectory Directory { get; } = new();
 
+    public FakeAccountIdentity Identity { get; } = new();
+
     public CapturingLogSink Logs { get; } = new();
 
     // The embedding service and OCR cost money and are non-deterministic, so only they are faked; the database and blobs are real.
@@ -62,6 +64,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<ITenantDirectory>();
             services.AddSingleton<ITenantDirectory>(Directory);
+            services.RemoveAll<IAccountIdentityDirectory>();
+            services.AddSingleton<IAccountIdentityDirectory>(Identity);
             services.AddSingleton<Serilog.Core.ILogEventSink>(Logs);
 
             services.RemoveAll<IEmbeddingGenerator<string, Embedding<float>>>();

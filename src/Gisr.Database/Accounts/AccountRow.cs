@@ -14,6 +14,8 @@ public sealed class AccountRow
 
     public string? ContactEmail { get; set; }
 
+    public string? OperatingNumber { get; set; }
+
     public bool NotifyOnServiceRecord { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }

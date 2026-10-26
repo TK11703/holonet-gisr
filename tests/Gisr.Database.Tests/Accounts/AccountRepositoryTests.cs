@@ -8,6 +8,47 @@ namespace Gisr.Database.Tests.Accounts;
 [Collection("postgres")]
 public class AccountRepositoryTests(PostgresFixture postgres)
 {
+    [Fact]
+    public async Task OperatingNumber_PersistsAcrossAllAccountProjections_AndCanBeCleared()
+    {
+        await using var db = await postgres.CreateMigratedDatabaseAsync();
+        var repository = Repository(db);
+        var tenant = Guid.NewGuid();
+        var oid = Guid.NewGuid();
+        var account = await repository.UpsertAsync(tenant, oid, "Citizen", null, CancellationToken.None);
+        Assert.Null(account.OperatingNumber);
+        Assert.Equal("CT-7567", (await repository.UpdateOperatingNumberAsync(account.Id, "CT-7567", CancellationToken.None))?.OperatingNumber);
+        Assert.Equal("CT-7567", (await repository.GetAsync(account.Id, CancellationToken.None))?.OperatingNumber);
+        Assert.Equal("CT-7567", (await repository.FindByObjectAsync(tenant, oid, CancellationToken.None))?.OperatingNumber);
+        Assert.Equal("CT-7567", (await repository.UpsertAsync(tenant, oid, "Citizen", null, CancellationToken.None)).OperatingNumber);
+        Assert.Equal("CT-7567", (await repository.EnsurePlaceholderAsync(tenant, oid, "Citizen", null, CancellationToken.None)).OperatingNumber);
+        Assert.Equal("CT-7567", (await repository.UpdateSettingsAsync(account.Id, "Chosen", null, false, CancellationToken.None))?.OperatingNumber);
+        Assert.Null((await repository.UpdateOperatingNumberAsync(account.Id, null, CancellationToken.None))?.OperatingNumber);
+    }
+
+    [Fact]
+    public async Task ChainCode_OptionalAtomicReplacementAndDeletion_AreOwnerScoped()
+    {
+        await using var db = await postgres.CreateMigratedDatabaseAsync();
+        var owner = await Repository(db).UpsertAsync(Guid.NewGuid(), Guid.NewGuid(), "Citizen", null, CancellationToken.None);
+        var profiles = new ChainCodeRepository(db.DataSource, new SqlScriptLoader());
+        var other = Guid.NewGuid();
+        Assert.Null(await profiles.GetAsync(owner.Id, CancellationToken.None));
+        var first = await profiles.UpsertAsync(owner.Id, "{\"fullName\":\"Citizen\"}", "12345", CancellationToken.None);
+        Assert.Equal(TimeSpan.Zero, first.UpdatedAt.Offset);
+        Assert.Equal("12345", (await profiles.GetAsync(owner.Id, CancellationToken.None))?.ChainCode);
+        Assert.Null(await profiles.GetAsync(other, CancellationToken.None));
+        Assert.False(await profiles.DeleteAsync(other, CancellationToken.None));
+        await profiles.UpsertAsync(owner.Id, "{\"homeworld\":\"Naboo\"}", "54321", CancellationToken.None);
+        var reloaded = await profiles.GetAsync(owner.Id, CancellationToken.None);
+        Assert.Equal("54321", reloaded?.ChainCode);
+        Assert.DoesNotContain("fullName", reloaded!.ProfileJson, StringComparison.Ordinal);
+        Assert.Equal(1, await db.ScalarAsync<int>("SELECT count(*) FROM account_chain_code"));
+        Assert.True(await profiles.DeleteAsync(owner.Id, CancellationToken.None));
+        Assert.Null(await profiles.GetAsync(owner.Id, CancellationToken.None));
+        Assert.NotNull(await Repository(db).GetAsync(owner.Id, CancellationToken.None));
+    }
+
     private static AccountRepository Repository(TestDatabase db) => new(db.DataSource, new SqlScriptLoader());
 
     [Fact]

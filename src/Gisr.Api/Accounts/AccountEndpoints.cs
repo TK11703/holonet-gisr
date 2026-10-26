@@ -8,7 +8,14 @@ public static class AccountEndpoints
     public static IServiceCollection AddAccountServices(this IServiceCollection services)
     {
         services.AddScoped<AccountService>();
+        services.AddScoped<ChainCodeService>();
         services.AddScoped<IGraphTokenProvider, MicrosoftIdentityGraphTokenProvider>();
+        services.AddScoped<IAccountIdentityTokenProvider, MicrosoftIdentityGraphTokenProvider>();
+        services.AddHttpClient<IAccountIdentityDirectory, GraphAccountIdentity>(client =>
+        {
+            client.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/");
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
         services.AddHttpClient<ITenantDirectory, GraphTenantDirectory>(client =>
             client.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/"));
         return services;
@@ -33,6 +40,36 @@ public static class AccountEndpoints
             .Produces<AccountDto>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        group.MapGet("/chain-code", async (ChainCodeService profiles, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await profiles.GetAsync(cancellationToken)))
+            .WithName("getMyChainCode")
+            .WithSummary("Current user's optional fictional Chain Code profile")
+            .Produces<ChainCodeProfileDto>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPut("/chain-code", async (UpdateChainCodeRequest request, ChainCodeService profiles, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await profiles.SaveAsync(request, cancellationToken)))
+            .WithName("saveMyChainCode")
+            .WithSummary("Save fictional details and generate a Chain Code")
+            .Produces<ChainCodeProfileDto>()
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapDelete("/chain-code", async (ChainCodeService profiles, CancellationToken cancellationToken) =>
+            {
+                await profiles.DeleteAsync(cancellationToken);
+                return TypedResults.NoContent();
+            })
+            .WithName("deleteMyChainCode")
+            .WithSummary("Delete the current user's fictional profile and code")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         endpoints.MapGroup("/api/accounts")
             .WithTags("Accounts")

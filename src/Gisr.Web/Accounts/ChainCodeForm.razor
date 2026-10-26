@@ -1,0 +1,300 @@
+@using Gisr.Shared.Accounts
+@implements IDisposable
+@inject ApiClient Api
+
+<section class="card" aria-labelledby="chain-code-heading">
+    <header class="card-header">
+        <h2 id="chain-code-heading" class="h6 mb-0">Chain Code Components</h2>
+    </header>
+    <div class="card-body">
+        @if (_loading)
+        {
+            <p class="text-secondary mb-0">Loading...</p>
+        }
+        else if (_loadFailed)
+        {
+            <div class="alert alert-danger" role="alert">Your Chain Code profile could not be loaded.</div>
+        }
+        else
+        {
+            <div class="row mb-3">
+                <div class="col-12 col-lg-6">
+                    <label for="chain-code-value" class="form-label">Your Chain Code</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><Icon Name="link" /></span>
+                        <input id="chain-code-value" class="form-control form-control-sm font-monospace p-1" readonly value="@(_saved?.ChainCode ?? "Not provided")" />
+                    </div>
+                </div>
+            </div>
+            @if (_failure is not null)
+            {
+                <div class="alert alert-danger" role="alert">@_failure</div>
+            }
+            <form id="chain-code-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+                <fieldset disabled="@_busy">
+                    <legend class="visually-hidden">Fictional personal details</legend>
+                    <div class="row g-3">
+                        @foreach (var group in Fields.GroupBy(field => field.Multiline ? null : field.Key is "fullName" or "homeworld" or "species" ? "Identity/Biographical Data" : "Biometric Data"))
+                        {
+                            <div class="@(group.Key is null ? "col-12" : "col-12 col-lg-6")">
+                                <fieldset class="@(group.Key is null ? "h-100" : "h-100 border rounded px-3 pb-3")">
+                                    <legend class="@(group.Key is null ? "visually-hidden" : "float-none w-auto px-2 h6 mb-3")">@(group.Key ?? "Additional biographical details")</legend>
+                                    <div class="row g-3">
+                                        @foreach (var field in group)
+                                        {
+                                            <div class="@(field.Multiline ? "col-12 col-md-6" : group.Key == "Biometric Data" ? "col-12 col-sm-6" : "col-12")">
+                                                <label for="@field.Id" class="form-label">@field.Label</label>
+                                                @if (field.Color)
+                                                {
+                                                    <select @key="_colors[field.Key].Count" id="@field.Id" class="@FieldClass(field, "form-select")" value=""
+                                                            @onchange="eventArgs => AddColor(field.Key, eventArgs.Value?.ToString())"
+                                                            aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)">
+                                                        <option value="">Add color</option>
+                                                        @foreach (var color in Enum.GetValues<ProfileColor>().Where(color => !_colors[field.Key].Contains(color)))
+                                                        {
+                                                            <option value="@color">@color</option>
+                                                        }
+                                                    </select>
+                                                    <div class="d-flex flex-wrap gap-2 mt-2" role="group" aria-label="Selected @field.Label.ToLowerInvariant()">
+                                                        @foreach (var color in _colors[field.Key].Order())
+                                                        {
+                                                            var removeLabel = $"Remove {color} {field.Label[..^1].ToLowerInvariant()}";
+                                                            <span class="badge text-bg-secondary d-inline-flex align-items-center gap-1">
+                                                                @color
+                                                                <button type="button" class="btn btn-sm border-0 p-0 text-reset" title="@removeLabel" aria-label="@removeLabel"
+                                                                        @onclick="() => RemoveColor(field.Key, color)"><Icon Name="close" Size="12" /></button>
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                }
+                                                else if (field.Multiline)
+                                                {
+                                                    <textarea id="@field.Id" class="@FieldClass(field, "form-control")" rows="3" maxlength="@field.MaxLength"
+                                                              value="@_values[field.Key]" @onchange="eventArgs => Change(field.Key, eventArgs.Value?.ToString())"
+                                                              aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)">@_values[field.Key]</textarea>
+                                                }
+                                                else
+                                                {
+                                                    <input id="@field.Id" class="@FieldClass(field, "form-control")" maxlength="@field.MaxLength"
+                                                           value="@_values[field.Key]" @onchange="eventArgs => Change(field.Key, eventArgs.Value?.ToString())"
+                                                           aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)" />
+                                                }
+                                                @if (_errors.TryGetValue(field.Key, out var messages))
+                                                {
+                                                    <div id="@(field.Id)-error" class="invalid-feedback d-block">@string.Join(" ", messages)</div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </fieldset>
+                            </div>
+                        }
+                    </div>
+                </fieldset>
+            </form>
+        }
+    </div>
+    <footer class="card-footer">
+        @if (_loadFailed)
+        {
+            <button type="button" class="btn btn-outline-secondary" @onclick="LoadAsync">Retry</button>
+        }
+        else if (!_loading)
+        {
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" form="chain-code-form" class="btn btn-primary" disabled="@_busy">@(_saved is null ? "Save Chain Code" : "Update Chain Code")</button>
+                @if (_saved is not null)
+                {
+                    <button id="delete-chain-code" type="button" class="btn btn-outline-danger" disabled="@_busy" @onclick="() => _confirmDelete = true">Delete profile</button>
+                }
+            </div>
+            @if (_confirmDelete)
+            {
+                <div class="border-top mt-3 pt-3" role="group" aria-labelledby="delete-chain-code-question">
+                    <p id="delete-chain-code-question">Delete your fictional profile and Chain Code?</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button id="confirm-delete-chain-code" type="button" class="btn btn-danger" disabled="@_busy" @onclick="DeleteAsync">Delete permanently</button>
+                        <button id="cancel-delete-chain-code" type="button" class="btn btn-outline-secondary" disabled="@_busy" @onclick="() => _confirmDelete = false">Cancel</button>
+                    </div>
+                </div>
+            }
+        }
+        <div aria-live="polite" aria-atomic="true">
+            @if (_status is not null)
+            {
+                <div class="alert alert-success d-flex align-items-start gap-2 mt-3 mb-0 py-2" role="status">
+                    <span class="flex-shrink-0"><Icon Name="check-circle" /></span>
+                    <span>@_status</span>
+                </div>
+            }
+        </div>
+    </footer>
+</section>
+
+@code {
+    private sealed record Field(string Key, string Id, string Label, int MaxLength = 200, bool Multiline = false, bool Color = false);
+
+    private static readonly Field[] Fields =
+    [
+        new("fullName", "chain-full-name", "Full name"),
+        new("homeworld", "chain-homeworld", "Homeworld"),
+        new("species", "chain-species", "Species"),
+        new("height", "chain-height", "Height", 80),
+        new("eyeColor", "chain-eye-color", "Eye colors", Color: true),
+        new("skinColor", "chain-skin-color", "Skin colors", Color: true),
+        new("hairColor", "chain-hair-color", "Hair colors", Color: true),
+        new("distinguishingMarks", "chain-distinguishing-marks", "Distinguishing marks", 1000, Multiline: true),
+        new("familyHistory", "chain-family-history", "Family history", 4000, Multiline: true),
+        new("criminalHistory", "chain-criminal-history", "Criminal history", 4000, Multiline: true),
+        new("biography", "chain-biography", "Biography", 4000, Multiline: true),
+    ];
+
+    private const string Path = "api/me/chain-code";
+    private readonly CancellationTokenSource _lifetime = new();
+    private Dictionary<string, string?> _values = Fields.ToDictionary(field => field.Key, _ => (string?)null);
+    private readonly Dictionary<string, HashSet<ProfileColor>> _colors = Fields.Where(field => field.Color)
+        .ToDictionary(field => field.Key, _ => new HashSet<ProfileColor>());
+    private Dictionary<string, string[]> _errors = [];
+    private ChainCodeProfileDto? _saved;
+    private bool _loading = true;
+    private bool _loadFailed;
+    private bool _busy;
+    private bool _confirmDelete;
+    private string? _failure;
+    private string? _status;
+    private int _statusVersion;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _loadFailed = false;
+        try
+        {
+            _saved = await Api.GetAsync<ChainCodeProfileDto>(Path, cancellationToken: _lifetime.Token);
+            SetValues(_saved?.Profile);
+        }
+        catch (ApiException exception) when (exception.Status == 404) { SetValues(null); }
+        catch (Exception exception) when (exception is ApiException or HttpRequestException) { _loadFailed = true; }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        finally { _loading = false; }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _failure = _status = null;
+        _errors = [];
+        _confirmDelete = false;
+        try
+        {
+            var request = new UpdateChainCodeRequest
+            {
+                FullName = _values["fullName"], BirthDate = _values["birthDate"], Homeworld = _values["homeworld"],
+                Species = _values["species"], Height = _values["height"], EyeColors = _colors["eyeColor"].Order().ToArray(),
+                SkinColors = _colors["skinColor"].Order().ToArray(), HairColors = _colors["hairColor"].Order().ToArray(), DistinguishingMarks = _values["distinguishingMarks"],
+                FamilyHistory = _values["familyHistory"], CriminalHistory = _values["criminalHistory"], Biography = _values["biography"],
+            };
+            _saved = await Api.PutAsync<ChainCodeProfileDto>(Path, request, cancellationToken: _lifetime.Token);
+            SetValues(_saved?.Profile);
+            ShowStatus("Chain code updated...");
+        }
+        catch (ApiException exception) when (exception.Status == 400)
+        {
+            _errors = exception.Errors.ToDictionary(pair => Fields.FirstOrDefault(field => field.Color && pair.Key == field.Key + "s")?.Key ?? pair.Key,
+                pair => pair.Value, StringComparer.Ordinal);
+            _failure = _errors.TryGetValue("profile", out var messages) ? string.Join(" ", messages) : "Please fix the highlighted fields.";
+        }
+        catch (Exception exception) when (exception is ApiException or HttpRequestException) { _failure = "Your Chain Code profile could not be saved. Please try again."; }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        finally { _busy = false; }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _failure = _status = null;
+        try
+        {
+            await Api.SendAsync(HttpMethod.Delete, Path, cancellationToken: _lifetime.Token);
+            Clear();
+        }
+        catch (ApiException exception) when (exception.Status == 404) { Clear(); }
+        catch (Exception exception) when (exception is ApiException or HttpRequestException) { _failure = "Your profile could not be deleted. Please try again."; }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        finally { _busy = false; }
+    }
+
+    private void Clear()
+    {
+        _saved = null;
+        SetValues(null);
+        _errors = [];
+        _confirmDelete = false;
+        ShowStatus("Chain Code profile deleted.");
+    }
+
+    private void ShowStatus(string message)
+    {
+        _status = message;
+        _ = HideStatusAsync(++_statusVersion);
+    }
+
+    private void DismissStatus() { _statusVersion++; _status = null; }
+
+    private async Task HideStatusAsync(int version)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5), _lifetime.Token);
+            await InvokeAsync(() =>
+            {
+                if (!_lifetime.IsCancellationRequested && version == _statusVersion)
+                {
+                    DismissStatus();
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+    }
+
+    private void SetValues(UpdateChainCodeRequest? profile)
+    {
+        SetColors("eyeColor", profile?.EyeColor, profile?.EyeColors);
+        SetColors("skinColor", profile?.SkinColor, profile?.SkinColors);
+        SetColors("hairColor", profile?.HairColor, profile?.HairColors);
+        _values = new()
+        {
+            ["fullName"] = profile?.FullName, ["birthDate"] = profile?.BirthDate, ["homeworld"] = profile?.Homeworld,
+            ["species"] = profile?.Species, ["height"] = profile?.Height, ["eyeColor"] = profile?.EyeColor?.ToString(),
+            ["skinColor"] = profile?.SkinColor?.ToString(), ["hairColor"] = profile?.HairColor?.ToString(),
+            ["distinguishingMarks"] = profile?.DistinguishingMarks, ["familyHistory"] = profile?.FamilyHistory,
+            ["criminalHistory"] = profile?.CriminalHistory, ["biography"] = profile?.Biography,
+        };
+    }
+
+    private void Change(string key, string? value) { _values[key] = value; _status = null; }
+    private void SetColors(string key, ProfileColor? single, ProfileColor[]? multiple)
+    {
+        _colors[key].Clear();
+        _colors[key].UnionWith(multiple ?? []);
+        if (single.HasValue) _colors[key].Add(single.Value);
+    }
+
+    private void AddColor(string key, string? value)
+    {
+        if (Enum.TryParse<ProfileColor>(value, out var color) && Enum.IsDefined(color)) _colors[key].Add(color);
+        _status = null;
+    }
+
+    private void RemoveColor(string key, ProfileColor color) { _colors[key].Remove(color); _status = null; }
+    private string FieldClass(Field field, string baseClass) => _errors.ContainsKey(field.Key) ? $"{baseClass} is-invalid" : baseClass;
+    private string? Invalid(string key) => _errors.ContainsKey(key) ? "true" : null;
+    private string? Described(Field field) => _errors.ContainsKey(field.Key) ? $"{field.Id}-error" : null;
+
+    public void Dispose() { _lifetime.Cancel(); _lifetime.Dispose(); }
+}

@@ -40,6 +40,37 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AccountDto" } } } }
         "400": { $ref: "#/components/responses/ValidationProblem" }
         "401": { $ref: "#/components/responses/Problem" }
+  /api/me/chain-code:
+    get:
+      tags: [Accounts]
+      operationId: getMyChainCode
+      summary: Current user's optional private fictional profile
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ChainCodeProfileDto" } } } }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+    put:
+      tags: [Accounts]
+      operationId: saveMyChainCode
+      summary: Save fictional details and generate a deterministic owner-specific code
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateChainCodeRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ChainCodeProfileDto" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [Accounts]
+      operationId: deleteMyChainCode
+      summary: Delete only the current user's fictional profile and code
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Problem" }
+        "403": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
   /api/accounts:
     get:
       tags: [Accounts]
@@ -386,6 +417,7 @@ components:
         notifyOnServiceRecord: { type: boolean }
         isOfficer: { type: boolean }
         createdAt: { type: string, format: date-time }
+        operatingNumber: { type: [string, "null"], maxLength: 64, readOnly: true, description: "Entra EmployeeId, refreshed at account bootstrap; never user-editable" }
     DirectoryUserDto:
       type: object
       required: [objectId, displayName]
@@ -400,6 +432,45 @@ components:
         displayName: { type: string, minLength: 1, maxLength: 100 }
         contactEmail: { type: [string, "null"], format: email, maxLength: 254 }
         notifyOnServiceRecord: { type: boolean }
+
+    ProfileColor:
+      type: string
+      enum: [Black, Brown, Blue, Green, Gray, Hazel, Amber, Red, Orange, Yellow, Gold, Silver, White, Pink, Purple, Tan, Pale, Dark, None, Other]
+    UpdateChainCodeRequest:
+      type: object
+      description: All fields optional, but at least one meaningful detail is required. Text is trimmed and normalized before storage and hashing.
+      properties:
+        fullName: { type: [string, "null"], maxLength: 200 }
+        birthDate: { type: [string, "null"], maxLength: 200, description: "Fictional date or era, such as 41 BBY" }
+        homeworld: { type: [string, "null"], maxLength: 200 }
+        species: { type: [string, "null"], maxLength: 200 }
+        height: { type: [string, "null"], maxLength: 80 }
+        eyeColor: { anyOf: [{ $ref: "#/components/schemas/ProfileColor" }, { type: "null" }] }
+        skinColor: { anyOf: [{ $ref: "#/components/schemas/ProfileColor" }, { type: "null" }] }
+        hairColor: { anyOf: [{ $ref: "#/components/schemas/ProfileColor" }, { type: "null" }] }
+        eyeColors:
+          type: [array, "null"]
+          maxItems: 20
+          items: { $ref: "#/components/schemas/ProfileColor" }
+        skinColors:
+          type: [array, "null"]
+          maxItems: 20
+          items: { $ref: "#/components/schemas/ProfileColor" }
+        hairColors:
+          type: [array, "null"]
+          maxItems: 20
+          items: { $ref: "#/components/schemas/ProfileColor" }
+        distinguishingMarks: { type: [string, "null"], maxLength: 1000 }
+        familyHistory: { type: [string, "null"], maxLength: 4000 }
+        criminalHistory: { type: [string, "null"], maxLength: 4000 }
+        biography: { type: [string, "null"], maxLength: 4000 }
+    ChainCodeProfileDto:
+      type: object
+      required: [profile, chainCode, updatedAt]
+      properties:
+        profile: { $ref: "#/components/schemas/UpdateChainCodeRequest" }
+        chainCode: { type: string, pattern: '^\d{5}(-\d{5}){7}$', readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }
 
     AffiliationDto:
       type: object

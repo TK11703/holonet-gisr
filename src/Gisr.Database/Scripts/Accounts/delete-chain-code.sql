@@ -1,0 +1,1 @@
+DELETE FROM account_chain_code WHERE account_id = @AccountId;
