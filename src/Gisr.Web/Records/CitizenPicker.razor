@@ -1,34 +1,50 @@
 @inject ApiClient Api
 
 <fieldset id="citizen-picker" class="mb-3">
-    <label for="citizen-search" class="form-label">Citizen</label>
-    <p class="mb-2">
-        Record for <strong id="citizen-selected">@(Model.SubjectObjectId is null ? "Myself" : Model.SubjectDisplayName)</strong>
-        @if (Model.SubjectObjectId is not null)
-        {
-            <button type="button" id="citizen-myself" class="btn btn-sm btn-outline-secondary ms-2" @onclick="UseMyself">Use myself</button>
-        }
-    </p>
-    <input id="citizen-search" type="search" class="form-control" autocomplete="off" maxlength="100"
-           placeholder="Search the tenant directory by name or email..." aria-describedby="citizen-results-status"
-           value="@_query" @oninput="OnInputAsync" />
-    @if (_results.Count > 0)
+    <legend class="visually-hidden">Who is this record for?</legend>
+    <div class="btn-group segmented-choice" role="group" aria-label="Who is this record for?">
+        <input type="radio" class="btn-check" name="citizen-for" id="citizen-for-myself" autocomplete="off"
+               checked="@(!Model.ForAnother)" @onchange="UseMyself" />
+        <label class="btn d-inline-flex align-items-center gap-2" for="citizen-for-myself"><Icon Name="user" /> For myself</label>
+        <input type="radio" class="btn-check" name="citizen-for" id="citizen-for-other" autocomplete="off"
+               checked="@Model.ForAnother" @onchange="UseAnother" />
+        <label class="btn d-inline-flex align-items-center gap-2" for="citizen-for-other"><Icon Name="search" /> For someone else</label>
+    </div>
+
+    @if (Model.ForAnother && Model.SubjectObjectId is not null)
     {
-        <ul class="list-group mt-2">
-            @foreach (var account in _results)
-            {
-                <li class="list-group-item p-0">
-                    <button type="button" class="list-group-item list-group-item-action border-0 citizen-option" @onclick="() => Select(account)"><span>@account.DisplayName</span>
-                        @if (account.Email is not null)
-                        {
-                            <small class="d-block text-secondary">@account.Email</small>
-                        }
-                    </button>
-                </li>
-            }
-        </ul>
+        <div class="input-group mt-3">
+            <span class="input-group-text"><Icon Name="user" /></span>
+            <input id="citizen-selected" type="text" class="form-control" readonly aria-label="Selected citizen" value="@Model.SubjectDisplayName" />
+            <button type="button" id="citizen-change" class="btn btn-outline-secondary" @onclick="Change">Change</button>
+        </div>
     }
-    <p id="citizen-results-status" class="small text-secondary mt-2 mb-0" role="status">@_status</p>
+    else if (Model.ForAnother)
+    {
+        <div class="mt-3">
+            <label for="citizen-search" class="visually-hidden">Search the tenant directory</label>
+            <input id="citizen-search" type="search" class="form-control" autocomplete="off" maxlength="100"
+                   placeholder="Search the tenant directory by name or email..." aria-describedby="citizen-results-status"
+                   value="@_query" @oninput="OnInputAsync" />
+            @if (_results.Count > 0)
+            {
+                <ul class="list-group mt-2">
+                    @foreach (var account in _results)
+                    {
+                        <li class="list-group-item p-0">
+                            <button type="button" class="list-group-item list-group-item-action border-0 citizen-option" @onclick="() => Select(account)"><span>@account.DisplayName</span>
+                                @if (account.Email is not null)
+                                {
+                                    <small class="d-block text-secondary">@account.Email</small>
+                                }
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+            <p id="citizen-results-status" class="small text-secondary mt-2 mb-0" role="status">@(_status ?? "Search for the citizen this record is about, then choose them from the list.")</p>
+        </div>
+    }
 </fieldset>
 
 @code {
@@ -77,16 +93,36 @@
     {
         Model.SubjectObjectId = account.ObjectId;
         Model.SubjectDisplayName = account.DisplayName;
-        _results = [];
-        _query = string.Empty;
-        _status = null;
+        ClearSearch();
+        return OnChanged.InvokeAsync();
+    }
+
+    private Task UseAnother()
+    {
+        Model.ForAnother = true;
         return OnChanged.InvokeAsync();
     }
 
     private Task UseMyself()
     {
+        Model.ForAnother = false;
+        return Clear();
+    }
+
+    private Task Change() => Clear();
+
+    private Task Clear()
+    {
         Model.SubjectObjectId = null;
         Model.SubjectDisplayName = null;
+        ClearSearch();
         return OnChanged.InvokeAsync();
+    }
+
+    private void ClearSearch()
+    {
+        _results = [];
+        _query = string.Empty;
+        _status = null;
     }
 }

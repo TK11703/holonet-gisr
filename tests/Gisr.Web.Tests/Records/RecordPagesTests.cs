@@ -44,15 +44,13 @@ public class RecordPagesTests : BunitContext
     }
 
     [Fact]
-    public void New_LoadsTheAffiliationsFromTheUsersAccount_AndLocksTheDependentTabs()
+    public void New_LoadsTheAffiliationsFromTheUsersAccount_AndHidesTheDependentTabs()
     {
         var cut = Render<RecordNew>();
 
         Assert.Contains(_api.Calls, c => c.PathAndQuery == "api/me/affiliations");
         Assert.DoesNotContain(_api.Calls, c => c.PathAndQuery == "api/affiliations");
-        Assert.True(cut.Find("#tab-incidents").HasAttribute("disabled"));
-        Assert.True(cut.Find("#tab-awards").HasAttribute("disabled"));
-        Assert.True(cut.Find("#tab-artifacts").HasAttribute("disabled"));
+        Assert.Empty(cut.FindAll("#tab-incidents, #tab-awards, #tab-artifacts"));
         Assert.True(cut.Find("#delete-record").HasAttribute("disabled"));
     }
 

@@ -21,33 +21,55 @@ public class CitizenPickerTests : BunitContext
         _api.AddTo(Services);
     }
 
-    private IRenderedComponent<CitizenPicker> RenderPicker() => Render<CitizenPicker>(p => p.Add(c => c.Model, _model));
+    private IRenderedComponent<CitizenPicker> RenderPicker(bool forAnother = false)
+    {
+        _model.ForAnother = forAnother;
+        return Render<CitizenPicker>(p => p.Add(c => c.Model, _model));
+    }
 
     private static string Search(string query) => $"api/accounts?query={Uri.EscapeDataString(query)}&pageSize=10";
 
     [Fact]
-    public void DefaultsToMyself_WithNoResults()
+    public void DefaultsToForMyself_WithNoSearchBox()
     {
         var cut = RenderPicker();
 
-        Assert.Equal("Myself", cut.Find("#citizen-selected").TextContent.Trim());
+        Assert.True(cut.Find("#citizen-for-myself").HasAttribute("checked"));
+        Assert.False(cut.Find("#citizen-for-other").HasAttribute("checked"));
+        Assert.Empty(cut.FindAll("#citizen-search"));
         Assert.Empty(cut.FindAll("button.citizen-option"));
         Assert.Null(_model.SubjectObjectId);
     }
 
     [Fact]
-    public void HasAnAccessibleLabelForTheSearchBox()
+    public void TheChoice_IsAnAccessibleGroupOfTwoRadios_WithoutACitizenHeading()
     {
         var cut = RenderPicker();
 
+        Assert.Equal("Who is this record for?", cut.Find("[role=group]").GetAttribute("aria-label"));
+        Assert.Equal("For myself", cut.Find("label[for=citizen-for-myself]").TextContent.Trim());
+        Assert.Equal("For someone else", cut.Find("label[for=citizen-for-other]").TextContent.Trim());
+        Assert.Equal(["radio", "radio"], cut.FindAll("input.btn-check").Select(i => i.GetAttribute("type")!).ToArray());
+        Assert.DoesNotContain("Citizen", cut.Find("#citizen-picker").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ChoosingForSomeoneElse_RevealsTheSearchBox_WithAnAccessibleLabel()
+    {
+        var cut = RenderPicker();
+
+        cut.Find("#citizen-for-other").Change(true);
+
+        Assert.True(_model.ForAnother);
+        Assert.True(_model.NeedsCitizen);
         var input = cut.Find("input#citizen-search");
-        Assert.Equal("Citizen", cut.Find($"label[for={input.Id}]").TextContent.Trim());
+        Assert.Equal("Search the tenant directory", cut.Find($"label[for={input.Id}]").TextContent.Trim());
     }
 
     [Fact]
     public void ShortQueries_DoNotCallTheApi()
     {
-        var cut = RenderPicker();
+        var cut = RenderPicker(forAnother: true);
 
         cut.Find("#citizen-search").Input("l");
 
@@ -62,7 +84,7 @@ public class CitizenPickerTests : BunitContext
             new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null),
             new DirectoryUserDto(Guid.NewGuid(), "Lucius Fox", "lucius@wayne.example"),
         });
-        var cut = RenderPicker();
+        var cut = RenderPicker(forAnother: true);
 
         cut.Find("#citizen-search").Input("lu");
 
@@ -77,7 +99,7 @@ public class CitizenPickerTests : BunitContext
     public void QueryIsEscapedInTheRequest()
     {
         _api.OnJson(HttpMethod.Get, Search("a&b c"), Array.Empty<DirectoryUserDto>());
-        var cut = RenderPicker();
+        var cut = RenderPicker(forAnother: true);
 
         cut.Find("#citizen-search").Input("a&b c");
 
@@ -85,29 +107,39 @@ public class CitizenPickerTests : BunitContext
     }
 
     [Fact]
-    public void ChoosingACitizen_SetsTheSubject_ThenMyselfResetsIt()
+    public void ChoosingACitizen_ShowsThemInPlaceOfTheSearch_ChangeReopensIt_AndMyselfResets()
     {
         var luke = new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null);
         _api.OnJson(HttpMethod.Get, Search("lu"), new[] { luke });
-        var cut = RenderPicker();
+        var cut = RenderPicker(forAnother: true);
         cut.Find("#citizen-search").Input("lu");
         cut.WaitForAssertion(() => cut.Find("button.citizen-option").Click());
 
         Assert.Equal(luke.ObjectId, _model.SubjectObjectId);
-        Assert.Equal("Luke Skywalker", cut.Find("#citizen-selected").TextContent.Trim());
-        Assert.Empty(cut.FindAll("button.citizen-option"));
+        Assert.Equal("Luke Skywalker", cut.Find("#citizen-selected").GetAttribute("value"));
+        Assert.True(cut.Find("#citizen-selected").HasAttribute("readonly"));
+        Assert.Empty(cut.FindAll("#citizen-search"));
+        Assert.False(_model.NeedsCitizen);
 
-        cut.Find("#citizen-myself").Click();
+        cut.Find("#citizen-change").Click();
 
         Assert.Null(_model.SubjectObjectId);
-        Assert.Equal("Myself", cut.Find("#citizen-selected").TextContent.Trim());
+        Assert.True(_model.ForAnother);
+        Assert.NotNull(cut.Find("#citizen-search"));
+
+        cut.Find("#citizen-for-myself").Change(true);
+
+        Assert.False(_model.ForAnother);
+        Assert.Null(_model.SubjectObjectId);
+        Assert.Empty(cut.FindAll("#citizen-search"));
+        Assert.Empty(cut.FindAll("#citizen-selected"));
     }
 
     [Fact]
     public void NoMatches_ShowsAMessage()
     {
         _api.OnJson(HttpMethod.Get, Search("zz"), Array.Empty<DirectoryUserDto>());
-        var cut = RenderPicker();
+        var cut = RenderPicker(forAnother: true);
 
         cut.Find("#citizen-search").Input("zz");
 
@@ -118,7 +150,7 @@ public class CitizenPickerTests : BunitContext
     public void SearchFailure_ShowsAMessage()
     {
         _api.On(HttpMethod.Get, Search("lu"), _ => new HttpResponseMessage(HttpStatusCode.Forbidden));
-        var cut = RenderPicker();
+        var cut = RenderPicker(forAnother: true);
 
         cut.Find("#citizen-search").Input("lu");
 
@@ -164,6 +196,7 @@ public class CitizenPickerTests : BunitContext
         _api.OnJson(HttpMethod.Post, "api/records", Samples.Record(), HttpStatusCode.Created);
         var cut = Render<RecordNew>();
 
+        cut.Find("#citizen-for-other").Change(true);
         cut.Find("#citizen-search").Input("lu");
         cut.WaitForAssertion(() => cut.Find("button.citizen-option").Click());
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("#record-affiliation-loading")));
@@ -181,9 +214,29 @@ public class CitizenPickerTests : BunitContext
         SignInAs(officer: true);
         _api.OnJson(HttpMethod.Get, Search("lu"), new[] { luke });
         var cut = Render<RecordNew>();
+        cut.Find("#citizen-for-other").Change(true);
         cut.Find("#citizen-search").Input("lu");
         cut.WaitForAssertion(() => cut.Find("button.citizen-option").Click());
         return cut;
+    }
+
+    [Fact]
+    public void ForSomeoneElse_WithNobodyChosenYet_BlocksSaving_AndShowsNoAffiliations()
+    {
+        SignInAs(officer: true);
+        _api.OnJson(HttpMethod.Post, "api/records", Samples.Record(), HttpStatusCode.Created);
+        var cut = Render<RecordNew>();
+
+        cut.Find("#citizen-for-other").Change(true);
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.True(cut.Find("#save-record").HasAttribute("disabled"));
+            Assert.Equal([""], cut.FindAll("select#record-affiliation option").Select(o => o.GetAttribute("value") ?? "x").ToArray());
+            Assert.Contains("Choose a citizen", cut.Find("#record-affiliation-help").TextContent, StringComparison.Ordinal);
+        });
+        cut.Find("form").Submit();
+        Assert.DoesNotContain(_api.Calls, c => c.Method == HttpMethod.Post);
     }
 
     [Fact]
@@ -241,7 +294,7 @@ public class CitizenPickerTests : BunitContext
         var cut = ChooseLuke(luke);
         cut.WaitForAssertion(() => Assert.True(cut.Find("#save-record").HasAttribute("disabled")));
 
-        cut.Find("#citizen-myself").Click();
+        cut.Find("#citizen-for-myself").Change(true);
 
         cut.WaitForAssertion(() =>
         {

@@ -62,6 +62,14 @@ else
     {
         var subject = _model!.SubjectObjectId;
         _affiliationsFailed = false;
+        if (_model.NeedsCitizen)
+        {
+            _loadingAffiliations = false;
+            _affiliations = [];
+            _model.Affiliation = string.Empty;
+            return;
+        }
+
         IReadOnlyList<AccountAffiliationDto> loaded = _mine;
         if (subject is not null)
         {

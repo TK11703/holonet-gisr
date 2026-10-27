@@ -64,6 +64,11 @@ public sealed class RecordFormModel
     public bool IsSaved => Id is not null && ExpectedVersion > 0;
     public Guid? SubjectObjectId { get; set; }
 
+    // The Officer chose "for someone else"; until a citizen is picked the record cannot be saved.
+    public bool ForAnother { get; set; }
+
+    public bool NeedsCitizen => ForAnother && SubjectObjectId is null;
+
     public string? SubjectDisplayName { get; set; }
 
     public bool IsSealed { get; set; }

@@ -29,20 +29,16 @@
         }
 
         <ul class="nav nav-tabs" role="tablist" aria-label="Record sections">
-            @foreach (var tab in Tabs)
+            @foreach (var tab in Tabs.Where(t => !t.NeedsSaved || Model.IsSaved))
             {
-                var locked = tab.NeedsSaved && !Model.IsSaved;
+                var tabClass = _tab == tab.Key ? "nav-link active" : "nav-link";
                 <li class="nav-item" role="presentation">
-                    <button type="button" id="@($"tab-{tab.Key}")" class="@(_tab == tab.Key ? "nav-link active" : "nav-link")" role="tab"
+                    <button type="button" id="@($"tab-{tab.Key}")" class="@tabClass" role="tab"
                             aria-selected="@(_tab == tab.Key ? "true" : "false")" aria-controls="@($"pane-{tab.Key}")"
-                            disabled="@locked" @onclick="() => SelectTab(tab.Key)">@tab.Label</button>
+                            @onclick="() => SelectTab(tab.Key)">@tab.Label</button>
                 </li>
             }
         </ul>
-        @if (!Model.IsSaved)
-        {
-            <p id="tabs-locked-hint" class="form-text mt-2 mb-0">Incidents, Awards, and Artifacts become available after the record is saved.</p>
-        }
 
         <div class="tab-content pt-3">
             <div id="pane-details" class="@PaneClass("details")" role="tabpanel" aria-labelledby="tab-details" tabindex="0">
@@ -87,6 +83,10 @@
                             else if (AffiliationsFailed)
                             {
                                 <div id="record-affiliation-help" class="form-text text-danger" role="alert">The affiliations could not be loaded. Please try again.</div>
+                            }
+                            else if (NoAffiliations && Model.NeedsCitizen)
+                            {
+                                <div id="record-affiliation-help" class="form-text">Choose a citizen to see their affiliations.</div>
                             }
                             else if (NoAffiliations && AffiliationOwner is not null)
                             {
@@ -172,30 +172,27 @@
                 </EditForm>
             </div>
 
-            <div id="pane-incidents" class="@PaneClass("incidents")" role="tabpanel" aria-labelledby="tab-incidents" tabindex="0">
-                @if (Model.IsSaved)
-                {
+            @if (Model.IsSaved)
+            {
+                <div id="pane-incidents" class="@PaneClass("incidents")" role="tabpanel" aria-labelledby="tab-incidents" tabindex="0">
                     <IncidentsEditor Items="Model.Incidents" Errors="_errors" />
-                }
-            </div>
+                </div>
 
-            <div id="pane-awards" class="@PaneClass("awards")" role="tabpanel" aria-labelledby="tab-awards" tabindex="0">
-                @if (Model.IsSaved)
-                {
+                <div id="pane-awards" class="@PaneClass("awards")" role="tabpanel" aria-labelledby="tab-awards" tabindex="0">
                     <AwardsEditor Items="Model.Awards" Errors="_errors" />
-                }
-            </div>
+                </div>
 
-            <div id="pane-artifacts" class="@PaneClass("artifacts")" role="tabpanel" aria-labelledby="tab-artifacts" tabindex="0">
-                @if (Model.Id is { } recordId && Model.IsSaved)
-                {
-                    <ArtifactUploader RecordId="recordId" OnUploaded="OnArtifactUploaded" />
-                    <section id="artifacts" aria-labelledby="artifacts-heading">
-                        <h3 id="artifacts-heading" class="h6">Added artifacts</h3>
-                        <ArtifactList RecordId="recordId" Editable="true" RefreshKey="_artifactRefresh" />
-                    </section>
-                }
-            </div>
+                <div id="pane-artifacts" class="@PaneClass("artifacts")" role="tabpanel" aria-labelledby="tab-artifacts" tabindex="0">
+                    @if (Model.Id is { } recordId)
+                    {
+                        <ArtifactUploader RecordId="recordId" OnUploaded="OnArtifactUploaded" />
+                        <section id="artifacts" aria-labelledby="artifacts-heading">
+                            <h3 id="artifacts-heading" class="h6">Added artifacts</h3>
+                            <ArtifactList RecordId="recordId" Editable="true" RefreshKey="_artifactRefresh" />
+                        </section>
+                    }
+                </div>
+            }
 
             <div id="pane-history" class="@PaneClass("history")" role="tabpanel" aria-labelledby="tab-history" tabindex="0">
                 @if (Model.Id is { } historyId && Model.IsSaved)
@@ -207,7 +204,10 @@
                 }
                 else
                 {
-                    <p id="history-unsaved" class="text-secondary mb-0">History appears after the record is saved.</p>
+                    <div id="history-unsaved" class="alert alert-info d-flex align-items-start gap-2 mb-0" role="status">
+                        <span class="flex-shrink-0"><Icon Name="info" /></span>
+                        <span>History appears after the record is saved.</span>
+                    </div>
                 }
             </div>
         </div>
@@ -227,7 +227,7 @@
             </div>
         }
 
-        <button type="submit" form="record-form" id="save-record" class="btn btn-primary d-inline-flex align-items-center gap-2" disabled="@(_saving || AffiliationsLoading || _options.Count == 0)">
+        <button type="submit" form="record-form" id="save-record" class="btn btn-primary d-inline-flex align-items-center gap-2" disabled="@(_saving || AffiliationsLoading || _options.Count == 0 || Model.NeedsCitizen)">
             <Icon Name="save" /> Save Record
         </button>
         <button type="button" id="delete-record" class="btn btn-outline-danger d-inline-flex align-items-center gap-2"
@@ -425,7 +425,7 @@
 
     private async Task SubmitAsync()
     {
-        if (_saving)
+        if (_saving || Model.NeedsCitizen)
         {
             return;
         }

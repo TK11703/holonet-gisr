@@ -290,11 +290,12 @@ public class SealedRecordFormTests : BunitContext
     {
         _model.SubjectObjectId = Guid.NewGuid();
         _model.SubjectDisplayName = "Luke";
+        _model.ForAnother = true;
         _model.IsSealed = true;
         _model.OverrideCode = "open sesame 42";
         var cut = Render<CitizenPicker>(p => p.Add(c => c.Model, _model));
 
-        cut.Find("#citizen-myself").Click();
+        cut.Find("#citizen-for-myself").Change(true);
 
         Assert.Null(_model.SubjectObjectId);
         Assert.True(_model.IsSealed);
@@ -312,6 +313,7 @@ public class SealedRecordFormTests : BunitContext
         var cut = Render<RecordNew>();
         Assert.NotNull(cut.Find("#seal-record"));
 
+        cut.Find("#citizen-for-other").Change(true);
         cut.Find("#citizen-search").Input("lu");
         cut.WaitForAssertion(() => cut.Find("button.citizen-option").Click());
         cut.Find("input#seal-record").Change(true);

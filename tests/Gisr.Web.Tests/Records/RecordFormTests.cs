@@ -72,6 +72,7 @@ public class RecordFormTests : BunitContext
     [Fact]
     public void TheTabsAreListedInOrder_WithRecordDetailsSelectedFirst()
     {
+        _model = Saved();
         var cut = RenderForm();
 
         var tabs = cut.FindAll("[role=tablist] [role=tab]");
@@ -83,30 +84,19 @@ public class RecordFormTests : BunitContext
     }
 
     [Fact]
-    public void BeforeTheFirstSave_IncidentsAwardsAndArtifactsAreDisabled()
+    public void BeforeTheFirstSave_OnlyRecordDetailsAndHistoryAreShown()
     {
         var cut = RenderForm();
 
-        Assert.True(cut.Find("#tab-incidents").HasAttribute("disabled"));
-        Assert.True(cut.Find("#tab-awards").HasAttribute("disabled"));
-        Assert.True(cut.Find("#tab-artifacts").HasAttribute("disabled"));
-        Assert.False(cut.Find("#tab-details").HasAttribute("disabled"));
-        Assert.False(cut.Find("#tab-history").HasAttribute("disabled"));
-        Assert.NotNull(cut.Find("#tabs-locked-hint"));
+        var tabs = cut.FindAll("[role=tablist] [role=tab]");
+
+        Assert.Equal(["Record Details", "History"], tabs.Select(t => t.TextContent.Trim()).ToArray());
+        Assert.Empty(cut.FindAll("#tab-incidents, #tab-awards, #tab-artifacts"));
+        Assert.Empty(cut.FindAll("#pane-incidents, #pane-awards, #pane-artifacts"));
+        Assert.Empty(cut.FindAll("[role=tab][disabled]"));
         Assert.Empty(cut.FindAll("#add-incident"));
         Assert.Empty(cut.FindAll("#add-award"));
         Assert.Empty(cut.FindAll("#artifact-uploader"));
-    }
-
-    [Fact]
-    public void ClickingADisabledTab_DoesNotShowItsContent()
-    {
-        var cut = RenderForm();
-
-        cut.Find("#tab-incidents").Click();
-
-        Assert.Contains("active", cut.Find("#pane-details").ClassList);
-        Assert.DoesNotContain("active", cut.Find("#pane-incidents").ClassList);
     }
 
     [Fact]
@@ -116,7 +106,7 @@ public class RecordFormTests : BunitContext
         var cut = RenderForm();
 
         Assert.Empty(cut.FindAll("[role=tab][disabled]"));
-        Assert.Empty(cut.FindAll("#tabs-locked-hint"));
+        Assert.Empty(cut.FindAll("[role=tablist] [title]"));
 
         cut.Find("#tab-incidents").Click();
         Assert.Equal("true", cut.Find("#tab-incidents").GetAttribute("aria-selected"));
@@ -167,6 +157,19 @@ public class RecordFormTests : BunitContext
 
         Assert.NotNull(cut.Find("#history-unsaved"));
         Assert.Empty(_api.Calls);
+    }
+
+    [Fact]
+    public void TheHistoryMessage_OfAnUnsavedRecord_IsAnInfoAlertWithAnIcon()
+    {
+        var cut = RenderForm();
+
+        cut.Find("#tab-history").Click();
+
+        var history = cut.Find("#history-unsaved");
+        Assert.Contains("alert-info", history.ClassList);
+        Assert.NotNull(history.QuerySelector("svg.icon"));
+        Assert.Equal("History appears after the record is saved.", history.TextContent.Trim());
     }
 
     [Fact]

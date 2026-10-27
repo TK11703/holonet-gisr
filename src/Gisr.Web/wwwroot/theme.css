@@ -66,6 +66,28 @@ body {
     align-items: center;
 }
 
+/* Radio buttons shown as a segmented toggle: field-colored when idle, the primary-button teal when chosen. */
+.segmented-choice .btn {
+    --bs-btn-color: var(--gisr-text);
+    --bs-btn-bg: var(--gisr-bg-2);
+    --bs-btn-border-color: var(--gisr-border);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--gisr-surface-2);
+    --bs-btn-hover-border-color: var(--gisr-accent-strong);
+    --bs-btn-active-color: #031a18;
+    --bs-btn-active-bg: var(--gisr-accent-strong);
+    --bs-btn-active-border-color: var(--gisr-accent-strong);
+}
+
+.segmented-choice .btn-check:checked + .btn {
+    font-weight: 600;
+}
+
+.segmented-choice .btn-check:focus-visible + .btn {
+    outline: 2px solid #5eead4;
+    outline-offset: 2px;
+}
+
 .card,
 .list-group-item,
 .dropdown-menu,
