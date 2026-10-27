@@ -101,6 +101,8 @@ public class AccessMatrixTests(PostgresFixture postgres, AzuriteFixture azurite)
         Case("GET /api/accounts/by-object/{oid}/affiliations", w => Get($"/api/accounts/by-object/{w.SubjectOid}/affiliations"), 401, 403, 403, 200, 403),
         Case("GET /api/records?scope=all", _ => Get("/api/records?scope=all"), 401, 403, 403, 200, 403),
         Case("GET /api/records?scope=mine", _ => Get("/api/records"), 401, 200, 200, 200, 200),
+        Case("GET /api/records/affiliations?scope=all", _ => Get("/api/records/affiliations?scope=all"), 401, 403, 403, 200, 403),
+        Case("GET /api/records/affiliations", _ => Get("/api/records/affiliations"), 401, 200, 200, 200, 200),
         Case("GET /api/gallery?scope=all", _ => Get("/api/gallery?scope=all"), 401, 403, 403, 200, 403),
         Case("GET /api/gallery", _ => Get("/api/gallery"), 401, 200, 200, 200, 200),
         Case("GET /api/search?scope=all", _ => Get("/api/search?q=temple&scope=all"), 401, 403, 403, 200, 403),

@@ -10,6 +10,7 @@ namespace Gisr.Web.Tests.Records;
 public class RecordListTests : BunitContext
 {
     private const string Default = "api/records?page=1&pageSize=20&sort=updatedDesc";
+    private const string Options = "api/records/affiliations?scope=mine";
 
     private readonly FakeApi _api = new();
 
@@ -90,34 +91,88 @@ public class RecordListTests : BunitContext
     }
 
     [Fact]
-    public void AffiliationFilter_ListsAffiliations_AndReloadsFromPageOne()
+    public void TheAffiliationColumn_ShowsPrimaryThenSecondary_OrOnlyThePrimary_NeverTheSpecialUnit()
     {
-        _api.OnJson(HttpMethod.Get, Default, Page(1, 1, Samples.ListItem()));
-        _api.OnJson(HttpMethod.Get, $"{Default}&affiliation=Jedi", Page(1, 1, Samples.ListItem(title: "Knight", affiliation: "Jedi")));
+        const string sep = " \u203A ";
+        _api.OnJson(HttpMethod.Get, Default, Page(3, 1,
+            Samples.ListItem(title: "Both", affiliation: "Jedi Order" + sep + "Knight"),
+            Samples.ListItem(title: "Primary only", affiliation: "Rebel Alliance"),
+            Samples.ListItem(title: "Legacy", affiliation: "Jedi Order" + sep + "Knight" + sep + "Temple Guard")));
+
         var cut = Render<RecordList>();
 
-        Assert.Equal(["All affiliations", "Military", "Jedi"],
-            cut.FindAll("select#filter-affiliation option").Select(o => o.TextContent.Trim()).ToArray());
-        cut.Find("select#filter-affiliation").Change("Jedi");
+        var cells = cut.FindAll("tbody tr").Select(r => r.QuerySelectorAll("td")[1].TextContent.Trim()).ToArray();
+        Assert.Equal(["Jedi Order" + sep + "Knight", "Rebel Alliance", "Jedi Order" + sep + "Knight"], cells);
+    }
 
-        cut.WaitForAssertion(() => Assert.Contains("Knight", cut.Find("tbody").TextContent, StringComparison.Ordinal));
-        Assert.Contains(_api.Calls, c => c.PathAndQuery == $"{Default}&affiliation=Jedi");
+    [Fact]
+    public void TheFilters_AreLabelledPrimaryAndSecondaryAffiliation_EachWithAllAffiliationsFirst()
+    {
+        _api.OnJson(HttpMethod.Get, Default, Page(1, 1, Samples.ListItem()));
+        _api.OnJson(HttpMethod.Get, Options, new RecordAffiliationOptionsDto(["Military", "Jedi"], ["Knight", "Padawan"]));
+
+        var cut = Render<RecordList>();
+
+        Assert.Equal("Primary Affiliation", cut.Find("label[for=filter-primary-affiliation]").TextContent.Trim());
+        Assert.Equal("Secondary Affiliation", cut.Find("label[for=filter-secondary-affiliation]").TextContent.Trim());
+        Assert.Equal(["All Affiliations", "Military", "Jedi"],
+            cut.FindAll("select#filter-primary-affiliation option").Select(o => o.TextContent.Trim()).ToArray());
+        Assert.Equal(["All Affiliations", "Knight", "Padawan"],
+            cut.FindAll("select#filter-secondary-affiliation option").Select(o => o.TextContent.Trim()).ToArray());
+        Assert.Empty(cut.FindAll("#filter-affiliation"));
+    }
+
+    [Fact]
+    public void PrimaryFilter_ReloadsFromPageOne_AndNarrowsTheSecondaryOptions()
+    {
+        _api.OnJson(HttpMethod.Get, Default, Page(1, 1, Samples.ListItem()));
+        _api.OnJson(HttpMethod.Get, Options, new RecordAffiliationOptionsDto(["Military", "Jedi"], ["Knight", "Marines"]));
+        _api.OnJson(HttpMethod.Get, $"{Options}&primaryAffiliation=Jedi", new RecordAffiliationOptionsDto(["Military", "Jedi"], ["Knight"]));
+        _api.OnJson(HttpMethod.Get, $"{Default}&primaryAffiliation=Jedi", Page(1, 1, Samples.ListItem(title: "Knight", affiliation: "Jedi")));
+        var cut = Render<RecordList>();
+
+        cut.Find("select#filter-primary-affiliation").Change("Jedi");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Knight", cut.Find("tbody").TextContent, StringComparison.Ordinal);
+            Assert.Equal(["All Affiliations", "Knight"],
+                cut.FindAll("select#filter-secondary-affiliation option").Select(o => o.TextContent.Trim()).ToArray());
+        });
+        Assert.Contains(_api.Calls, c => c.PathAndQuery == $"{Default}&primaryAffiliation=Jedi");
+    }
+
+    [Fact]
+    public void SecondaryFilter_ReloadsWithBothFilters()
+    {
+        _api.OnJson(HttpMethod.Get, Default, Page(1, 1, Samples.ListItem()));
+        _api.OnJson(HttpMethod.Get, Options, new RecordAffiliationOptionsDto(["Jedi"], ["Knight"]));
+        _api.OnJson(HttpMethod.Get, $"{Options}&primaryAffiliation=Jedi", new RecordAffiliationOptionsDto(["Jedi"], ["Knight"]));
+        _api.OnJson(HttpMethod.Get, $"{Default}&primaryAffiliation=Jedi", Page(1, 1, Samples.ListItem(title: "Jedi record")));
+        _api.OnJson(HttpMethod.Get, $"{Default}&primaryAffiliation=Jedi&secondaryAffiliation=Knight", Page(1, 1, Samples.ListItem(title: "Just knights")));
+        var cut = Render<RecordList>();
+        cut.Find("select#filter-primary-affiliation").Change("Jedi");
+
+        cut.Find("select#filter-secondary-affiliation").Change("Knight");
+
+        cut.WaitForAssertion(() => Assert.Contains("Just knights", cut.Find("tbody").TextContent, StringComparison.Ordinal));
     }
 
     [Fact]
     public void FilterWithNoMatches_ShowsNoMatchMessage_NotTheFirstRecordInvitation()
     {
         _api.OnJson(HttpMethod.Get, Default, Page(1, 1, Samples.ListItem()));
-        _api.OnJson(HttpMethod.Get, $"{Default}&affiliation=Jedi", Page(0));
+        _api.OnJson(HttpMethod.Get, Options, new RecordAffiliationOptionsDto(["Jedi"], []));
+        _api.OnJson(HttpMethod.Get, $"{Default}&primaryAffiliation=Jedi", Page(0));
         var cut = Render<RecordList>();
 
-        cut.Find("select#filter-affiliation").Change("Jedi");
+        cut.Find("select#filter-primary-affiliation").Change("Jedi");
 
         cut.WaitForAssertion(() =>
         {
             Assert.Contains("No records match", cut.Markup, StringComparison.Ordinal);
             Assert.DoesNotContain("Create your first record", cut.Markup, StringComparison.Ordinal);
-            Assert.NotNull(cut.Find("select#filter-affiliation"));
+            Assert.NotNull(cut.Find("select#filter-primary-affiliation"));
         });
     }
 

@@ -19,7 +19,7 @@ public class AllMigrationsTests(PostgresFixture postgres)
 
         await CreateRunner(db).ApplyAsync(CancellationToken.None);
 
-        Assert.Equal(12, scripts.Count);
+        Assert.Equal(13, scripts.Count);
         Assert.Equal(scripts.Count, await db.ScalarAsync<int>("SELECT count(*) FROM schema_migration"));
         foreach (var script in scripts)
         {

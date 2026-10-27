@@ -27,15 +27,35 @@ public class RecordQueryValidatorTests
 
     [Theory]
     [InlineData("Military")]
-    [InlineData("Jedi Order \u203A Knight")]
-    public void List_AffiliationAcceptsAnyText(string affiliation) =>
-        _list.TestValidate(new RecordListQuery(null, affiliation, null, null, null)).ShouldNotHaveValidationErrorFor(q => q.Affiliation);
+    [InlineData("Jedi Order")]
+    public void List_AffiliationFiltersAcceptAnyText(string affiliation)
+    {
+        var result = _list.TestValidate(new RecordListQuery(null, affiliation, null, null, null, SecondaryAffiliation: affiliation));
+
+        result.ShouldNotHaveValidationErrorFor(q => q.PrimaryAffiliation);
+        result.ShouldNotHaveValidationErrorFor(q => q.SecondaryAffiliation);
+    }
 
     [Fact]
-    public void List_AffiliationRejectsBlankAndOverlongText()
+    public void List_AffiliationFiltersRejectBlankAndOverlongText()
     {
-        _list.TestValidate(new RecordListQuery(null, "", null, null, null)).ShouldHaveValidationErrorFor(q => q.Affiliation);
-        _list.TestValidate(new RecordListQuery(null, new string('a', 321), null, null, null)).ShouldHaveValidationErrorFor(q => q.Affiliation);
+        _list.TestValidate(new RecordListQuery(null, "", null, null, null)).ShouldHaveValidationErrorFor(q => q.PrimaryAffiliation);
+        _list.TestValidate(new RecordListQuery(null, new string('a', 321), null, null, null)).ShouldHaveValidationErrorFor(q => q.PrimaryAffiliation);
+        _list.TestValidate(new RecordListQuery(null, null, null, null, null, SecondaryAffiliation: "")).ShouldHaveValidationErrorFor(q => q.SecondaryAffiliation);
+        _list.TestValidate(new RecordListQuery(null, null, null, null, null, SecondaryAffiliation: new string('a', 321))).ShouldHaveValidationErrorFor(q => q.SecondaryAffiliation);
+    }
+
+    [Fact]
+    public void AffiliationOptions_ScopeAndSubjectRulesMatchTheList()
+    {
+        var options = new RecordAffiliationOptionsQueryValidator();
+        var subject = Guid.NewGuid();
+
+        options.TestValidate(new RecordAffiliationOptionsQuery(null, null)).ShouldNotHaveAnyValidationErrors();
+        options.TestValidate(new RecordAffiliationOptionsQuery("all", "Jedi Order", subject)).ShouldNotHaveAnyValidationErrors();
+        options.TestValidate(new RecordAffiliationOptionsQuery("everyone", null)).ShouldHaveValidationErrorFor(q => q.Scope);
+        options.TestValidate(new RecordAffiliationOptionsQuery("mine", null, subject)).ShouldHaveValidationErrorFor(q => q.SubjectAccountId);
+        options.TestValidate(new RecordAffiliationOptionsQuery(null, "")).ShouldHaveValidationErrorFor(q => q.PrimaryAffiliation);
     }
 
     [Theory]

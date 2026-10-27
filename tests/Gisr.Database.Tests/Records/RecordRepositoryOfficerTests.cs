@@ -92,7 +92,7 @@ public class RecordRepositoryOfficerTests(PostgresFixture postgres)
         var officer = new RecordCaller(w.Officer, true);
 
         var bySubject = await records.ListAsync(officer, RecordListScope.All, w.Bob, null, RecordSort.TitleAsc, 1, 20, Ct);
-        var byAffiliation = await records.ListAsync(officer, RecordListScope.All, null, "jedi", RecordSort.TitleAsc, 1, 20, Ct);
+        var byAffiliation = await records.ListAsync(officer, RecordListScope.All, null, new RecordAffiliationFilter("jedi"), RecordSort.TitleAsc, 1, 20, Ct);
 
         Assert.Equal(["Bob record"], bySubject.Items.Select(r => r.Title));
         Assert.Equal(1, bySubject.TotalCount);

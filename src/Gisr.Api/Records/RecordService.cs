@@ -112,8 +112,22 @@ public sealed class RecordService(
             _ => RecordSort.UpdatedDesc,
         };
 
-        var rows = await records.ListAsync(caller, scope, query.SubjectAccountId, query.Affiliation, sort, page, pageSize, cancellationToken);
+        var affiliation = new RecordAffiliationFilter(query.PrimaryAffiliation, query.SecondaryAffiliation);
+        var rows = await records.ListAsync(caller, scope, query.SubjectAccountId, affiliation, sort, page, pageSize, cancellationToken);
         return new PagedResult<RecordSummaryDto>(page, pageSize, rows.TotalCount, [.. rows.Items.Select(RecordMapper.ToSummary)]);
+    }
+
+    public async Task<RecordAffiliationOptionsDto> AffiliationOptionsAsync(RecordAffiliationOptionsQuery query, CancellationToken cancellationToken)
+    {
+        var caller = await CallerAsync(cancellationToken);
+        var scope = string.Equals(query.Scope, "all", StringComparison.Ordinal) ? RecordListScope.All : RecordListScope.Mine;
+        if (scope == RecordListScope.All && RecordAccessPolicy.ListAll(caller) != AccessDecision.Allowed)
+        {
+            throw new ProblemException(StatusCodes.Status403Forbidden, "Forbidden", "You are not allowed to list all records.");
+        }
+
+        var options = await records.ListAffiliationsAsync(caller, scope, query.SubjectAccountId, query.PrimaryAffiliation, cancellationToken);
+        return new RecordAffiliationOptionsDto(options.Primaries, options.Secondaries);
     }
 
     public async Task<PagedResult<RevisionDto>> HistoryAsync(Guid recordId, HistoryQuery query, CancellationToken cancellationToken)

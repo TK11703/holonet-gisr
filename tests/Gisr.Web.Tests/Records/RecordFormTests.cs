@@ -181,7 +181,7 @@ public class RecordFormTests : BunitContext
     }
 
     [Fact]
-    public void AffiliationOptions_UsePrimarySecondaryAndSpecialUnit()
+    public void AffiliationOptions_UsePrimaryAndSecondary_NotTheSpecialUnit()
     {
         var cut = Render<RecordForm>(p => p
             .Add(c => c.Model, RecordFormModel.New(string.Empty))
@@ -194,7 +194,7 @@ public class RecordFormTests : BunitContext
 
         var options = cut.FindAll("select#record-affiliation option").Select(o => o.GetAttribute("value")!).ToArray();
 
-        Assert.Equal(["", "Jedi Order \u203A Jedi Praxeum \u203A Temple Guard", "Rebel Alliance"], options);
+        Assert.Equal(["", "Jedi Order \u203A Jedi Praxeum", "Rebel Alliance"], options);
     }
 
     [Fact]

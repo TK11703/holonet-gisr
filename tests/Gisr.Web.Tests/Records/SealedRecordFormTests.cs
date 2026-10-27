@@ -400,15 +400,17 @@ public class SealedRecordListTests : BunitContext
     }
 
     [Fact]
-    public void ASealedRecordThatIsNotLocked_ShowsItsContentWithASealedBadge()
+    public void ASealedRecordThatIsNotLocked_ShowsItsContentWithALockIconNotABadge()
     {
         Serve(Samples.ListItem(title: "Officer view", isSealed: true, service: true));
 
         var cut = Render<RecordList>();
 
-        var row = cut.Find("tbody tr").TextContent;
-        Assert.Contains("Officer view", row, StringComparison.Ordinal);
-        Assert.Contains("Sealed", row, StringComparison.Ordinal);
-        Assert.Contains("Service record", row, StringComparison.Ordinal);
+        var row = cut.Find("tbody tr");
+        Assert.Contains("Officer view", row.TextContent, StringComparison.Ordinal);
+        Assert.Contains("Service record", row.TextContent, StringComparison.Ordinal);
+        Assert.Equal("Sealed", row.QuerySelector("svg[role=img]")!.GetAttribute("aria-label"));
+        Assert.Equal("Sealed", row.QuerySelector("[title=Sealed]")!.GetAttribute("title"));
+        Assert.DoesNotContain(row.QuerySelectorAll(".badge"), badge => badge.TextContent.Contains("Sealed", StringComparison.Ordinal));
     }
 }

@@ -63,8 +63,8 @@ public class RecordListScopeTests : BunitContext
             cut.FindAll("#filter-scope option").Select(option => option.TextContent.Trim()).ToArray());
         Assert.Equal("mine", cut.Find("#filter-scope").GetAttribute("value"));
         Assert.Equal("Records", cut.Find("label[for='filter-scope']").TextContent.Trim());
-        var toolbar = cut.Find("#filter-affiliation").ParentElement!.ParentElement!;
-        Assert.Equal(["filter-scope", "filter-affiliation", "sort"],
+        var toolbar = cut.Find("#filter-primary-affiliation").ParentElement!.ParentElement!;
+        Assert.Equal(["filter-scope", "filter-primary-affiliation", "filter-secondary-affiliation", "sort"],
             toolbar.QuerySelectorAll("select").Select(select => select.Id ?? string.Empty).ToArray());
     }
 

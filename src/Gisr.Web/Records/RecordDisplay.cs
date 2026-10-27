@@ -19,9 +19,13 @@ public static class RecordDisplay
         _ => "\u2014",
     };
 
-    // The text stored on a record: the account affiliation's primary, secondary, and special unit, as shown in account settings.
+    // The text stored on a record: the account affiliation's primary and, when present, secondary (never the special unit).
     public static string AffiliationLabel(AccountAffiliationDto affiliation) =>
-        string.Join(AffiliationSeparator, new[] { affiliation.Primary, affiliation.Secondary, affiliation.SpecialUnit }.Where(part => !string.IsNullOrWhiteSpace(part)));
+        string.Join(AffiliationSeparator, new[] { affiliation.Primary, affiliation.Secondary }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    // Shows only "Primary" or "Primary › Secondary", which also trims labels saved before the special unit was dropped.
+    public static string AffiliationText(string? stored) =>
+        string.Join(AffiliationSeparator, (stored ?? string.Empty).Split(AffiliationSeparator).Take(2));
 
     public static IReadOnlyList<string> AffiliationLabels(IEnumerable<AccountAffiliationDto> affiliations) =>
         [.. affiliations.Select(AffiliationLabel).Distinct(StringComparer.Ordinal)];

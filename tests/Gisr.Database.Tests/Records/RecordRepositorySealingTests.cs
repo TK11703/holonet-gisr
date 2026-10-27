@@ -180,7 +180,7 @@ public class RecordRepositorySealingTests(PostgresFixture postgres)
         await using var _ = db;
         var records = RecordTestData.Records(db);
 
-        var military = await records.ListAsync(new RecordCaller(w.Subject), RecordListScope.Mine, null, "military", RecordSort.UpdatedDesc, 1, 20, Ct);
+        var military = await records.ListAsync(new RecordCaller(w.Subject), RecordListScope.Mine, null, new RecordAffiliationFilter("military"), RecordSort.UpdatedDesc, 1, 20, Ct);
 
         Assert.Equal(["Open record"], military.Items.Select(r => r.Title));
         Assert.Equal(1, military.TotalCount);

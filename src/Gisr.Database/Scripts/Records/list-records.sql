@@ -17,7 +17,8 @@ WHERE r.deleted_at IS NULL
   AND (
         (@AllRecords AND @IsOfficer AND (@SubjectAccountId::uuid IS NULL OR r.subject_account_id = @SubjectAccountId))
         OR (NOT @AllRecords AND r.subject_account_id = @CallerAccountId))
-  AND (@Affiliation::text IS NULL OR (NOT l.locked AND r.affiliation = @Affiliation))
+  AND (@PrimaryAffiliation::text IS NULL OR (NOT l.locked AND r.affiliation_primary = @PrimaryAffiliation))
+  AND (@SecondaryAffiliation::text IS NULL OR (NOT l.locked AND r.affiliation_secondary = @SecondaryAffiliation))
 ORDER BY
     CASE WHEN @Sort = 'titleAsc' AND NOT l.locked THEN r.title END ASC NULLS LAST,
     CASE WHEN @Sort = 'titleDesc' AND NOT l.locked THEN r.title END DESC NULLS LAST,

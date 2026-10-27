@@ -161,7 +161,7 @@ public sealed class RecordRepository(NpgsqlDataSource dataSource, ISqlScriptLoad
         RecordCaller caller,
         RecordListScope scope,
         Guid? subjectAccountId,
-        string? affiliation,
+        RecordAffiliationFilter? affiliation,
         RecordSort sort,
         int page,
         int pageSize,
@@ -174,7 +174,8 @@ public sealed class RecordRepository(NpgsqlDataSource dataSource, ISqlScriptLoad
             caller.IsOfficer,
             AllRecords = scope == RecordListScope.All,
             SubjectAccountId = subjectAccountId,
-            Affiliation = affiliation,
+            PrimaryAffiliation = affiliation?.Primary,
+            SecondaryAffiliation = affiliation?.Secondary,
         };
 
         var rows = await connection.QueryAsync<RecordRow>(Command("list-records", new
@@ -183,7 +184,8 @@ public sealed class RecordRepository(NpgsqlDataSource dataSource, ISqlScriptLoad
             filter.IsOfficer,
             filter.AllRecords,
             filter.SubjectAccountId,
-            filter.Affiliation,
+            filter.PrimaryAffiliation,
+            filter.SecondaryAffiliation,
             Sort = SortKey(sort),
             PageSize = pageSize,
             Offset = (page - 1) * pageSize,
@@ -191,6 +193,36 @@ public sealed class RecordRepository(NpgsqlDataSource dataSource, ISqlScriptLoad
         var total = await connection.ExecuteScalarAsync<long>(Command("count-records", filter, null, cancellationToken));
 
         return new PagedRows<RecordRow>([.. rows], total);
+    }
+
+    // Distinct primary and secondary affiliations on the records the caller could list; sealed-and-locked records contribute nothing.
+    public async Task<RecordAffiliationOptions> ListAffiliationsAsync(
+        RecordCaller caller,
+        RecordListScope scope,
+        Guid? subjectAccountId,
+        string? primaryAffiliation,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<AffiliationOptionRow>(Command("list-record-affiliations", new
+        {
+            CallerAccountId = caller.AccountId,
+            caller.IsOfficer,
+            AllRecords = scope == RecordListScope.All,
+            SubjectAccountId = subjectAccountId,
+            PrimaryAffiliation = primaryAffiliation,
+        }, null, cancellationToken));
+        var list = rows.AsList();
+        return new RecordAffiliationOptions(
+            [.. list.Where(r => r.Kind == "primary").Select(r => r.Value)],
+            [.. list.Where(r => r.Kind == "secondary").Select(r => r.Value)]);
+    }
+
+    private sealed class AffiliationOptionRow
+    {
+        public string Kind { get; set; } = string.Empty;
+
+        public string Value { get; set; } = string.Empty;
     }
 
     private static string SortKey(RecordSort sort) => sort switch

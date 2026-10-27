@@ -38,6 +38,10 @@ public enum RecordSort
     TitleDesc,
 }
 
+public sealed record RecordAffiliationFilter(string? Primary = null, string? Secondary = null);
+
+public sealed record RecordAffiliationOptions(IReadOnlyList<string> Primaries, IReadOnlyList<string> Secondaries);
+
 public enum RecordUpdateOutcome
 {
     Updated,

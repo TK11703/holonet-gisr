@@ -187,7 +187,7 @@ public class RecordRepositoryTests(PostgresFixture postgres)
         await repository.CreateAsync(owner.Id, owner.Id, RecordTestData.Write(title: "Soldier", affiliation: "military"), Ct);
         await repository.CreateAsync(owner.Id, owner.Id, RecordTestData.Write(title: "Knight", affiliation: "jedi"), Ct);
 
-        var jedi = await repository.ListAsync(owner.Id, RecordListScope.Mine, null, "jedi", RecordSort.UpdatedDesc, 1, 20, Ct);
+        var jedi = await repository.ListAsync(owner.Id, RecordListScope.Mine, null, new RecordAffiliationFilter("jedi"), RecordSort.UpdatedDesc, 1, 20, Ct);
 
         Assert.Equal(1, jedi.TotalCount);
         Assert.Equal("Knight", Assert.Single(jedi.Items).Title);

@@ -212,7 +212,7 @@ public class RecordEndpointsTests(PostgresFixture postgres)
         await CreateAsync(client, NewRecord(title: "Alpha"));
         await CreateAsync(client, NewRecord(title: "Bravo", affiliation: "jedi", detail: jedi));
 
-        var jediOnly = await GetPageAsync(client, "?affiliation=jedi");
+        var jediOnly = await GetPageAsync(client, "?primaryAffiliation=jedi");
         var byTitle = await GetPageAsync(client, "?sort=titleAsc");
         var secondPage = await GetPageAsync(client, "?sort=titleAsc&page=2&pageSize=2");
 

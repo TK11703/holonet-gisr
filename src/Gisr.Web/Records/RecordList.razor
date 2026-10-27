@@ -4,7 +4,7 @@
 
 <PageHeader Title="Citizen records" Crumbs="Crumbs" />
 
-@if (!_loadError && _page is not null && (User.IsOfficer || _page.TotalCount > 0 || _affiliation.Length > 0))
+@if (!_loadError && _page is not null && (User.IsOfficer || _page.TotalCount > 0 || _primary.Length > 0 || _secondary.Length > 0))
 {
     <div class="d-flex flex-wrap gap-3 align-items-end mb-3">
         @if (User.IsOfficer)
@@ -19,10 +19,20 @@
             </div>
         }
         <div>
-            <label for="filter-affiliation" class="form-label">Affiliation</label>
-            <select id="filter-affiliation" class="form-select" value="@_affiliation" @onchange="OnAffiliationChanged">
-                <option value="">All affiliations</option>
-                @foreach (var affiliation in _affiliations)
+            <label for="filter-primary-affiliation" class="form-label">Primary Affiliation</label>
+            <select id="filter-primary-affiliation" class="form-select" value="@_primary" @onchange="OnPrimaryChanged">
+                <option value="">All Affiliations</option>
+                @foreach (var affiliation in _primaries)
+                {
+                    <option value="@affiliation">@affiliation</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="filter-secondary-affiliation" class="form-label">Secondary Affiliation</label>
+            <select id="filter-secondary-affiliation" class="form-select" value="@_secondary" @onchange="OnSecondaryChanged">
+                <option value="">All Affiliations</option>
+                @foreach (var affiliation in _secondaries)
                 {
                     <option value="@affiliation">@affiliation</option>
                 }
@@ -49,7 +59,7 @@ else if (_page is null)
 {
     <p class="text-secondary" role="status">Loading...</p>
 }
-else if (_page.TotalCount == 0 && _affiliation.Length == 0 && !_allScope)
+else if (_page.TotalCount == 0 && _primary.Length == 0 && _secondary.Length == 0 && !_allScope)
 {
     <section class="card">
         <div class="card-body">
@@ -116,10 +126,10 @@ else
                                 }
                                 @if (record.IsSealed)
                                 {
-                                    <span class="badge text-bg-warning ms-2">Sealed</span>
+                                    <span class="ms-2 text-warning-emphasis" title="Sealed"><Icon Name="lock" Label="Sealed" /></span>
                                 }
                             </td>
-                            <td><span class="badge text-bg-secondary">@(record.Affiliation ?? string.Empty)</span></td>
+                            <td><span class="badge text-bg-secondary">@RecordDisplay.AffiliationText(record.Affiliation)</span></td>
                             <td>
                                 @if (_allScope && record.SubjectAccountId is not null)
                                 {
@@ -163,9 +173,11 @@ else
         ("titleDesc", "Title Z-A"),
     ];
 
-    private IReadOnlyList<string> _affiliations = [];
+    private IReadOnlyList<string> _primaries = [];
+    private IReadOnlyList<string> _secondaries = [];
     private PagedResult<RecordSummaryDto>? _page;
-    private string _affiliation = string.Empty;
+    private string _primary = string.Empty;
+    private string _secondary = string.Empty;
     private string _sort = "updatedDesc";
     private int _pageNumber = 1;
     private bool _loadError;
@@ -179,8 +191,8 @@ else
     {
         try
         {
-            _affiliations = RecordDisplay.AffiliationLabels(await Api.GetAsync<List<AccountAffiliationDto>>("api/me/affiliations") ?? []);
             await LoadUserAsync();
+            await LoadOptionsAsync();
             await LoadAsync();
         }
         catch (ApiException)
@@ -204,9 +216,14 @@ else
     private async Task LoadAsync()
     {
         var path = $"api/records?page={_pageNumber}&pageSize={PageSize}&sort={_sort}";
-        if (_affiliation.Length > 0)
+        if (_primary.Length > 0)
         {
-            path += $"&affiliation={Uri.EscapeDataString(_affiliation)}";
+            path += $"&primaryAffiliation={Uri.EscapeDataString(_primary)}";
+        }
+
+        if (_secondary.Length > 0)
+        {
+            path += $"&secondaryAffiliation={Uri.EscapeDataString(_secondary)}";
         }
 
         if (_allScope)
@@ -229,6 +246,38 @@ else
         }
     }
 
+    // The filters list what the records in view actually carry, so they follow the scope, subject, and chosen primary.
+    private async Task LoadOptionsAsync()
+    {
+        var path = $"api/records/affiliations?scope={(_allScope ? "all" : "mine")}";
+        if (_primary.Length > 0)
+        {
+            path += $"&primaryAffiliation={Uri.EscapeDataString(_primary)}";
+        }
+
+        if (_allScope && _subjectId is { } subject)
+        {
+            path += $"&subjectAccountId={subject}";
+        }
+
+        try
+        {
+            var options = await Api.GetAsync<RecordAffiliationOptionsDto>(path);
+            _primaries = options?.Primaries ?? [];
+            _secondaries = options?.Secondaries ?? [];
+        }
+        catch (ApiException)
+        {
+            _primaries = [];
+            _secondaries = [];
+        }
+
+        if (_secondary.Length > 0 && !_secondaries.Contains(_secondary))
+        {
+            _secondary = string.Empty;
+        }
+    }
+
     private Task OnScopeChanged(ChangeEventArgs e) => SetScopeAsync(e.Value?.ToString() == "all");
 
     private async Task SetScopeAsync(bool all)
@@ -240,7 +289,10 @@ else
 
         _allScope = all;
         _subjectId = null;
+        _primary = string.Empty;
+        _secondary = string.Empty;
         _pageNumber = 1;
+        await LoadOptionsAsync();
         await LoadAsync();
     }
 
@@ -248,20 +300,34 @@ else
     {
         _subjectId = record.SubjectAccountId;
         _subjectName = record.SubjectDisplayName ?? string.Empty;
+        _primary = string.Empty;
+        _secondary = string.Empty;
         _pageNumber = 1;
+        await LoadOptionsAsync();
         await LoadAsync();
     }
 
     private async Task ClearSubjectAsync()
     {
         _subjectId = null;
+        _primary = string.Empty;
+        _secondary = string.Empty;
         _pageNumber = 1;
+        await LoadOptionsAsync();
         await LoadAsync();
     }
 
-    private async Task OnAffiliationChanged(ChangeEventArgs e)
+    private async Task OnPrimaryChanged(ChangeEventArgs e)
     {
-        _affiliation = e.Value?.ToString() ?? string.Empty;
+        _primary = e.Value?.ToString() ?? string.Empty;
+        _pageNumber = 1;
+        await LoadOptionsAsync();
+        await LoadAsync();
+    }
+
+    private async Task OnSecondaryChanged(ChangeEventArgs e)
+    {
+        _secondary = e.Value?.ToString() ?? string.Empty;
         _pageNumber = 1;
         await LoadAsync();
     }

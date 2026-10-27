@@ -28,6 +28,14 @@ public static class RecordEndpoints
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
+        group.MapGet("/affiliations", async ([AsParameters] RecordAffiliationOptionsQuery query, RecordService records, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await records.AffiliationOptionsAsync(query, cancellationToken)))
+            .WithName("listRecordAffiliations")
+            .WithSummary("Distinct primary and secondary affiliations on the records the caller can list")
+            .Produces<RecordAffiliationOptionsDto>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
         group.MapPost("/", async (CreateRecordRequest request, RecordService records, CancellationToken cancellationToken) =>
             {
                 var created = await records.CreateAsync(request, cancellationToken);
