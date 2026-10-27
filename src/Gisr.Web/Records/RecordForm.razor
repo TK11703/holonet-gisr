@@ -315,8 +315,8 @@
         StateHasChanged();
     }
 
-    // New records need a chosen citizen (a service record); existing ones are checked by the page.
-    private bool ShowSealControls => AllowSealing && (Model.SubjectObjectId is not null || Model.ExpectedVersion > 0);
+    // Only Officers are given AllowSealing, and they can seal any record.
+    private bool ShowSealControls => AllowSealing;
 
     private string? CodeError => RecordDisplay.ErrorText(_errors, "overrideCode");
 

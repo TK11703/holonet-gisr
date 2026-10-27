@@ -179,7 +179,7 @@ paths:
     post:
       tags: [Records]
       operationId: createRecord
-      summary: Create a record for self; Officer may set subjectObjectId (Entra object id of a tenant member) to create a service record.
+      summary: Create a record for self; Officer may set subjectObjectId (Entra object id of a tenant member) to create a record about that citizen.
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/CreateRecordRequest" } } }
@@ -247,6 +247,19 @@ paths:
         - { $ref: "#/components/parameters/ViewToken" }
       responses:
         "204": { description: Revoked (idempotent) }
+  /api/records/{recordId}/unseal:
+    parameters: [ { $ref: "#/components/parameters/RecordId" } ]
+    post:
+      tags: [Records]
+      operationId: unsealRecord
+      summary: >
+        The subject (a non-Officer) lifts the seal for good during an override viewing; the view grant identified by
+        X-View-Token proves they know the code. Bumps the version and writes a revision.
+      parameters:
+        - { $ref: "#/components/parameters/ViewToken" }
+      responses:
+        "204": { description: Unsealed }
+        "404": { $ref: "#/components/responses/Problem" }
   /api/records/{recordId}/override/status:
     parameters: [ { $ref: "#/components/parameters/RecordId" } ]
     get:
@@ -579,8 +592,8 @@ components:
       type: object
       description: >
         When isLocked is true (sealed record, caller is its subject without an active override viewing) only id, isSealed,
-        isLocked, isServiceRecord, and createdAt are populated; all other fields are null/omitted.
-      required: [id, isSealed, isLocked, isServiceRecord, createdAt]
+        isLocked, and createdAt are populated; all other fields are null/omitted.
+      required: [id, isSealed, isLocked, createdAt]
       properties:
         id: { type: string, format: uuid }
         title: { type: [string, "null"] }
@@ -588,7 +601,6 @@ components:
         subjectAccountId: { type: [string, "null"], format: uuid }
         subjectDisplayName: { type: [string, "null"] }
         authorDisplayName: { type: [string, "null"] }
-        isServiceRecord: { type: boolean }
         isSealed: { type: boolean }
         isLocked: { type: boolean }
         engagementStart: { type: [string, "null"], format: date }
@@ -627,7 +639,7 @@ components:
         description: { type: [string, "null"], maxLength: 2000 }
     RecordDto:
       type: object
-      required: [id, title, affiliation, engagementDetail, incidents, awards, version, subjectAccountId, authorAccountId, isServiceRecord, canEdit]
+      required: [id, title, affiliation, engagementDetail, incidents, awards, version, subjectAccountId, authorAccountId, canEdit]
       properties:
         id: { type: string, format: uuid }
         title: { type: string }
@@ -641,7 +653,6 @@ components:
         subjectDisplayName: { type: string }
         authorAccountId: { type: string, format: uuid }
         authorDisplayName: { type: string }
-        isServiceRecord: { type: boolean }
         canEdit: { type: boolean }
         isSealed: { type: boolean }
         artifactCount: { type: integer, description: "Active artifacts on the record" }
@@ -660,7 +671,7 @@ components:
         engagementDetail: { type: object, additionalProperties: { type: string } }
         incidents: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/IncidentDto" } }
         awards: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/AwardDto" } }
-        isSealed: { type: boolean, default: false, description: "Officer only; only valid for service records" }
+        isSealed: { type: boolean, default: false, description: "Officer only; any record can be sealed" }
         overrideCode: { type: [string, "null"], minLength: 8, maxLength: 64, writeOnly: true, description: "Required when isSealed is true" }
     UpdateRecordRequest:
       type: object
@@ -673,7 +684,7 @@ components:
         engagementDetail: { type: object, additionalProperties: { type: string } }
         incidents: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/IncidentDto" } }
         awards: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/AwardDto" } }
-        isSealed: { type: boolean, default: false, description: "Officer only; only valid for service records" }
+        isSealed: { type: boolean, default: false, description: "Officer only; any record can be sealed" }
         overrideCode: { type: [string, "null"], minLength: 8, maxLength: 64, writeOnly: true, description: "Required when sealing a record that is not yet sealed; optional afterwards (omitted = unchanged, provided = replaced). Unsealing clears the code." }
         expectedVersion: { type: integer, minimum: 1 }
     RevisionDto:

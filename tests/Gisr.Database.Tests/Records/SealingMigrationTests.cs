@@ -30,15 +30,16 @@ public class SealingMigrationTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task ASealedRecord_MustBeAServiceRecord()
+    public async Task ASealedRecord_CanBeWrittenByTheSubjectToo()
     {
         await using var db = await postgres.CreateMigratedDatabaseAsync();
         var citizen = await RecordTestData.CreateAccountAsync(db);
         var officer = await RecordTestData.CreateAccountAsync(db);
 
         await db.ExecuteAsync(InsertRecord(citizen.Id, officer.Id, true, "pbkdf2-sha256$1$salt$hash"));
+        await db.ExecuteAsync(InsertRecord(citizen.Id, citizen.Id, true, "pbkdf2-sha256$1$salt$hash"));
 
-        Assert.Equal("23514", await SqlStateAsync(db.ExecuteAsync(InsertRecord(citizen.Id, citizen.Id, true, "pbkdf2-sha256$1$salt$hash"))));
+        Assert.Equal(2, await db.ScalarAsync<int>("SELECT count(*) FROM record WHERE is_sealed"));
     }
 
     [Fact]

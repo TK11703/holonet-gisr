@@ -19,8 +19,7 @@ internal static class Samples
         string affiliation = "Military",
         bool canEdit = true,
         int version = 2,
-        bool isSealed = false,
-        bool isServiceRecord = false) =>
+        bool isSealed = false) =>
         new(
             id ?? Guid.NewGuid(),
             title,
@@ -34,7 +33,6 @@ internal static class Samples
             "Rex",
             Guid.NewGuid(),
             "Rex",
-            isServiceRecord,
             canEdit,
             isSealed,
             version,
@@ -49,7 +47,6 @@ internal static class Samples
             subjectId ?? Guid.NewGuid(),
             subjectName,
             service ? "Officer Cody" : "Rex",
-            service,
             isSealed || isLocked,
             isLocked,
             new DateOnly(2019, 1, 1),
@@ -58,5 +55,5 @@ internal static class Samples
             new DateTimeOffset(2026, 10, 2, 12, 0, 0, TimeSpan.Zero));
 
     public static RecordSummaryDto LockedItem(Guid? id = null) =>
-        new(id ?? Guid.NewGuid(), null, null, null, null, null, true, true, true, null, null, new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero), null);
+        new(id ?? Guid.NewGuid(), null, null, null, null, null, true, true, null, null, new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero), null);
 }

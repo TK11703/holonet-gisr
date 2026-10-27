@@ -24,7 +24,7 @@ public class SealedRecordViewTests : BunitContext
         JSInterop.Mode = JSRuntimeMode.Loose;
         _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
-        _record = Samples.Record(title: "Secret commendation", isSealed: true, isServiceRecord: true, canEdit: false);
+        _record = Samples.Record(title: "Secret commendation", isSealed: true, canEdit: false);
         ServeLocked();
         ServeArtifacts();
     }
@@ -171,7 +171,7 @@ public class SealedRecordViewTests : BunitContext
         cut.WaitForAssertion(() =>
         {
             Assert.Equal("Secret commendation", cut.Find("h1").TextContent.Trim());
-            Assert.Equal("Viewing under override. Access ends when you leave this page.", cut.Find("#override-banner").TextContent.Trim());
+            Assert.Equal("Viewing under override. Access ends when you leave this page.", cut.Find("#override-banner > div").TextContent.Trim());
             Assert.Empty(cut.FindAll("#history"));
             Assert.Empty(cut.FindAll("a#edit-record"));
             Assert.Empty(cut.FindAll("form#override-form"));
@@ -180,6 +180,71 @@ public class SealedRecordViewTests : BunitContext
         using var body = JsonDocument.Parse(_api.Calls.Single(c => c.Method == HttpMethod.Post).Body!);
         Assert.Equal("open sesame 42", body.RootElement.GetProperty("code").GetString());
         Assert.DoesNotContain(_api.Calls, c => c.PathAndQuery.Contains("history", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Unseal_AsksForConfirmation_ThenPostsTheViewTokenAndShowsTheOrdinaryRecord()
+    {
+        ServeUnlock();
+        var unsealed = _record with { IsSealed = false, Version = 3, CanEdit = false };
+        _api.On(HttpMethod.Post, $"{RecordPath}/unseal", _ =>
+        {
+            _api.On(HttpMethod.Get, RecordPath, _ => FakeApi.JsonResponse(HttpStatusCode.OK, unsealed));
+            _api.OnJson(HttpMethod.Get, $"{RecordPath}/history?page=1&pageSize=20", new Gisr.Shared.Common.PagedResult<RevisionDto>(1, 20, 0, []));
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        });
+        var cut = RenderView();
+        EnterCode(cut, "open sesame 42");
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#unseal-record")));
+
+        cut.Find("#unseal-record").Click();
+        Assert.DoesNotContain(_api.Calls, c => c.PathAndQuery.EndsWith("/unseal", StringComparison.Ordinal));
+        cut.Find("#confirm-unseal").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Empty(cut.FindAll("#override-banner"));
+            Assert.Equal("Secret commendation", cut.Find("h1").TextContent.Trim());
+        });
+        var call = _api.Calls.Single(c => c.PathAndQuery.EndsWith("/unseal", StringComparison.Ordinal));
+        Assert.Equal(HttpMethod.Post, call.Method);
+        Assert.Equal(Token, call.Headers["X-View-Token"]);
+        Assert.DoesNotContain("Sealed", cut.Find("#record-header").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Unseal_CanBeCancelled()
+    {
+        ServeUnlock();
+        var cut = RenderView();
+        EnterCode(cut, "open sesame 42");
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#unseal-record")));
+
+        cut.Find("#unseal-record").Click();
+        cut.Find("#cancel-unseal").Click();
+
+        Assert.Empty(cut.FindAll("#unseal-confirmation"));
+        Assert.NotNull(cut.Find("#unseal-record"));
+        Assert.DoesNotContain(_api.Calls, c => c.PathAndQuery.EndsWith("/unseal", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Unseal_Failure_KeepsTheViewing_AndShowsAnError()
+    {
+        ServeUnlock();
+        _api.On(HttpMethod.Post, $"{RecordPath}/unseal", _ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var cut = RenderView();
+        EnterCode(cut, "open sesame 42");
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#unseal-record")));
+
+        cut.Find("#unseal-record").Click();
+        cut.Find("#confirm-unseal").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("could not be unsealed", cut.Find("#unseal-failed").TextContent, StringComparison.Ordinal);
+            Assert.NotNull(cut.Find("#override-banner"));
+        });
     }
 
     [Fact]

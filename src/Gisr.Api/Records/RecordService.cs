@@ -26,9 +26,9 @@ public sealed class RecordService(
             throw new ProblemException(StatusCodes.Status403Forbidden, "Forbidden", "You can only create records for yourself.");
         }
 
-        if (request.IsSealed && forSelf)
+        if (request.IsSealed && !user.IsOfficer)
         {
-            throw new ValidationProblemException("isSealed", "Only a service record written about another citizen can be sealed.");
+            throw new ProblemException(StatusCodes.Status403Forbidden, "Forbidden", "Only an Officer can seal a record.");
         }
 
         var subject = forSelf ? author : await accounts.ResolveSubjectAsync(request.SubjectObjectId!.Value, cancellationToken);
@@ -63,6 +63,11 @@ public sealed class RecordService(
         if (RecordAccessPolicy.Edit(existing.Record, caller) != AccessDecision.Allowed)
         {
             throw new ProblemException(StatusCodes.Status403Forbidden, "Forbidden", "You are not allowed to edit this record.");
+        }
+
+        if (request.IsSealed && !user.IsOfficer)
+        {
+            throw new ProblemException(StatusCodes.Status403Forbidden, "Forbidden", "Only an Officer can seal a record.");
         }
 
         var write = RecordMapper.ToWrite(request) with { IsSealed = request.IsSealed, OverrideCodeHash = SealedCodeHash(existing.Record, request) };
@@ -141,17 +146,12 @@ public sealed class RecordService(
         return new PagedResult<RevisionDto>(page, pageSize, rows.TotalCount, [.. rows.Items.Select(RecordMapper.ToRevisionDto)]);
     }
 
-    // Sealing needs server-side state: only service records can be sealed, and an already sealed record keeps its code unless a new one is sent.
+    // An already sealed record keeps its code unless a new one is sent.
     private static string? SealedCodeHash(RecordRow existing, UpdateRecordRequest request)
     {
         if (!request.IsSealed)
         {
             return null;
-        }
-
-        if (existing.AuthorAccountId == existing.SubjectAccountId)
-        {
-            throw new ValidationProblemException("isSealed", "Only a service record written about another citizen can be sealed.");
         }
 
         if (request.OverrideCode is null)

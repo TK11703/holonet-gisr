@@ -38,7 +38,6 @@ public class SealedRecordMapperTests
         Assert.Equal(row.Id, dto.Id);
         Assert.True(dto.IsLocked);
         Assert.True(dto.IsSealed);
-        Assert.True(dto.IsServiceRecord);
         Assert.Equal(row.CreatedAt, dto.CreatedAt);
         Assert.Null(dto.Title);
         Assert.Null(dto.Affiliation);

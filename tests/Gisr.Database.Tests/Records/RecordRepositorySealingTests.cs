@@ -272,17 +272,50 @@ public class RecordRepositorySealingTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Update_CannotSealARecordTheSubjectAuthored()
+    public async Task Update_CanSealARecordTheSubjectAuthored()
     {
         await using var db = await postgres.CreateMigratedDatabaseAsync();
-        var subject = await RecordTestData.CreateAccountAsync(db);
+        var officer = await RecordTestData.CreateAccountAsync(db);
         var records = RecordTestData.Records(db);
-        var created = await records.CreateAsync(subject.Id, subject.Id, RecordTestData.Write(), Ct);
+        var created = await records.CreateAsync(officer.Id, officer.Id, RecordTestData.Write(), Ct);
 
-        var ex = await Assert.ThrowsAsync<PostgresException>(() => records.UpdateAsync(
-            created.Record.Id, new RecordCaller(subject.Id), 1, subject.Id, RecordTestData.Write() with { IsSealed = true, OverrideCodeHash = Hash }, Ct));
+        var result = await records.UpdateAsync(
+            created.Record.Id, new RecordCaller(officer.Id, true), 1, officer.Id, RecordTestData.Write() with { IsSealed = true, OverrideCodeHash = Hash }, Ct);
 
-        Assert.Equal("23514", ex.SqlState);
+        Assert.True(result.Record!.Record.IsSealed);
+    }
+
+    [Fact]
+    public async Task Unseal_BySubject_ClearsTheSealAndCode_BumpsTheVersion_WritesARevision_AndEndsViewings()
+    {
+        var (db, w) = await SeedAsync();
+        await using var _ = db;
+        var records = RecordTestData.Records(db);
+        await new ViewGrantRepository(db.DataSource, new SqlScriptLoader()).InsertAsync(w.SealedId, w.Subject, new byte[] { 1, 2, 3 }, Ct);
+
+        var unsealed = await records.UnsealAsync(w.SealedId, w.Subject, Ct);
+
+        Assert.True(unsealed);
+        var row = (await records.GetAsync(w.SealedId, new RecordCaller(w.Subject), Ct))!.Record;
+        Assert.False(row.IsSealed);
+        Assert.False(row.IsLocked);
+        Assert.Null(await db.ScalarAsync<string?>($"SELECT override_code_hash FROM record WHERE id = '{w.SealedId}'"));
+        Assert.Equal(2, row.Version);
+        Assert.Equal(2, await db.ScalarAsync<int>($"SELECT count(*) FROM record_revision WHERE record_id = '{w.SealedId}'"));
+        Assert.Equal(0, await db.ScalarAsync<int>($"SELECT count(*) FROM record_view_grant WHERE record_id = '{w.SealedId}'"));
+    }
+
+    [Fact]
+    public async Task Unseal_ByAnyoneButTheSubject_OrOnAnUnsealedRecord_ChangesNothing()
+    {
+        var (db, w) = await SeedAsync();
+        await using var _ = db;
+        var records = RecordTestData.Records(db);
+        var open = await records.CreateAsync(w.Subject, w.Subject, RecordTestData.Write(), Ct);
+
+        Assert.False(await records.UnsealAsync(w.SealedId, w.Stranger, Ct));
+        Assert.False(await records.UnsealAsync(open.Record.Id, w.Subject, Ct));
+        Assert.Equal(1, await db.ScalarAsync<int>($"SELECT count(*) FROM record WHERE id = '{w.SealedId}' AND is_sealed"));
     }
 
     [Fact]

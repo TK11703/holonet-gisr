@@ -24,7 +24,6 @@ public static class RecordMapper
             row.SubjectDisplayName,
             row.AuthorAccountId,
             row.AuthorDisplayName,
-            IsServiceRecord(row),
             RecordAccessPolicy.Edit(row, caller) == AccessDecision.Allowed,
             row.IsSealed,
             row.Version,
@@ -38,7 +37,7 @@ public static class RecordMapper
 
     public static RecordSummaryDto ToSummary(RecordRow row) =>
         row.IsLocked
-            ? new RecordSummaryDto(row.Id, null, null, null, null, null, IsServiceRecord(row), true, true, null, null, row.CreatedAt, null)
+            ? new RecordSummaryDto(row.Id, null, null, null, null, null, true, true, null, null, row.CreatedAt, null)
             : new RecordSummaryDto(
                 row.Id,
                 row.Title,
@@ -46,7 +45,6 @@ public static class RecordMapper
                 row.SubjectAccountId,
                 row.SubjectDisplayName,
                 row.AuthorDisplayName,
-                IsServiceRecord(row),
                 row.IsSealed,
                 false,
                 row.EngagementStart,
@@ -73,8 +71,6 @@ public static class RecordMapper
 
     public static RevisionDto ToRevisionDto(RevisionRow row) =>
         new(row.Version, row.ChangedByDisplayName, row.ChangedAt, row.Affiliation, row.Title);
-
-    private static bool IsServiceRecord(RecordRow row) => row.AuthorAccountId != row.SubjectAccountId;
 
     private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

@@ -133,6 +133,30 @@ public sealed class RecordRepository(NpgsqlDataSource dataSource, ISqlScriptLoad
         return new RecordUpdateResult(RecordUpdateOutcome.Updated, aggregate);
     }
 
+    // The subject lifts the seal after proving the code; revisions record it like any other change.
+    public async Task<bool> UnsealAsync(Guid recordId, Guid subjectAccountId, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        var affected = await connection.ExecuteAsync(Command("unseal-record", new
+        {
+            Id = recordId,
+            SubjectAccountId = subjectAccountId,
+            UpdatedByAccountId = subjectAccountId,
+        }, transaction, cancellationToken));
+        if (affected == 0)
+        {
+            return false;
+        }
+
+        await connection.ExecuteAsync(Command("delete-view-grants-for-record", new { RecordId = recordId }, transaction, cancellationToken));
+        await InsertRevisionAsync(connection, transaction, recordId, subjectAccountId, cancellationToken);
+        await IndexJobRepository.EnqueueAsync(connection, transaction, sql, IndexJobKind.Record, recordId, null, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
+
     // Soft delete: the row, its revisions, and its access log stay for audit; every read path filters deleted records out.
     public async Task<bool> DeleteAsync(Guid recordId, RecordCaller caller, Guid deletedByAccountId, CancellationToken cancellationToken)
     {

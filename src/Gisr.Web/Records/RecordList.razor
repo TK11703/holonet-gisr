@@ -120,10 +120,6 @@ else
                         <tr>
                             <td>
                                 <a href="/records/@record.Id">@record.Title</a>
-                                @if (record.IsServiceRecord)
-                                {
-                                    <span class="badge text-bg-info ms-2">Service record</span>
-                                }
                                 @if (record.IsSealed)
                                 {
                                     <span class="ms-2 text-warning-emphasis" title="Sealed"><Icon Name="lock" Label="Sealed" /></span>

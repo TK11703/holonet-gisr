@@ -70,10 +70,12 @@ public class RecordMapperTests
     }
 
     [Fact]
-    public void ToDto_IsServiceRecord_WhenAuthorDiffersFromSubject()
+    public void ToDto_CarriesTheAuthorSeparatelyFromTheSubject()
     {
-        Assert.False(RecordMapper.ToDto(Aggregate(Row()), Subject).IsServiceRecord);
-        Assert.True(RecordMapper.ToDto(Aggregate(Row(author: Guid.NewGuid())), Subject).IsServiceRecord);
+        var dto = RecordMapper.ToDto(Aggregate(Row(author: Guid.NewGuid())), Subject);
+
+        Assert.Equal(Subject, dto.SubjectAccountId);
+        Assert.NotEqual(dto.SubjectAccountId, dto.AuthorAccountId);
     }
 
     [Fact]
@@ -102,7 +104,6 @@ public class RecordMapperTests
         Assert.Equal(Subject, dto.SubjectAccountId);
         Assert.Equal("Rex", dto.SubjectDisplayName);
         Assert.Equal("Cody", dto.AuthorDisplayName);
-        Assert.True(dto.IsServiceRecord);
         Assert.Equal(row.UpdatedAt, dto.UpdatedAt);
     }
 

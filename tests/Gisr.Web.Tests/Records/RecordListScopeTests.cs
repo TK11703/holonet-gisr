@@ -185,7 +185,7 @@ public class RecordListScopeTests : BunitContext
     }
 
     [Fact]
-    public void ServiceRecords_AreBadged_InAllRecords()
+    public void RecordsAuthoredByAnotherUser_HaveNoServiceRecordBadge_InAllRecords()
     {
         SignInAs(officer: true);
         _api.OnJson(HttpMethod.Get, Mine, Page(Samples.ListItem()));
@@ -194,6 +194,6 @@ public class RecordListScopeTests : BunitContext
 
         cut.Find("#filter-scope").Change("all");
 
-        cut.WaitForAssertion(() => Assert.Contains("Service record", cut.Find("tbody").TextContent, StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.DoesNotContain("Service record", cut.Find("tbody").TextContent, StringComparison.Ordinal));
     }
 }

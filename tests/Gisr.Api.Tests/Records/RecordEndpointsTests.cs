@@ -57,7 +57,7 @@ public class RecordEndpointsTests(PostgresFixture postgres)
         Assert.Equal("Clone Wars service", record.Title);
         Assert.Equal(1, record.Version);
         Assert.True(record.CanEdit);
-        Assert.False(record.IsServiceRecord);
+        Assert.Equal(record.SubjectAccountId, record.AuthorAccountId);
         Assert.Equal("Rex", record.SubjectDisplayName);
         Assert.Equal(record.SubjectAccountId, record.AuthorAccountId);
         Assert.Equal("Captain", record.EngagementDetail["rank"]);

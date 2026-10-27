@@ -101,6 +101,16 @@ public static class RecordEndpoints
             .WithName("endOverrideViewing")
             .Produces(StatusCodes.Status204NoContent);
 
+        group.MapPost("/{recordId:guid}/unseal", async (Guid recordId, [FromHeader(Name = "X-View-Token")] string? viewToken, OverrideService overrides, CancellationToken cancellationToken) =>
+            {
+                await overrides.UnsealAsync(recordId, viewToken, cancellationToken);
+                return TypedResults.NoContent();
+            })
+            .WithName("unsealRecord")
+            .WithSummary("The subject lifts the seal during an override viewing (identified by X-View-Token)")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         group.MapGet("/{recordId:guid}/override/status", async (Guid recordId, [FromHeader(Name = "X-View-Token")] string? viewToken, OverrideService overrides, CancellationToken cancellationToken) =>
                 await overrides.IsValidAsync(recordId, viewToken, cancellationToken)
                     ? Results.NoContent()

@@ -74,7 +74,6 @@ public class SealedRecordEndpointsTests(PostgresFixture postgres)
         Assert.Equal(world.Record.Id, row.Id);
         Assert.True(row.IsLocked);
         Assert.True(row.IsSealed);
-        Assert.True(row.IsServiceRecord);
         Assert.Null(row.Title);
         Assert.Null(row.Affiliation);
         Assert.Null(row.AuthorDisplayName);
@@ -124,7 +123,6 @@ public class SealedRecordEndpointsTests(PostgresFixture postgres)
 
         Assert.True(record!.IsSealed);
         Assert.True(record.CanEdit);
-        Assert.True(record.IsServiceRecord);
         Assert.Equal("Secret commendation", record.Title);
         Assert.Equal("Hidden incident", Assert.Single(record.Incidents).Title);
     }
@@ -144,19 +142,35 @@ public class SealedRecordEndpointsTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task ASelfAuthoredRecord_CannotBeSealed_ByACitizenOrAnOfficer()
+    public async Task ACitizen_CannotSealARecord_OnCreateOrUpdate()
     {
         await using var factory = await ApiFactory.CreateAsync(postgres);
+        var citizen = factory.CreateUserClient();
 
-        var citizen = await factory.CreateUserClient().PostAsJsonAsync("/api/records", SealedTestData.Request(null));
-        var oid = Guid.NewGuid();
-        var officer = await factory.CreateUserClient(oid, officer: true).PostAsJsonAsync("/api/records", SealedTestData.Request(oid));
-        var problem = await officer.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>();
+        var create = await citizen.PostAsJsonAsync("/api/records", SealedTestData.Request(null));
+        var open = (await (await citizen.PostAsJsonAsync("/api/records", SealedTestData.Request(null, "Open", false, null))).Content.ReadFromJsonAsync<RecordDto>())!;
+        var update = await citizen.PutAsJsonAsync($"/api/records/{open.Id}", SealedTestData.Update(open, true, SealedTestData.Code));
 
-        Assert.Equal(HttpStatusCode.BadRequest, citizen.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, officer.StatusCode);
-        Assert.Contains("isSealed", problem!.Errors.Keys);
-        Assert.Equal(0, await factory.ScalarAsync<long>("SELECT count(*) FROM record"));
+        Assert.Equal(HttpStatusCode.Forbidden, create.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, update.StatusCode);
+        Assert.Equal(1, await factory.ScalarAsync<long>("SELECT count(*) FROM record"));
+        Assert.Equal(0, await factory.ScalarAsync<long>("SELECT count(*) FROM record WHERE is_sealed"));
+    }
+
+    [Fact]
+    public async Task AnOfficer_CanSealTheirOwnRecord_OnCreateAndUpdate()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+        var officer = factory.CreateUserClient(officer: true);
+
+        var sealedResponse = await officer.PostAsJsonAsync("/api/records", SealedTestData.Request(null));
+        var open = (await (await officer.PostAsJsonAsync("/api/records", SealedTestData.Request(null, "Open", false, null))).Content.ReadFromJsonAsync<RecordDto>())!;
+        var update = await officer.PutAsJsonAsync($"/api/records/{open.Id}", SealedTestData.Update(open, true, SealedTestData.Code));
+
+        Assert.Equal(HttpStatusCode.Created, sealedResponse.StatusCode);
+        Assert.True((await sealedResponse.Content.ReadFromJsonAsync<RecordDto>())!.IsSealed);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        Assert.Equal(2, await factory.ScalarAsync<long>("SELECT count(*) FROM record WHERE is_sealed"));
     }
 
     [Fact]

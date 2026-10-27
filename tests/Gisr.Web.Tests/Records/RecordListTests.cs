@@ -68,13 +68,13 @@ public class RecordListTests : BunitContext
     }
 
     [Fact]
-    public void ServiceRecords_AreBadged()
+    public void RecordsAuthoredByAnotherUser_HaveNoServiceRecordBadge()
     {
         _api.OnJson(HttpMethod.Get, Default, Page(1, 1, Samples.ListItem(service: true)));
 
         var cut = Render<RecordList>();
 
-        Assert.Contains("Service record", cut.Find("tbody tr").TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Service record", cut.Find("tbody tr").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]

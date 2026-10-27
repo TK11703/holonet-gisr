@@ -13,7 +13,6 @@ public sealed record RecordDto(
     string SubjectDisplayName,
     Guid AuthorAccountId,
     string AuthorDisplayName,
-    bool IsServiceRecord,
     bool CanEdit,
     bool IsSealed,
     int Version,

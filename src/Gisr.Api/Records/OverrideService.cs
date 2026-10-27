@@ -75,6 +75,19 @@ public sealed class OverrideService(
         await grants.RevokeAsync(recordId, account.Id, HashToken(viewToken!), cancellationToken);
     }
 
+    // A valid view grant proves the subject knows the code, so it is enough to lift the seal for good.
+    public async Task UnsealAsync(Guid recordId, string? viewToken, CancellationToken cancellationToken)
+    {
+        var account = await accounts.EnsureAccountAsync(cancellationToken);
+        if (user.IsOfficer
+            || !IsPlausible(viewToken)
+            || !await grants.IsValidAsync(recordId, account.Id, HashToken(viewToken!), cancellationToken)
+            || !await records.UnsealAsync(recordId, account.Id, cancellationToken))
+        {
+            throw NotFound();
+        }
+    }
+
     public async Task<bool> IsValidAsync(Guid recordId, string? viewToken, CancellationToken cancellationToken)
     {
         if (!IsPlausible(viewToken))

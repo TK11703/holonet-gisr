@@ -62,14 +62,14 @@ public class RecordViewTests : BunitContext
     }
 
     [Fact]
-    public void ServiceRecord_ShowsBadgeAndAuthor()
+    public void Header_ShowsTheAuthor_AndNoServiceRecordBadge()
     {
-        var record = Samples.Record() with { IsServiceRecord = true, AuthorDisplayName = "Officer Cody", CanEdit = false };
+        var record = Samples.Record() with { AuthorDisplayName = "Officer Cody", CanEdit = false };
 
         var cut = RenderView(record);
 
         var header = cut.Find("#record-header").TextContent;
-        Assert.Contains("Service record", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("Service record", header, StringComparison.Ordinal);
         Assert.Contains("Officer Cody", header, StringComparison.Ordinal);
     }
 

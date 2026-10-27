@@ -111,7 +111,6 @@ public class RecordEndpointsOfficerTests(PostgresFixture postgres)
         var row = Assert.Single(all.Items);
         Assert.Equal("Rex", row.SubjectDisplayName);
         Assert.Equal("Rex", row.AuthorDisplayName);
-        Assert.False(row.IsServiceRecord);
     }
 
     [Fact]

@@ -192,7 +192,7 @@ public class RecordPagesTests : BunitContext
     public void Edit_AsAnOfficer_ListsTheRecordSubjectsAffiliations()
     {
         _api.OnJson(HttpMethod.Get, "api/me", new Gisr.Shared.Accounts.AccountDto(Guid.NewGuid(), "Officer", null, null, true, true, DateTimeOffset.UtcNow));
-        var record = Samples.Record(isServiceRecord: true);
+        var record = Samples.Record();
         _api.OnJson(HttpMethod.Get, $"api/records/{record.Id}", record);
         _api.OnJson(HttpMethod.Get, $"api/accounts/{record.SubjectAccountId}/affiliations", new[]
         {
@@ -209,7 +209,7 @@ public class RecordPagesTests : BunitContext
     public void Edit_AsAnOfficer_SubjectWithoutAffiliations_KeepsTheRecordsOwnValue()
     {
         _api.OnJson(HttpMethod.Get, "api/me", new Gisr.Shared.Accounts.AccountDto(Guid.NewGuid(), "Officer", null, null, true, true, DateTimeOffset.UtcNow));
-        var record = Samples.Record(isServiceRecord: true);
+        var record = Samples.Record();
         _api.OnJson(HttpMethod.Get, $"api/records/{record.Id}", record);
         _api.OnJson(HttpMethod.Get, $"api/accounts/{record.SubjectAccountId}/affiliations", Array.Empty<Gisr.Shared.Accounts.AccountAffiliationDto>());
 

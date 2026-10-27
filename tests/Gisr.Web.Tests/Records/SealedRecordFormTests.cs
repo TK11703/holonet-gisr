@@ -41,7 +41,7 @@ public class SealedRecordFormTests : BunitContext
             .Add(c => c.OnReload, EventCallback.Factory.Create(this, () => { })));
 
     private static RecordFormModel ExistingSealed() =>
-        RecordFormModel.FromDto(Samples.Record(isSealed: true, isServiceRecord: true, version: 4));
+        RecordFormModel.FromDto(Samples.Record(isSealed: true, version: 4));
 
     private static ApiException Problem(int status, params (string Field, string Message)[] errors) =>
         new(status, "Problem", null,
@@ -49,11 +49,11 @@ public class SealedRecordFormTests : BunitContext
             new Dictionary<string, JsonElement>(), null);
 
     [Fact]
-    public void NewRecordForSelf_HasNoSealSwitch()
+    public void NewRecordForSelf_ShowsTheSealSwitch_WhenSealingIsAllowed()
     {
         var cut = RenderForm();
 
-        Assert.Empty(cut.FindAll("#seal-record"));
+        Assert.NotNull(cut.Find("#seal-record"));
     }
 
     [Fact]
@@ -253,9 +253,9 @@ public class SealedRecordFormTests : BunitContext
     }
 
     [Fact]
-    public void SealingAnExistingServiceRecord_NeedsANewCode()
+    public void SealingAnExistingRecord_NeedsANewCode()
     {
-        _model = RecordFormModel.FromDto(Samples.Record(isSealed: false, isServiceRecord: true, version: 2));
+        _model = RecordFormModel.FromDto(Samples.Record(isSealed: false, version: 2));
         var cut = RenderForm();
 
         cut.Find("input#seal-record").Change(true);
@@ -266,9 +266,9 @@ public class SealedRecordFormTests : BunitContext
     }
 
     [Fact]
-    public void ARecordYouAuthoredAboutYourself_NeverOffersSealing()
+    public void NonOfficers_NeverSeeTheSealControls()
     {
-        _model = RecordFormModel.FromDto(Samples.Record(isServiceRecord: false, version: 2));
+        _model = RecordFormModel.FromDto(Samples.Record(version: 2));
         var cut = RenderForm(allowSealing: false);
 
         Assert.Empty(cut.FindAll("#seal-record"));
@@ -286,7 +286,7 @@ public class SealedRecordFormTests : BunitContext
     }
 
     [Fact]
-    public void ChoosingMyself_InThePicker_TurnsSealingOff()
+    public void ChoosingMyself_InThePicker_KeepsTheSealChoice_BecauseAnyRecordCanBeSealed()
     {
         _model.SubjectObjectId = Guid.NewGuid();
         _model.SubjectDisplayName = "Luke";
@@ -297,8 +297,8 @@ public class SealedRecordFormTests : BunitContext
         cut.Find("#citizen-myself").Click();
 
         Assert.Null(_model.SubjectObjectId);
-        Assert.False(_model.IsSealed);
-        Assert.Null(_model.OverrideCode);
+        Assert.True(_model.IsSealed);
+        Assert.Equal("open sesame 42", _model.OverrideCode);
     }
 
     [Fact]
@@ -310,7 +310,7 @@ public class SealedRecordFormTests : BunitContext
         _api.OnJson(HttpMethod.Get, $"api/accounts/by-object/{luke.ObjectId}/affiliations", Samples.Affiliations);
         _api.OnJson(HttpMethod.Post, "api/records", Samples.Record(), HttpStatusCode.Created);
         var cut = Render<RecordNew>();
-        Assert.Empty(cut.FindAll("#seal-record"));
+        Assert.NotNull(cut.Find("#seal-record"));
 
         cut.Find("#citizen-search").Input("lu");
         cut.WaitForAssertion(() => cut.Find("button.citizen-option").Click());
@@ -328,19 +328,26 @@ public class SealedRecordFormTests : BunitContext
     }
 
     [Fact]
-    public void EditPage_OfficerOfAServiceRecord_SeesTheSealControls_ButNotForAnOwnRecord()
+    public void EditPage_SealControls_AreForOfficersOnly()
     {
         _api.OnJson(HttpMethod.Get, "api/me", new AccountDto(Guid.NewGuid(), "Officer", null, null, true, true, DateTimeOffset.UtcNow));
-        var service = Samples.Record(isSealed: true, isServiceRecord: true);
-        var own = Samples.Record(isServiceRecord: false);
-        _api.OnJson(HttpMethod.Get, $"api/records/{service.Id}", service);
-        _api.OnJson(HttpMethod.Get, $"api/records/{own.Id}", own);
+        var record = Samples.Record(isSealed: true);
+        _api.OnJson(HttpMethod.Get, $"api/records/{record.Id}", record);
 
-        var serviceCut = Render<RecordEdit>(p => p.Add(c => c.Id, service.Id));
-        var ownCut = Render<RecordEdit>(p => p.Add(c => c.Id, own.Id));
+        var officerCut = Render<RecordEdit>(p => p.Add(c => c.Id, record.Id));
 
-        Assert.NotNull(serviceCut.Find("input#seal-record"));
-        Assert.Empty(ownCut.FindAll("#seal-record"));
+        Assert.NotNull(officerCut.Find("input#seal-record"));
+
+        using var other = new BunitContext();
+        other.JSInterop.Mode = JSRuntimeMode.Loose;
+        var api = new FakeApi();
+        api.OnJson(HttpMethod.Get, "api/me", new AccountDto(Guid.NewGuid(), "Citizen", null, null, true, false, DateTimeOffset.UtcNow));
+        api.OnJson(HttpMethod.Get, $"api/records/{record.Id}", record);
+        api.AddTo(other.Services);
+
+        var citizenCut = other.Render<RecordEdit>(p => p.Add(c => c.Id, record.Id));
+
+        Assert.Empty(citizenCut.FindAll("#seal-record"));
     }
 }
 
@@ -408,7 +415,7 @@ public class SealedRecordListTests : BunitContext
 
         var row = cut.Find("tbody tr");
         Assert.Contains("Officer view", row.TextContent, StringComparison.Ordinal);
-        Assert.Contains("Service record", row.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Service record", row.TextContent, StringComparison.Ordinal);
         Assert.Equal("Sealed", row.QuerySelector("svg[role=img]")!.GetAttribute("aria-label"));
         Assert.Equal("Sealed", row.QuerySelector("[title=Sealed]")!.GetAttribute("title"));
         Assert.DoesNotContain(row.QuerySelectorAll(".badge"), badge => badge.TextContent.Contains("Sealed", StringComparison.Ordinal));

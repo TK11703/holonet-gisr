@@ -44,8 +44,26 @@ else
 
     if (viewing)
     {
-        <div id="override-banner" class="alert alert-warning d-flex align-items-center gap-2" role="status">
-            <Icon Name="lock" /> <span>Viewing under override. Access ends when you leave this page.</span>
+        <div id="override-banner" class="alert alert-warning mb-3" role="status">
+            <div class="d-flex align-items-center gap-2">
+                <Icon Name="lock" /> <span>Viewing under override. Access ends when you leave this page.</span>
+            </div>
+            @if (_unsealFailed)
+            {
+                <div id="unseal-failed" class="text-danger mt-2" role="alert">The record could not be unsealed. Please try again.</div>
+            }
+            @if (_confirmingUnseal)
+            {
+                <div id="unseal-confirmation" class="mt-2">
+                    <p class="mb-2">Unseal this record for good? Anyone who can read it will see it again.</p>
+                    <button type="button" id="confirm-unseal" class="btn btn-sm btn-warning me-2" disabled="@_unsealing" @onclick="UnsealAsync">Unseal record</button>
+                    <button type="button" id="cancel-unseal" class="btn btn-sm btn-outline-secondary" @onclick="() => _confirmingUnseal = false">Keep sealed</button>
+                </div>
+            }
+            else
+            {
+                <button type="button" id="unseal-record" class="btn btn-sm btn-outline-dark mt-2" @onclick="() => _confirmingUnseal = true">Unseal record</button>
+            }
         </div>
         <span id="viewing-id" hidden data-viewing-id="@_viewingId"></span>
     }
@@ -54,10 +72,6 @@ else
         <div class="card-body d-flex flex-wrap gap-3 justify-content-between align-items-start">
             <div>
                 <span class="badge text-bg-secondary">@record.Affiliation</span>
-                @if (record.IsServiceRecord)
-                {
-                    <span class="badge text-bg-info ms-1">Service record</span>
-                }
                 @if (record.IsSealed)
                 {
                     <span class="badge text-bg-warning ms-1">Sealed</span>
@@ -209,6 +223,9 @@ else
     private bool _locked;
     private bool _lockedOut;
     private bool _submitting;
+    private bool _unsealing;
+    private bool _unsealFailed;
+    private bool _confirmingUnseal;
     private bool _disposed;
     private string _code = string.Empty;
     private string? _overrideError;
@@ -347,6 +364,8 @@ else
 
     private async Task StartViewingAsync(UnlockedRecordDto unlocked)
     {
+        _confirmingUnseal = false;
+        _unsealFailed = false;
         var state = AuthState is null ? null : await AuthState;
         _userKey = ViewGrantStore.UserKey(state?.User);
         _viewingId = Grants.Register(_userKey, Id, unlocked.ViewToken);
@@ -392,6 +411,36 @@ else
         }
         catch (OperationCanceledException)
         {
+        }
+    }
+
+    // The grant proves the subject knows the code; once the seal is lifted the page reloads as an ordinary record.
+    private async Task UnsealAsync()
+    {
+        if (_unsealing || _viewingId is not { } viewingId || !Grants.TryGet(_userKey, viewingId, out var entry))
+        {
+            return;
+        }
+
+        _unsealing = true;
+        _unsealFailed = false;
+        try
+        {
+            await Api.SendAsync(HttpMethod.Post, $"api/records/{entry.RecordId}/unseal", null, TokenHeader(entry.Token));
+            StopPolling();
+            Grants.Remove(_userKey, viewingId);
+            _viewingId = null;
+            _confirmingUnseal = false;
+            _loadedId = Guid.Empty;
+            await OnParametersSetAsync();
+        }
+        catch (ApiException)
+        {
+            _unsealFailed = true;
+        }
+        finally
+        {
+            _unsealing = false;
         }
     }
 

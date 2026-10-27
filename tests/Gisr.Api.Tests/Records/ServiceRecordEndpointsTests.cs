@@ -66,7 +66,6 @@ public class ServiceRecordEndpointsTests(PostgresFixture postgres)
         Assert.Equal(officerAccount.Id, record.AuthorAccountId);
         Assert.Equal("Citizen", record.SubjectDisplayName);
         Assert.Equal("Officer", record.AuthorDisplayName);
-        Assert.True(record.IsServiceRecord);
         Assert.True(record.CanEdit);
         Assert.Equal($"/api/records/{record.Id}", response.Headers.Location?.ToString());
         Assert.Equal(0, factory.Directory.Calls);
@@ -84,7 +83,6 @@ public class ServiceRecordEndpointsTests(PostgresFixture postgres)
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Equal("Padme Amidala", record!.SubjectDisplayName);
-        Assert.True(record.IsServiceRecord);
         Assert.Equal(1, await factory.ScalarAsync<long>(
             $"SELECT count(*) FROM account WHERE entra_object_id = '{oid}' AND tenant_id = '{ApiFactory.TestTenant}' AND last_sign_in_at IS NULL"));
         Assert.Equal("padme@naboo.example", await factory.ScalarAsync<string>($"SELECT sign_in_email FROM account WHERE entra_object_id = '{oid}'"));
@@ -168,9 +166,8 @@ public class ServiceRecordEndpointsTests(PostgresFixture postgres)
         var citizen = await (await factory.CreateUserClient().PostAsJsonAsync("/api/records", ServiceRecord(null))).Content.ReadFromJsonAsync<RecordDto>();
         var officer = await (await factory.CreateUserClient(officer: true).PostAsJsonAsync("/api/records", ServiceRecord(null))).Content.ReadFromJsonAsync<RecordDto>();
 
-        Assert.False(citizen!.IsServiceRecord);
-        Assert.False(officer!.IsServiceRecord);
-        Assert.Equal(officer.SubjectAccountId, officer.AuthorAccountId);
+        Assert.Equal(citizen!.SubjectAccountId, citizen.AuthorAccountId);
+        Assert.Equal(officer!.SubjectAccountId, officer.AuthorAccountId);
     }
 
     [Fact]
@@ -182,7 +179,7 @@ public class ServiceRecordEndpointsTests(PostgresFixture postgres)
 
         var record = await (await officer.PostAsJsonAsync("/api/records", ServiceRecord(oid))).Content.ReadFromJsonAsync<RecordDto>();
 
-        Assert.False(record!.IsServiceRecord);
+        Assert.Equal(record!.SubjectAccountId, record.AuthorAccountId);
         Assert.Equal(0, await factory.ScalarAsync<long>("SELECT count(*) FROM notification"));
         Assert.Equal(0, factory.Directory.Calls);
     }
@@ -201,7 +198,7 @@ public class ServiceRecordEndpointsTests(PostgresFixture postgres)
             "Tampered", created.Affiliation, null, null, created.EngagementDetail, null, null, created.Version));
 
         Assert.Equal(HttpStatusCode.OK, read.StatusCode);
-        Assert.True(record!.IsServiceRecord);
+        Assert.NotEqual(record!.SubjectAccountId, record.AuthorAccountId);
         Assert.False(record.CanEdit);
         Assert.Equal("Officer", record.AuthorDisplayName);
         Assert.Equal(HttpStatusCode.Forbidden, edit.StatusCode);
@@ -220,7 +217,7 @@ public class ServiceRecordEndpointsTests(PostgresFixture postgres)
         await citizen.Client.GetAsync($"/api/records/{page!.Items[0].Id}");
 
         Assert.Equal(["Mentioned in dispatches"], page.Items.Select(r => r.Title));
-        Assert.True(page.Items[0].IsServiceRecord);
+        Assert.Equal("Mentioned in dispatches", page.Items[0].Title);
         Assert.Equal(0, await factory.ScalarAsync<long>("SELECT count(*) FROM record_access_log"));
     }
 

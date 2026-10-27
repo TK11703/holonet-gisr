@@ -24,7 +24,7 @@ else if (!_canEdit)
 else
 {
     <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" OnDelete="DeleteAsync" OnReload="ReloadAsync"
-                CancelHref="@($"/records/{Id}")" AllowSealing="@(User.IsOfficer && _isServiceRecord)"
+                CancelHref="@($"/records/{Id}")" AllowSealing="User.IsOfficer"
                 AffiliationOwner="@_affiliationOwner" AffiliationsFailed="_affiliationsFailed" />
 }
 
@@ -35,7 +35,6 @@ else
     private RecordFormModel? _model;
     private Guid _loadedId;
     private bool _canEdit;
-    private bool _isServiceRecord;
     private bool _notFound;
     private bool _loadError;
     private bool _affiliationsFailed;
@@ -86,7 +85,6 @@ else
     {
         var record = await Api.GetAsync<RecordDto>($"api/records/{Id}");
         _canEdit = record!.CanEdit;
-        _isServiceRecord = record.IsServiceRecord;
         _model = RecordFormModel.FromDto(record);
         await LoadAffiliationsAsync(record);
     }
