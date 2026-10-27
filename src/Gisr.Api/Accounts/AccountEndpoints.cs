@@ -9,6 +9,7 @@ public static class AccountEndpoints
     {
         services.AddScoped<AccountService>();
         services.AddScoped<ChainCodeService>();
+        services.AddScoped<AccountAffiliationService>();
         services.AddScoped<IGraphTokenProvider, MicrosoftIdentityGraphTokenProvider>();
         services.AddScoped<IAccountIdentityTokenProvider, MicrosoftIdentityGraphTokenProvider>();
         services.AddHttpClient<IAccountIdentityDirectory, GraphAccountIdentity>(client =>
@@ -66,6 +67,43 @@ public static class AccountEndpoints
             })
             .WithName("deleteMyChainCode")
             .WithSummary("Delete the current user's fictional profile and code")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/affiliation-options", () => TypedResults.Ok(AffiliationOptionCatalog.Groups))
+            .WithName("listAffiliationOptions")
+            .WithSummary("Searchable affiliation names grouped by category")
+            .Produces<IReadOnlyList<AffiliationOptionGroupDto>>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/affiliations", async (AccountAffiliationService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.ListAsync(cancellationToken)))
+            .WithName("listMyAffiliations")
+            .Produces<IReadOnlyList<AccountAffiliationDto>>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapPost("/affiliations", async (AddAccountAffiliationRequest request, AccountAffiliationService service, CancellationToken cancellationToken) =>
+            {
+                var created = await service.AddAsync(request, cancellationToken);
+                return TypedResults.Created($"/api/me/affiliations/{created.Id}", created);
+            })
+            .WithName("addMyAffiliation")
+            .Produces<AccountAffiliationDto>(StatusCodes.Status201Created)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        group.MapDelete("/affiliations/{id:guid}", async (Guid id, AccountAffiliationService service, CancellationToken cancellationToken) =>
+            {
+                await service.DeleteAsync(id, cancellationToken);
+                return TypedResults.NoContent();
+            })
+            .WithName("deleteMyAffiliation")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)

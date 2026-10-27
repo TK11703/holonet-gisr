@@ -1,0 +1,132 @@
+<div @onkeydown="OnKeyDown">
+    <label for="@Id" class="form-label">@Label @if (Required) { <span class="text-danger" aria-hidden="true">*</span> }</label>
+    <div class="position-relative">
+        <button type="button" id="@Id" @ref="_trigger" class="@(Errors is { Length: > 0 } ? "form-select text-start is-invalid" : "form-select text-start")"
+                aria-expanded="@(_open ? "true" : "false")" aria-controls="@($"{Id}-menu")" aria-required="@(Required ? "true" : null)"
+                aria-invalid="@(Errors is { Length: > 0 } ? "true" : null)" aria-describedby="@(Errors is { Length: > 0 } ? $"{Id}-error" : null)"
+                disabled="@Disabled" @onclick="Toggle">@(Value ?? Placeholder)</button>
+        @if (_open)
+        {
+            <div class="position-fixed top-0 start-0 w-100 h-100" @onclick="Close"></div>
+            <div id="@($"{Id}-menu")" class="dropdown-menu show w-100 p-2">
+                <input id="@($"{Id}-search")" @ref="_searchBox" type="search" class="form-control form-control-sm mb-2" autocomplete="off"
+                       placeholder="Search affiliations" aria-label="@($"Search {Label.ToLowerInvariant()}")" value="@_filter"
+                       @oninput="eventArgs => _filter = eventArgs.Value?.ToString() ?? string.Empty" />
+                <div class="affiliation-options">
+                    @if (!Required && Value is not null)
+                    {
+                        <button type="button" class="dropdown-item text-secondary" @onclick="() => SelectAsync(null)">None</button>
+                    }
+                    @foreach (var group in VisibleGroups())
+                    {
+                        <h3 class="dropdown-header px-2 h6">@group.Category</h3>
+                        @foreach (var name in group.Names)
+                        {
+                            <button type="button" class="dropdown-item" aria-current="@(name == Value ? "true" : null)"
+                                    @key="@($"{group.Category}/{name}")" @onclick="() => SelectAsync(name)">@name</button>
+                        }
+                    }
+                    @if (!VisibleGroups().Any())
+                    {
+                        <p class="text-secondary small px-2 mb-0" role="status">No matching affiliations.</p>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+    @if (Errors is { Length: > 0 })
+    {
+        <div id="@($"{Id}-error")" class="invalid-feedback d-block">@string.Join(" ", Errors)</div>
+    }
+</div>
+
+@code {
+    private ElementReference _trigger;
+    private ElementReference _searchBox;
+    private string _filter = string.Empty;
+    private bool _open;
+    private bool _wasOpen;
+    private bool _focusTrigger;
+
+    [Parameter, EditorRequired]
+    public string Id { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<AffiliationOptionGroupDto> Groups { get; set; } = [];
+
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter]
+    public string[]? Errors { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string Placeholder { get; set; } = "Select an affiliation";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_open && !_wasOpen)
+        {
+            await _searchBox.FocusAsync();
+        }
+        else if (_focusTrigger)
+        {
+            _focusTrigger = false;
+            await _trigger.FocusAsync();
+        }
+
+        _wasOpen = _open;
+    }
+
+    private void Toggle()
+    {
+        _open = !_open;
+        _filter = string.Empty;
+    }
+
+    private void Close() => _open = false;
+
+    private async Task SelectAsync(string? name)
+    {
+        _open = false;
+        _focusTrigger = true;
+        await ValueChanged.InvokeAsync(name);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs eventArgs)
+    {
+        if (eventArgs.Key == "Escape" && _open)
+        {
+            _open = false;
+            _focusTrigger = true;
+        }
+    }
+
+    private IEnumerable<AffiliationOptionGroupDto> VisibleGroups()
+    {
+        var filter = _filter.Trim();
+        foreach (var group in Groups)
+        {
+            if (filter.Length == 0 || group.Category.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return group;
+                continue;
+            }
+
+            var names = group.Names.Where(name => name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (names.Length > 0) yield return new AffiliationOptionGroupDto(group.Category, names);
+        }
+    }
+}

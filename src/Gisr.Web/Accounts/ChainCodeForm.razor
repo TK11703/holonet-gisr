@@ -61,10 +61,25 @@
                                                             var removeLabel = $"Remove {color} {field.Label[..^1].ToLowerInvariant()}";
                                                             <span class="badge text-bg-secondary d-inline-flex align-items-center gap-1">
                                                                 @color
-                                                                <button type="button" class="btn btn-sm border-0 p-0 text-reset" title="@removeLabel" aria-label="@removeLabel"
+                                                                <button type="button" class="btn btn-sm border-0 p-0 text-reset d-inline-flex align-items-center" title="@removeLabel" aria-label="@removeLabel"
                                                                         @onclick="() => RemoveColor(field.Key, color)"><Icon Name="close" Size="12" /></button>
                                                             </span>
                                                         }
+                                                    </div>
+                                                }
+                                                else if (field.Key == "height")
+                                                {
+                                                    <div class="input-group">
+                                                        <input id="@field.Id" class="@FieldClass(field, "form-control")" inputmode="decimal" maxlength="5" autocomplete="off"
+                                                               value="@_heightNumber" @onchange="eventArgs => { _heightNumber = eventArgs.Value?.ToString(); _status = null; }"
+                                                               aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)" />
+                                                        <select id="chain-height-unit" class="form-select" aria-label="Height unit" value="@_heightUnit"
+                                                                @onchange="eventArgs => { _heightUnit = eventArgs.Value?.ToString() ?? HeightUnits[0]; _status = null; }">
+                                                            @foreach (var unit in HeightUnits)
+                                                            {
+                                                                <option value="@unit">@unit</option>
+                                                            }
+                                                        </select>
                                                     </div>
                                                 }
                                                 else if (field.Multiline)
@@ -150,6 +165,13 @@
     ];
 
     private const string Path = "api/me/chain-code";
+    private static readonly string[] HeightUnits = ["feet", "inches", "m", "cm", "mm", "units"];
+    private static readonly System.Text.RegularExpressions.Regex HeightPattern =
+        new(@"^(?<number>\d+(?:\.\d+)?)\s*(?<unit>feet|inches|m|cm|mm|units)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static readonly System.Text.RegularExpressions.Regex HeightNumberPattern =
+        new(@"^\d+(?:\.\d+)?$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private string? _heightNumber;
+    private string _heightUnit = HeightUnits[0];
     private readonly CancellationTokenSource _lifetime = new();
     private Dictionary<string, string?> _values = Fields.ToDictionary(field => field.Key, _ => (string?)null);
     private readonly Dictionary<string, HashSet<ProfileColor>> _colors = Fields.Where(field => field.Color)
@@ -188,12 +210,20 @@
         _failure = _status = null;
         _errors = [];
         _confirmDelete = false;
+        if (HeightError() is { } heightError)
+        {
+            _errors = new Dictionary<string, string[]>(StringComparer.Ordinal) { ["height"] = [heightError] };
+            _failure = "Please fix the highlighted fields.";
+            _busy = false;
+            return;
+        }
+
         try
         {
             var request = new UpdateChainCodeRequest
             {
                 FullName = _values["fullName"], BirthDate = _values["birthDate"], Homeworld = _values["homeworld"],
-                Species = _values["species"], Height = _values["height"], EyeColors = _colors["eyeColor"].Order().ToArray(),
+                Species = _values["species"], Height = ComposeHeight(), EyeColors = _colors["eyeColor"].Order().ToArray(),
                 SkinColors = _colors["skinColor"].Order().ToArray(), HairColors = _colors["hairColor"].Order().ToArray(), DistinguishingMarks = _values["distinguishingMarks"],
                 FamilyHistory = _values["familyHistory"], CriminalHistory = _values["criminalHistory"], Biography = _values["biography"],
             };
@@ -264,6 +294,7 @@
 
     private void SetValues(UpdateChainCodeRequest? profile)
     {
+        SetHeight(profile?.Height);
         SetColors("eyeColor", profile?.EyeColor, profile?.EyeColors);
         SetColors("skinColor", profile?.SkinColor, profile?.SkinColors);
         SetColors("hairColor", profile?.HairColor, profile?.HairColors);
@@ -278,6 +309,22 @@
     }
 
     private void Change(string key, string? value) { _values[key] = value; _status = null; }
+
+    // Free-text heights saved before the number/unit split are shown empty and dropped on the next save.
+    private void SetHeight(string? height)
+    {
+        var match = height is null ? null : HeightPattern.Match(height.Trim());
+        _heightNumber = match is { Success: true } ? match.Groups["number"].Value : null;
+        _heightUnit = match is { Success: true }
+            ? HeightUnits.First(unit => string.Equals(unit, match.Groups["unit"].Value, StringComparison.OrdinalIgnoreCase))
+            : HeightUnits[0];
+    }
+
+    private string? ComposeHeight() => string.IsNullOrWhiteSpace(_heightNumber) ? null : $"{_heightNumber.Trim()} {_heightUnit}";
+
+    private string? HeightError() =>
+        string.IsNullOrWhiteSpace(_heightNumber) || HeightNumberPattern.IsMatch(_heightNumber.Trim()) ? null : "Enter a number up to 5 characters, such as 180 or 1.8.";
+
     private void SetColors(string key, ProfileColor? single, ProfileColor[]? multiple)
     {
         _colors[key].Clear();

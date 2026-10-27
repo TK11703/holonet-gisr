@@ -215,6 +215,14 @@ public partial class AccessibilityTests : BunitContext
     }
 
     [Fact]
+    public void ThemeCss_HidesFocusRingOnlyOnTheProgrammaticallyFocusedPageHeading()
+    {
+        var css = File.ReadAllText(RepoFile("src", "Gisr.Web", "wwwroot", "theme.css"));
+
+        Assert.Matches(@"h1\[tabindex=""-1""\]:focus-visible\s*\{\s*outline:\s*none;", css);
+    }
+
+    [Fact]
     public void TheChecker_ReportsTheViolationsItIsMeantToCatch()
     {
         var cut = Render<BadPage>();

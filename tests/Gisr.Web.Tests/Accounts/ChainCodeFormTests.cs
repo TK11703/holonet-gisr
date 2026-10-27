@@ -25,10 +25,63 @@ public class ChainCodeFormTests : BunitContext
         _api.On(HttpMethod.Get, Path, _ => new HttpResponseMessage(HttpStatusCode.NotFound));
         cut.Find("button").Click();
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#chain-code-form")));
-        Assert.Equal(12, cut.FindAll("input,select,textarea").Count);
-        Assert.Equal(3, cut.FindAll("select").Count);
+        Assert.Equal(13, cut.FindAll("input,select,textarea").Count);
+        Assert.Equal(4, cut.FindAll("select").Count);
         Assert.Equal(4, cut.FindAll("textarea").Count);
         Assert.Empty(cut.FindAll("[required]"));
+    }
+
+    [Fact]
+    public void Height_IsNumberFieldBesideUnitSelect_WithRequestedUnits()
+    {
+        var cut = Render<ChainCodeForm>();
+
+        Assert.Equal("Height", cut.Find("label[for=chain-height]").TextContent.Trim());
+        Assert.Equal("5", cut.Find("#chain-height").GetAttribute("maxlength"));
+        Assert.Equal("decimal", cut.Find("#chain-height").GetAttribute("inputmode"));
+        Assert.NotNull(cut.Find(".input-group > input#chain-height + select#chain-height-unit"));
+        Assert.Equal("Height unit", cut.Find("#chain-height-unit").GetAttribute("aria-label"));
+        Assert.Equal(new[] { "feet", "inches", "m", "cm", "mm", "units" }, cut.FindAll("#chain-height-unit option").Select(option => option.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Height_SavesNumberWithUnit_AndReloadsBothParts()
+    {
+        var dto = new ChainCodeProfileDto(new UpdateChainCodeRequest { FullName = "Leia", Height = "150 cm" }, "12345", DateTimeOffset.UtcNow);
+        _api.OnJson(HttpMethod.Get, Path, dto);
+        _api.OnJson(HttpMethod.Put, Path, dto);
+        var cut = Render<ChainCodeForm>();
+        Assert.Equal("150", cut.Find("#chain-height").GetAttribute("value"));
+        Assert.Equal("cm", cut.Find("#chain-height-unit").GetAttribute("value"));
+
+        cut.Find("#chain-height").Change("1.5");
+        cut.Find("#chain-height-unit").Change("m");
+        cut.Find("form").Submit();
+
+        using var body = JsonDocument.Parse(Assert.Single(_api.Calls, call => call.Method == HttpMethod.Put).Body!);
+        Assert.Equal("1.5 m", body.RootElement.GetProperty("height").GetString());
+    }
+
+    [Fact]
+    public void Height_BlankNumber_OmitsHeight_AndNonNumericBlocksSave()
+    {
+        var dto = new ChainCodeProfileDto(new UpdateChainCodeRequest { FullName = "Leia" }, "12345", DateTimeOffset.UtcNow);
+        _api.OnJson(HttpMethod.Put, Path, dto);
+        var cut = Render<ChainCodeForm>();
+        cut.Find("#chain-full-name").Change("Leia");
+        cut.Find("#chain-height-unit").Change("mm");
+        cut.Find("form").Submit();
+        using (var body = JsonDocument.Parse(Assert.Single(_api.Calls, call => call.Method == HttpMethod.Put).Body!))
+        {
+            Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("height").ValueKind);
+        }
+
+        cut.Find("#chain-height").Change("tall");
+        cut.Find("form").Submit();
+        Assert.Single(_api.Calls, call => call.Method == HttpMethod.Put);
+        Assert.Equal("true", cut.Find("#chain-height").GetAttribute("aria-invalid"));
+        Assert.Equal("chain-height-error", cut.Find("#chain-height").GetAttribute("aria-describedby"));
+        Assert.Contains("Enter a number", cut.Find("#chain-height-error").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -40,7 +93,7 @@ public class ChainCodeFormTests : BunitContext
         Assert.Equal("Identity/Biographical Data", groups[0].QuerySelector("legend")!.TextContent.Trim());
         Assert.Equal(new[] { "chain-full-name", "chain-homeworld", "chain-species" }, groups[0].QuerySelectorAll("input,select").Select(field => field.Id));
         Assert.Equal("Biometric Data", groups[1].QuerySelector("legend")!.TextContent.Trim());
-        Assert.Equal(new[] { "chain-height", "chain-eye-color", "chain-skin-color", "chain-hair-color" }, groups[1].QuerySelectorAll("input,select").Select(field => field.Id));
+        Assert.Equal(new[] { "chain-height", "chain-height-unit", "chain-eye-color", "chain-skin-color", "chain-hair-color" }, groups[1].QuerySelectorAll("input,select").Select(field => field.Id));
         Assert.All(groups, group =>
         {
             Assert.Contains("border", group.ClassList);
@@ -48,7 +101,8 @@ public class ChainCodeFormTests : BunitContext
             Assert.Contains("float-none", group.QuerySelector("legend")!.ClassList);
             Assert.Contains("w-auto", group.QuerySelector("legend")!.ClassList);
         });
-        Assert.Equal(new[] { "chain-height", "chain-eye-color", "chain-skin-color", "chain-hair-color" }, groups[1].QuerySelectorAll(".row > .col-sm-6 > input,.row > .col-sm-6 > select").Select(field => field.Id));
+        Assert.Equal(new[] { "chain-height", "chain-height-unit", "chain-eye-color", "chain-skin-color", "chain-hair-color" },
+            groups[1].QuerySelectorAll(".row > .col-sm-6 > .input-group > input,.row > .col-sm-6 > .input-group > select,.row > .col-sm-6 > select").Select(field => field.Id));
         Assert.Empty(groups[0].QuerySelectorAll(".col-sm-6"));
         Assert.Empty(cut.FindAll("#chain-birth-date"));
         Assert.Equal(4, cut.FindAll("#chain-code-form .col-md-6 textarea").Count);

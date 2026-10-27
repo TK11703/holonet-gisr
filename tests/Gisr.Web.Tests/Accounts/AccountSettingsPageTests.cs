@@ -19,6 +19,8 @@ public class AccountSettingsPageTests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _api.OnJson(HttpMethod.Get, "api/me", _account);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliation-options", new[] { new AffiliationOptionGroupDto("Governments", ["Galactic Empire"]) });
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Array.Empty<AccountAffiliationDto>());
         _api.AddTo(Services);
     }
 
@@ -27,8 +29,10 @@ public class AccountSettingsPageTests : BunitContext
     {
         var cut = Render<AccountSettings>();
 
-        Assert.Equal(3, cut.FindAll(".card > .card-header h2").Count);
-        Assert.Equal(2, cut.FindAll(".card > .card-footer").Count);
+        Assert.Equal(5, cut.FindAll(".card > .card-header h2").Count);
+        Assert.Equal(3, cut.FindAll(".card > .card-footer").Count);
+        Assert.Equal("Associate an Affiliation", cut.Find("#associate-affiliation-heading").TextContent.Trim());
+        Assert.Equal("Associated Affiliations", cut.Find("#affiliations-heading").TextContent.Trim());
         Assert.Equal("Account Information", cut.Find("#identity-heading").TextContent.Trim());
         Assert.Empty(cut.FindAll("section[aria-labelledby=identity-heading] .card-footer"));
         Assert.NotNull(cut.Find("section[aria-labelledby=identity-heading] .card-body > .alert-info svg"));
@@ -43,15 +47,16 @@ public class AccountSettingsPageTests : BunitContext
     }
 
     [Fact]
-    public void IdentityAndPreferencesShareFirstRow_ChainCodeSpansSecondRow_OperatingNumberIsReadOnly()
+    public void PreferencesAndIdentityShareFirstRow_ChainCodeAndAffiliationsShareSecondRow_OperatingNumberIsReadOnly()
     {
         _api.OnJson(HttpMethod.Get, "api/me", _account with { OperatingNumber = "TK-11703" });
         var cut = Render<AccountSettings>();
         Assert.Contains("TK-11703", cut.Find("#identity").TextContent, StringComparison.Ordinal);
         Assert.Empty(cut.FindAll("#identity input"));
-        Assert.NotNull(cut.Find(".row > .col-lg-6:first-child #identity-heading"));
-        Assert.NotNull(cut.Find(".row > .col-lg-6:nth-child(2) #settings-heading"));
-        Assert.NotNull(cut.Find(".row > .col-12:nth-child(3) #chain-code-heading"));
+        Assert.NotNull(cut.Find(".row > .col-lg-8:nth-child(1) #settings-heading"));
+        Assert.NotNull(cut.Find(".row > .col-lg-4:nth-child(2) #identity-heading"));
+        Assert.NotNull(cut.Find(".row > .col-lg-8:nth-child(3) #chain-code-heading"));
+        Assert.NotNull(cut.Find(".row > .col-lg-4:nth-child(4) #affiliations-heading"));
         Assert.Equal("Not provided", cut.Find("input#chain-code-value[readonly]").GetAttribute("value"));
         Assert.Equal(2, cut.FindAll("#chain-code-form .col-lg-6 > fieldset").Count);
         Assert.Equal(4, cut.FindAll("#chain-code-form .col-md-6 textarea").Count);

@@ -16,28 +16,7 @@ else if (User.Account is null)
 else
 {
     <div class="row g-4">
-        <div class="col-lg-6">
-            <section class="card" aria-labelledby="identity-heading">
-                <header class="card-header">
-                    <h2 id="identity-heading" class="h6 mb-0">Account Information</h2>
-                </header>
-                <div class="card-body">
-                    <div class="alert alert-info d-flex align-items-start gap-2" role="note">
-                        <span class="flex-shrink-0"><Icon Name="info" /></span>
-                        <span>These details come from the system's access control component and cannot be altered here.</span>
-                    </div>
-                    <dl id="identity" class="mb-0">
-                        <dt>User Name</dt>
-                        <dd>@(User.Account.SignInEmail ?? "Not provided")</dd>
-                        <dt>Operating Number</dt>
-                        <dd class="text-break">@(User.Account.OperatingNumber ?? "Not provided")</dd>
-                        <dt>Officer credential</dt>
-                        <dd><span class="badge @(User.Account.IsOfficer ? "text-bg-success" : "text-bg-secondary")">@(User.Account.IsOfficer ? "Held" : "Not held")</span></dd>
-                    </dl>
-                </div>
-            </section>
-        </div>
-        <div class="col-lg-6">
+        <div class="col-lg-8">
             <section class="card" aria-labelledby="settings-heading">
                 <header class="card-header">
                     <h2 id="settings-heading" class="h6 mb-0">Preferences</h2>
@@ -86,7 +65,7 @@ else
                     </EditForm>
                 </div>
                 <footer class="card-footer">
-                    <button type="submit" form="account-settings-form" class="btn btn-primary" disabled="@_saving"><Icon Name="save" /> Save</button>
+                    <button type="submit" form="account-settings-form" class="btn btn-primary d-inline-flex align-items-center gap-2" disabled="@_saving"><Icon Name="save" /> Save</button>
                     <div aria-live="polite" aria-atomic="true">
                         @if (_saved)
                         {
@@ -99,8 +78,32 @@ else
                 </footer>
             </section>
         </div>
-        <div class="col-12">
+        <div class="col-lg-4">
+            <section class="card" aria-labelledby="identity-heading">
+                <header class="card-header">
+                    <h2 id="identity-heading" class="h6 mb-0">Account Information</h2>
+                </header>
+                <div class="card-body">
+                    <div class="alert alert-info d-flex align-items-start gap-2" role="note">
+                        <span class="flex-shrink-0"><Icon Name="info" /></span>
+                        <span>These details come from the system's access control component and cannot be altered here.</span>
+                    </div>
+                    <dl id="identity" class="mb-0">
+                        <dt>User Name</dt>
+                        <dd>@(User.Account.SignInEmail ?? "Not provided")</dd>
+                        <dt>Operating Number</dt>
+                        <dd class="text-break">@(User.Account.OperatingNumber ?? "Not provided")</dd>
+                        <dt>Officer credential</dt>
+                        <dd><span class="badge @(User.Account.IsOfficer ? "text-bg-success" : "text-bg-secondary")">@(User.Account.IsOfficer ? "Held" : "Not held")</span></dd>
+                    </dl>
+                </div>
+            </section>
+        </div>
+        <div class="col-lg-8">
             <ChainCodeForm />
+        </div>
+        <div class="col-lg-4">
+            <AffiliationsCard />
         </div>
     </div>
 }

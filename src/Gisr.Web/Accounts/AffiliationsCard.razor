@@ -1,0 +1,333 @@
+@implements IDisposable
+@inject ApiClient Api
+@inject CurrentUserState User
+
+<div class="d-flex flex-column gap-4">
+<section class="card" aria-labelledby="associate-affiliation-heading">
+    <header class="@(_expanded ? "card-header" : "card-header border-bottom-0")">
+        <h2 id="associate-affiliation-heading" class="h6 mb-0">
+            <button type="button" id="associate-affiliation-toggle" class="collapse-toggle btn btn-link text-reset text-decoration-none fw-medium p-0 w-100 d-flex align-items-center justify-content-between gap-2"
+                    aria-expanded="@(_expanded ? "true" : "false")" aria-controls="associate-affiliation-body associate-affiliation-footer"
+                    @onclick="() => _expanded = !_expanded">
+                <span>Associate an Affiliation</span>
+                <Icon Name="chevron" />
+            </button>
+        </h2>
+    </header>
+    <div id="associate-affiliation-body" class="@(_expanded ? "card-body collapse show" : "card-body collapse")">
+        @if (_loading)
+        {
+            <p class="text-secondary mb-0" role="status">Loading...</p>
+        }
+        else if (_loadFailed)
+        {
+            <p class="text-secondary mb-0">Affiliations are unavailable until they load.</p>
+        }
+        else
+        {
+            @if (_failure is not null)
+            {
+                <div class="alert alert-danger" role="alert">@_failure</div>
+            }
+
+            <div class="mb-3">
+                <AffiliationPicker Id="affiliation-primary" Label="Primary affiliation" Groups="_groups" Required="true" Disabled="_busy"
+                                   Value="@_primary" ValueChanged="SetPrimary"
+                                   Errors="@_errors.GetValueOrDefault("primary")" />
+            </div>
+            <div class="mb-3">
+                <AffiliationPicker Id="affiliation-secondary" Label="Secondary affiliation" Groups="_groups" Disabled="_busy"
+                                   Placeholder="None" Value="@_secondary" ValueChanged="SetSecondary"
+                                   Errors="@_errors.GetValueOrDefault("secondary")" />
+            </div>
+
+            <form id="affiliation-form" @onsubmit="AddAsync" @onsubmit:preventDefault>
+                <fieldset disabled="@_busy">
+                    <legend class="visually-hidden">Affiliation details</legend>
+                    <div class="mb-3">
+                        <label for="affiliation-special-unit" class="form-label">Special Unit</label>
+                        <input id="affiliation-special-unit" class="@FieldClass("specialUnit", "form-control")" list="affiliation-names" maxlength="100"
+                               autocomplete="off" @bind="_specialUnit" aria-invalid="@Invalid("specialUnit")" aria-describedby="@Described("specialUnit")" />
+                        @ErrorFor("specialUnit")
+                    </div>
+                    <datalist id="affiliation-names">
+                        @foreach (var name in _names)
+                        {
+                            <option value="@name"></option>
+                        }
+                    </datalist>
+                    <div class="row g-2">
+                        <div class="col-5">
+                            <label for="affiliation-prefix" class="form-label">Prefix</label>
+                            <input id="affiliation-prefix" class="@FieldClass("prefix", "form-control text-uppercase")" maxlength="8" autocomplete="off"
+                                   @bind="_prefix" aria-invalid="@Invalid("prefix")" aria-describedby="@Described("prefix")" />
+                            @ErrorFor("prefix")
+                        </div>
+                        <div class="col-7">
+                            <label for="affiliation-number" class="form-label">Operating Number</label>
+                            <input id="affiliation-number" class="@FieldClass("operatingNumber", "form-control")" maxlength="16" autocomplete="off"
+                                   @bind="_number" aria-invalid="@Invalid("operatingNumber")" aria-describedby="@Described("operatingNumber")" />
+                            @ErrorFor("operatingNumber")
+                        </div>
+                    </div>
+                </fieldset>
+            </form>
+        }
+    </div>
+    <footer id="associate-affiliation-footer" class="@(_expanded ? "card-footer collapse show" : "card-footer collapse")">
+        @if (!_loading && !_loadFailed)
+        {
+            <button type="submit" form="affiliation-form" class="btn btn-primary d-inline-flex align-items-center gap-2" disabled="@_busy"><Icon Name="plus" /> Add affiliation</button>
+        }
+        <div aria-live="polite" aria-atomic="true">
+            @if (_status is not null)
+            {
+                <div class="alert alert-success d-flex align-items-start gap-2 mt-3 mb-0 py-2" role="status">
+                    <span class="flex-shrink-0"><Icon Name="check-circle" /></span>
+                    <span>@_status</span>
+                </div>
+            }
+        </div>
+    </footer>
+</section>
+
+<section class="card" aria-labelledby="affiliations-heading">
+    <header class="card-header">
+        <h2 id="affiliations-heading" class="h6 mb-0">Associated Affiliations</h2>
+    </header>
+    <div class="card-body">
+        @if (_loading)
+        {
+            <p class="text-secondary mb-0" role="status">Loading...</p>
+        }
+        else if (_loadFailed)
+        {
+            <div class="alert alert-danger" role="alert">Your affiliations could not be loaded.</div>
+            <button type="button" id="affiliation-retry" class="btn btn-outline-secondary" @onclick="LoadAsync">Retry</button>
+        }
+        else
+        {
+            @if (_removeFailure is not null)
+            {
+                <div class="alert alert-danger" role="alert">@_removeFailure</div>
+            }
+
+            @if (_items.Count == 0)
+            {
+                <p id="affiliation-empty" class="text-secondary mb-0">No affiliations added yet.</p>
+            }
+            else
+            {
+                <ul id="affiliation-list" class="list-group">
+                    @foreach (var item in _items)
+                    {
+                        var removeLabel = $"Remove {item.Primary}";
+                        <li class="list-group-item d-flex align-items-start justify-content-between gap-2" @key="item.Id">
+                            <div class="text-break">
+                                <div class="fw-semibold">@item.Primary</div>
+                                @if (item.Secondary is not null || item.SpecialUnit is not null)
+                                {
+                                    <div class="small text-secondary">@string.Join(" › ", new[] { item.Secondary, item.SpecialUnit }.Where(part => part is not null))</div>
+                                }
+                                @if (Number(item) is { } number)
+                                {
+                                    <span class="badge text-bg-secondary font-monospace mt-1">@number</span>
+                                }
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center flex-shrink-0" title="@removeLabel" aria-label="@removeLabel"
+                                    disabled="@_busy" @onclick="() => RemoveAsync(item)"><Icon Name="close" Size="12" /></button>
+                        </li>
+                    }
+                </ul>
+            }
+        }
+        <div aria-live="polite" aria-atomic="true">
+            @if (_removeStatus is not null)
+            {
+                <div class="alert alert-success d-flex align-items-start gap-2 mt-3 mb-0 py-2" role="status">
+                    <span class="flex-shrink-0"><Icon Name="check-circle" /></span>
+                    <span>@_removeStatus</span>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+</div>
+
+@code {
+    private const string Path = "api/me/affiliations";
+    private static readonly System.Text.RegularExpressions.Regex AccountNumberPattern =
+        new(@"^(?:(?<prefix>[A-Za-z0-9]{1,8})-)?(?<number>[A-Za-z0-9]{1,16})$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private readonly CancellationTokenSource _lifetime = new();
+    private List<AccountAffiliationDto> _items = [];
+    private IReadOnlyList<AffiliationOptionGroupDto> _groups = [];
+    private string[] _names = [];
+    private Dictionary<string, string[]> _errors = [];
+    private string? _primary;
+    private string? _secondary;
+    private string? _specialUnit;
+    private string? _prefix;
+    private string? _number;
+    private string? _failure;
+    private string? _status;
+    private string? _removeFailure;
+    private string? _removeStatus;
+    private int _statusVersion;
+    private bool _expanded = true;
+    private bool _loading = true;
+    private bool _loadFailed;
+    private bool _busy;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _loadFailed = false;
+        try
+        {
+            _groups = await Api.GetAsync<List<AffiliationOptionGroupDto>>("api/me/affiliation-options", cancellationToken: _lifetime.Token) ?? [];
+            _names = _groups.SelectMany(group => group.Names).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+            _items = await Api.GetAsync<List<AccountAffiliationDto>>(Path, cancellationToken: _lifetime.Token) ?? [];
+            _expanded = _items.Count == 0;
+            await LoadAccountAsync();
+            if (_prefix is null && _number is null) ApplyAccountNumber();
+        }
+        catch (Exception exception) when (exception is ApiException or HttpRequestException) { _loadFailed = true; }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        finally { _loading = false; }
+    }
+
+    private async Task LoadAccountAsync()
+    {
+        try
+        {
+            await User.EnsureLoadedAsync(_lifetime.Token);
+        }
+        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        {
+            // Without the account the number fields simply start empty.
+        }
+    }
+
+    private void ApplyAccountNumber()
+    {
+        var match = AccountNumberPattern.Match(User.Account?.OperatingNumber?.Trim() ?? string.Empty);
+        _prefix = match.Success && match.Groups["prefix"].Success ? match.Groups["prefix"].Value : null;
+        _number = match.Success ? match.Groups["number"].Value : null;
+    }
+
+    private async Task AddAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _failure = _status = _removeStatus = null;
+        _statusVersion++;
+        _errors = [];
+        try
+        {
+            var created = await Api.PostAsync<AccountAffiliationDto>(
+                Path, new AddAccountAffiliationRequest(_primary ?? string.Empty, _secondary, _specialUnit, _prefix, _number), cancellationToken: _lifetime.Token);
+            if (created is not null)
+            {
+                _items.Add(created);
+                _primary = _secondary = _specialUnit = null;
+                ApplyAccountNumber();
+                _status = $"{created.Primary} added.";
+                _ = HideStatusAsync(++_statusVersion);
+            }
+        }
+        catch (ApiException exception) when (exception.Status == 400)
+        {
+            _errors = exception.Errors.ToDictionary(error => error.Key, error => error.Value, StringComparer.Ordinal);
+        }
+        catch (ApiException exception) when (exception.Status == 409)
+        {
+            _failure = exception.Detail ?? "This affiliation could not be added.";
+        }
+        catch (ApiException)
+        {
+            _failure = "The affiliation could not be added. Please try again.";
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        finally { _busy = false; }
+    }
+
+    private async Task RemoveAsync(AccountAffiliationDto item)
+    {
+        if (_busy) return;
+        _busy = true;
+        _removeFailure = _status = _removeStatus = null;
+        _statusVersion++;
+        try
+        {
+            await Api.SendAsync(HttpMethod.Delete, $"{Path}/{item.Id}", cancellationToken: _lifetime.Token);
+            _items.Remove(item);
+            _removeStatus = $"{item.Primary} removed.";
+            _ = HideStatusAsync(++_statusVersion);
+        }
+        catch (ApiException exception) when (exception.Status == 404)
+        {
+            _items.Remove(item);
+        }
+        catch (ApiException)
+        {
+            _removeFailure = "The affiliation could not be removed. Please try again.";
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        finally { _busy = false; }
+    }
+
+    private async Task HideStatusAsync(int version)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5), _lifetime.Token);
+            await InvokeAsync(() =>
+            {
+                if (!_lifetime.IsCancellationRequested && version == _statusVersion)
+                {
+                    if (_status is not null) _expanded = false;
+                    _status = _removeStatus = null;
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+    }
+
+    private void SetPrimary(string? value)
+    {
+        _primary = value;
+        _errors.Remove("primary");
+    }
+
+    private void SetSecondary(string? value)
+    {
+        _secondary = value;
+        _errors.Remove("secondary");
+    }
+
+    private RenderFragment ErrorFor(string field) => @<text>@if (_errors.TryGetValue(field, out var messages))
+        {
+            <div id="affiliation-@(field)-error" class="invalid-feedback d-block">@string.Join(" ", messages)</div>
+        }</text>;
+
+    private static string? Number(AccountAffiliationDto item)
+    {
+        var text = string.Join('-', new[] { item.Prefix, item.OperatingNumber }.Where(part => !string.IsNullOrEmpty(part)));
+        return text.Length == 0 ? null : text;
+    }
+
+    private string FieldClass(string field, string css) => _errors.ContainsKey(field) ? $"{css} is-invalid" : css;
+
+    private string? Invalid(string field) => _errors.ContainsKey(field) ? "true" : null;
+
+    private string? Described(string field) => _errors.ContainsKey(field) ? $"affiliation-{field}-error" : null;
+
+    public void Dispose()
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+    }
+}

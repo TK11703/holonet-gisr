@@ -284,6 +284,11 @@ body {
     outline: none;
 }
 
+/* FocusOnNavigate focuses the page h1 for screen readers; it is not an interactive control. */
+h1[tabindex="-1"]:focus-visible {
+    outline: none;
+}
+
 .sidenav-backdrop {
     position: fixed;
     inset: var(--gisr-topbar-height) 0 0 0;
@@ -526,4 +531,13 @@ body {
         animation: none !important;
         scroll-behavior: auto !important;
     }
+}
+
+.affiliation-options {
+    max-height: 16rem;
+    overflow-y: auto;
+}
+
+.collapse-toggle[aria-expanded="true"] .icon {
+    transform: rotate(180deg);
 }
