@@ -1,8 +1,49 @@
-<fieldset class="mb-4">
-    <legend class="h5">Incidents</legend>
+<section class="mb-4" aria-labelledby="new-incident-heading">
+    <h3 id="new-incident-heading" class="h6">New incident</h3>
+    <div class="card card-body mb-3">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label for="new-incident-date" class="form-label">Date <span class="text-danger" aria-hidden="true">*</span></label>
+                <input id="new-incident-date" type="date" class="@(_dateError is null ? "form-control" : "form-control is-invalid")"
+                       aria-required="true" aria-invalid="@(_dateError is null ? null : "true")" aria-describedby="@(_dateError is null ? null : "new-incident-date-error")"
+                       @bind="_draft.OccurredOn" @bind:format="yyyy-MM-dd" />
+                @if (_dateError is not null)
+                {
+                    <div id="new-incident-date-error" class="invalid-feedback d-block">@_dateError</div>
+                }
+            </div>
+            <div class="col-md-9">
+                <label for="new-incident-title" class="form-label">Title <span class="text-danger" aria-hidden="true">*</span></label>
+                <input id="new-incident-title" type="text" class="@(_titleError is null ? "form-control" : "form-control is-invalid")" maxlength="200"
+                       aria-required="true" aria-invalid="@(_titleError is null ? null : "true")" aria-describedby="@(_titleError is null ? null : "new-incident-title-error")"
+                       @bind="_draft.Title" />
+                @if (_titleError is not null)
+                {
+                    <div id="new-incident-title-error" class="invalid-feedback d-block">@_titleError</div>
+                }
+            </div>
+            <div class="col-12">
+                <label for="new-incident-description" class="form-label">Description</label>
+                <textarea id="new-incident-description" class="form-control" rows="3" maxlength="4000" @bind="_draft.Description"></textarea>
+            </div>
+        </div>
+        <div class="mt-3">
+            <button type="button" id="add-incident" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
+                    disabled="@(Items.Count >= RecordFormModel.MaxItems)" @onclick="Add"><Icon Name="plus" /> Add incident</button>
+        </div>
+    </div>
+</section>
+
+<section aria-labelledby="added-incidents-heading">
+    <h3 id="added-incidents-heading" class="h6">Added incidents</h3>
     @if (RecordDisplay.ErrorText(Errors, "incidents") is { } listError)
     {
         <div id="incidents-error" class="invalid-feedback d-block mb-2">@listError</div>
+    }
+
+    @if (Items.Count == 0)
+    {
+        <p id="incidents-empty" class="text-secondary">No incidents added yet.</p>
     }
 
     @for (var i = 0; i < Items.Count; i++)
@@ -53,15 +94,29 @@
             </div>
         </div>
     }
-
-    <button type="button" id="add-incident" class="btn btn-outline-secondary btn-sm" disabled="@(Items.Count >= RecordFormModel.MaxItems)"
-            @onclick="@(() => Items.Add(new IncidentModel()))">Add incident</button>
-</fieldset>
+</section>
 
 @code {
+    private IncidentModel _draft = new();
+    private string? _dateError;
+    private string? _titleError;
+
     [Parameter, EditorRequired]
     public List<IncidentModel> Items { get; set; } = [];
 
     [Parameter]
     public IReadOnlyDictionary<string, string[]> Errors { get; set; } = new Dictionary<string, string[]>();
+
+    private void Add()
+    {
+        _dateError = _draft.OccurredOn is null ? "Enter the date of the incident." : null;
+        _titleError = string.IsNullOrWhiteSpace(_draft.Title) ? "Enter a title." : null;
+        if (_dateError is not null || _titleError is not null)
+        {
+            return;
+        }
+
+        Items.Add(_draft);
+        _draft = new IncidentModel();
+    }
 }

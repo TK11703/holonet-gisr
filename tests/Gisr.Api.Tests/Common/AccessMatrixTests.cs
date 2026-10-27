@@ -38,6 +38,13 @@ public class AccessMatrixTests(PostgresFixture postgres, AzuriteFixture azurite)
 
     private static HttpRequestMessage Get(string url) => new(HttpMethod.Get, url);
 
+    private static async Task<RecordDto> CreateRecordAsync(HttpClient client, Guid? subjectOid)
+    {
+        var response = await client.PostAsJsonAsync("/api/records", SealedTestData.Request(subjectOid, "Disposable", sealedRecord: false, code: null));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<RecordDto>())!;
+    }
+
     private static HttpRequestMessage Send(HttpMethod method, string url, object? body = null) =>
         new(method, url) { Content = body is null ? null : JsonContent.Create(body) };
 
@@ -83,13 +90,15 @@ public class AccessMatrixTests(PostgresFixture postgres, AzuriteFixture azurite)
         // Identity and reference data: any signed-in caller.
         Case("GET /api/me", _ => Get("/api/me"), 401, 200, 200, 200, 200),
         Case("PUT /api/me/settings", _ => Send(HttpMethod.Put, "/api/me/settings", new UpdateAccountSettingsRequest("Renamed", null, true)), 401, 200, 200, 200, 200),
-        Case("GET /api/affiliations", _ => Get("/api/affiliations"), 401, 200, 200, 200, 200),
+        Case("GET /api/me/affiliations", _ => Get("/api/me/affiliations"), 401, 200, 200, 200, 200),
         Case("GET /api/notifications", _ => Get("/api/notifications"), 401, 200, 200, 200, 200),
         Case("POST /api/notifications/read-all", _ => Send(HttpMethod.Post, "/api/notifications/read-all"), 401, 204, 204, 204, 204),
         Case("GET /api/notifications/{unknown}/read", _ => Send(HttpMethod.Post, $"/api/notifications/{Guid.NewGuid()}/read"), 401, 404, 404, 404, 404),
 
         // Officer-only scope and directory.
         Case("GET /api/accounts", _ => Get("/api/accounts?query=Sub"), 401, 403, 403, 200, 403),
+        Case("GET /api/accounts/{id}/affiliations", w => Get($"/api/accounts/{w.OwnRecord.SubjectAccountId}/affiliations"), 401, 403, 403, 200, 403),
+        Case("GET /api/accounts/by-object/{oid}/affiliations", w => Get($"/api/accounts/by-object/{w.SubjectOid}/affiliations"), 401, 403, 403, 200, 403),
         Case("GET /api/records?scope=all", _ => Get("/api/records?scope=all"), 401, 403, 403, 200, 403),
         Case("GET /api/records?scope=mine", _ => Get("/api/records"), 401, 200, 200, 200, 200),
         Case("GET /api/gallery?scope=all", _ => Get("/api/gallery?scope=all"), 401, 403, 403, 200, 403),
@@ -107,6 +116,7 @@ public class AccessMatrixTests(PostgresFixture postgres, AzuriteFixture azurite)
         Case("GET own artifact content", w => Get($"/api/artifacts/{w.OwnPdf.Id}/content"), 401, 200, 404, 200, 404),
         Case("GET own artifact thumbnail", w => Get($"/api/artifacts/{w.OwnImage.Id}/thumbnail"), 401, 200, 404, 200, 404),
         Case("POST own record artifact", w => Upload(w.OwnRecord.Id), 401, 201, 404, 201, 404),
+        Case("DELETE own record", async w => Send(HttpMethod.Delete, $"/api/records/{(await CreateRecordAsync(w.Clients[Actor.Subject], null)).Id}"), 401, 204, 404, 204, 404),
         Case("PATCH own artifact", w => Send(HttpMethod.Patch, $"/api/artifacts/{w.OwnImage.Id}", new { description = "Edited" }), 401, 200, 404, 200, 404),
         Case("DELETE own artifact", async w => Send(HttpMethod.Delete, $"/api/artifacts/{(await ArtifactApi.UploadOkAsync(w.Clients[Actor.Subject], w.OwnRecord.Id, TestFiles.Text(), "temp.txt")).Id}"), 401, 204, 404, 204, 404),
         Case("POST override on a record that is not sealed", w => Send(HttpMethod.Post, $"/api/records/{w.OwnRecord.Id}/override", new OverrideCodeRequest("anything")), 401, 404, 404, 404, 404),
@@ -119,6 +129,7 @@ public class AccessMatrixTests(PostgresFixture postgres, AzuriteFixture azurite)
         Case("POST service record artifact", w => Upload(w.ServiceRecord.Id), 401, 403, 404, 201, 404),
         Case("PATCH service record artifact", w => Send(HttpMethod.Patch, $"/api/artifacts/{w.ServicePdf.Id}", new { description = "Edited" }), 401, 403, 404, 200, 404),
         Case("DELETE service record artifact", w => Send(HttpMethod.Delete, $"/api/artifacts/{w.ServicePdf.Id}"), 401, 403, 404, 204, 404),
+        Case("DELETE service record", async w => Send(HttpMethod.Delete, $"/api/records/{(await CreateRecordAsync(w.Clients[Actor.Officer], w.SubjectOid)).Id}"), 401, 403, 404, 204, 404),
 
         // A sealed record that is locked for its subject.
         Case("GET sealed record", w => Get($"/api/records/{w.SealedRecord.Id}"), 401, 404, 404, 200, 403),

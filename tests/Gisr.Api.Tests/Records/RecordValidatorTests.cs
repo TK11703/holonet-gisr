@@ -10,7 +10,7 @@ public class RecordValidatorTests
     private readonly UpdateRecordRequestValidator _update = new();
 
     private static Dictionary<string, string> MilitaryDetail() =>
-        new() { ["summary"] = "Served with distinction.", ["branch"] = "Navy", ["rank"] = "Captain" };
+        new() { ["summary"] = "Served with distinction." };
 
     private static CreateRecordRequest Create(
         string title = "Clone Wars service",
@@ -49,10 +49,19 @@ public class RecordValidatorTests
 
     [Theory]
     [InlineData("")]
-    [InlineData("sith")]
-    [InlineData("Military")]
-    public void Affiliation_MustBeInTheCatalog(string affiliation) =>
+    [InlineData("   ")]
+    public void Affiliation_BlankIsInvalid(string affiliation) =>
         _create.TestValidate(Create(affiliation: affiliation)).ShouldHaveValidationErrorFor(r => r.Affiliation);
+
+    [Fact]
+    public void Affiliation_IsFreeTextUpToItsLimit()
+    {
+        _create.TestValidate(Create(affiliation: "Jedi Order \u203A Knight \u203A Temple Guard")).ShouldNotHaveValidationErrorFor(r => r.Affiliation);
+        _create.TestValidate(Create(affiliation: new string('a', RecordContentValidator<CreateRecordRequest>.AffiliationMaxLength)))
+            .ShouldNotHaveValidationErrorFor(r => r.Affiliation);
+        _create.TestValidate(Create(affiliation: new string('a', RecordContentValidator<CreateRecordRequest>.AffiliationMaxLength + 1)))
+            .ShouldHaveValidationErrorFor(r => r.Affiliation);
+    }
 
     [Fact]
     public void EngagementDetail_SummaryIsRequired()
@@ -64,13 +73,8 @@ public class RecordValidatorTests
     }
 
     [Fact]
-    public void EngagementDetail_Null_ReportsRequiredFields()
-    {
-        var result = _create.TestValidate(Create() with { EngagementDetail = null });
-
-        result.ShouldHaveValidationErrorFor("EngagementDetail.summary");
-        result.ShouldHaveValidationErrorFor("EngagementDetail.rank");
-    }
+    public void EngagementDetail_Null_ReportsTheMissingSummary() =>
+        _create.TestValidate(Create() with { EngagementDetail = null }).ShouldHaveValidationErrorFor("EngagementDetail.summary");
 
     [Fact]
     public void EngagementDetail_SummaryLimitIs4000()
@@ -85,42 +89,12 @@ public class RecordValidatorTests
     }
 
     [Fact]
-    public void EngagementDetail_RequiredFieldMustBeNonBlank()
+    public void EngagementDetail_BlankSummaryIsInvalid()
     {
         var detail = MilitaryDetail();
-        detail["rank"] = "  ";
+        detail["summary"] = "  ";
 
-        _create.TestValidate(Create(detail: detail)).ShouldHaveValidationErrorFor("EngagementDetail.rank");
-    }
-
-    [Fact]
-    public void EngagementDetail_SelectValueMustBeAnOption()
-    {
-        var detail = MilitaryDetail();
-        detail["branch"] = "Space Pirates";
-
-        _create.TestValidate(Create(detail: detail)).ShouldHaveValidationErrorFor("EngagementDetail.branch");
-    }
-
-    [Fact]
-    public void EngagementDetail_OptionalFieldMayBeOmittedButHasALengthLimit()
-    {
-        var detail = MilitaryDetail();
-        detail["unit"] = new string('u', 1000);
-
-        var result = _create.TestValidate(Create(detail: detail));
-
-        result.ShouldHaveValidationErrorFor("EngagementDetail.unit");
-        result.ShouldNotHaveValidationErrorFor("EngagementDetail.service_number");
-    }
-
-    [Fact]
-    public void EngagementDetail_ValidatesAgainstTheChosenAffiliation()
-    {
-        var jedi = new Dictionary<string, string> { ["summary"] = "Knight of the Order", ["order_rank"] = "Knight" };
-
-        _create.TestValidate(Create(affiliation: "jedi", detail: jedi)).ShouldNotHaveAnyValidationErrors();
-        _create.TestValidate(Create(affiliation: "military", detail: jedi)).ShouldHaveValidationErrorFor("EngagementDetail.rank");
+        _create.TestValidate(Create(detail: detail)).ShouldHaveValidationErrorFor("EngagementDetail.summary");
     }
 
     [Fact]
@@ -230,7 +204,7 @@ public class RecordValidatorTests
     [Fact]
     public void Update_SharesTheCreateRules()
     {
-        var result = _update.TestValidate(Update(1) with { Title = "", Affiliation = "sith" });
+        var result = _update.TestValidate(Update(1) with { Title = "", Affiliation = "" });
 
         result.ShouldHaveValidationErrorFor(r => r.Title);
         result.ShouldHaveValidationErrorFor(r => r.Affiliation);

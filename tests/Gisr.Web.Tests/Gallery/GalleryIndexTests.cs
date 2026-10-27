@@ -18,11 +18,11 @@ public class GalleryIndexTests : BunitContext
     public GalleryIndexTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
     }
 
-    private static GalleryGroupDto Group(string title = "Clone Wars service", int images = 2, string affiliation = "military", int covers = -1) =>
+    private static GalleryGroupDto Group(string title = "Clone Wars service", int images = 2, string affiliation = "Military", int covers = -1) =>
         new(Guid.NewGuid(), title, affiliation, "Rex", images, [.. Enumerable.Range(0, covers < 0 ? Math.Min(images, 4) : covers).Select(_ => Guid.NewGuid())]);
 
     private static PagedResult<GalleryGroupDto> Page(long total, params GalleryGroupDto[] items) => new(1, 12, total, items);
@@ -44,7 +44,7 @@ public class GalleryIndexTests : BunitContext
     [Fact]
     public void ShowsOneCardPerRecord_WithTitleAffiliationAndImageCount()
     {
-        var group = Group("Temple guard", images: 5, affiliation: "jedi");
+        var group = Group("Temple guard", images: 5, affiliation: "Jedi");
         _api.OnJson(HttpMethod.Get, Default, Page(2, group, Group("Clone Wars", images: 1)));
 
         var cut = Render<GalleryIndex>();

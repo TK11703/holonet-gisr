@@ -22,7 +22,7 @@ public class SealedRecordViewTests : BunitContext
     public SealedRecordViewTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
         _record = Samples.Record(title: "Secret commendation", isSealed: true, isServiceRecord: true, canEdit: false);
         ServeLocked();

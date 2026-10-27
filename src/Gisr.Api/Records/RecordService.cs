@@ -78,6 +78,21 @@ public sealed class RecordService(
         };
     }
 
+    public async Task DeleteAsync(Guid recordId, CancellationToken cancellationToken)
+    {
+        var caller = await CallerAsync(cancellationToken);
+        var existing = await FindViewableAsync(recordId, caller, lockedAsNotFound: false, cancellationToken);
+        if (RecordAccessPolicy.Edit(existing.Record, caller) != AccessDecision.Allowed)
+        {
+            throw new ProblemException(StatusCodes.Status403Forbidden, "Forbidden", "You are not allowed to delete this record.");
+        }
+
+        if (!await records.DeleteAsync(recordId, caller, caller.AccountId, cancellationToken))
+        {
+            throw NotFound();
+        }
+    }
+
     public async Task<PagedResult<RecordSummaryDto>> ListAsync(RecordListQuery query, CancellationToken cancellationToken)
     {
         var caller = await CallerAsync(cancellationToken);

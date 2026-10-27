@@ -26,18 +26,17 @@ public class RecordQueryValidatorTests
         _list.TestValidate(new RecordListQuery(scope, null, null, null, null)).ShouldHaveValidationErrorFor(q => q.Scope);
 
     [Theory]
-    [InlineData("civilian")]
-    [InlineData("military")]
-    [InlineData("jedi")]
-    [InlineData("bounty_hunter")]
-    public void List_AffiliationAcceptsCatalogCodes(string affiliation) =>
+    [InlineData("Military")]
+    [InlineData("Jedi Order \u203A Knight")]
+    public void List_AffiliationAcceptsAnyText(string affiliation) =>
         _list.TestValidate(new RecordListQuery(null, affiliation, null, null, null)).ShouldNotHaveValidationErrorFor(q => q.Affiliation);
 
-    [Theory]
-    [InlineData("sith")]
-    [InlineData("")]
-    public void List_AffiliationRejectsUnknownCodes(string affiliation) =>
-        _list.TestValidate(new RecordListQuery(null, affiliation, null, null, null)).ShouldHaveValidationErrorFor(q => q.Affiliation);
+    [Fact]
+    public void List_AffiliationRejectsBlankAndOverlongText()
+    {
+        _list.TestValidate(new RecordListQuery(null, "", null, null, null)).ShouldHaveValidationErrorFor(q => q.Affiliation);
+        _list.TestValidate(new RecordListQuery(null, new string('a', 321), null, null, null)).ShouldHaveValidationErrorFor(q => q.Affiliation);
+    }
 
     [Theory]
     [InlineData("updatedDesc")]

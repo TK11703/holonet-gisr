@@ -133,6 +133,30 @@ public sealed class RecordRepository(NpgsqlDataSource dataSource, ISqlScriptLoad
         return new RecordUpdateResult(RecordUpdateOutcome.Updated, aggregate);
     }
 
+    // Soft delete: the row, its revisions, and its access log stay for audit; every read path filters deleted records out.
+    public async Task<bool> DeleteAsync(Guid recordId, RecordCaller caller, Guid deletedByAccountId, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        var affected = await connection.ExecuteAsync(Command("delete-record", new
+        {
+            Id = recordId,
+            CallerAccountId = caller.AccountId,
+            caller.IsOfficer,
+            DeletedByAccountId = deletedByAccountId,
+        }, transaction, cancellationToken));
+        if (affected == 0)
+        {
+            return false;
+        }
+
+        await connection.ExecuteAsync(Command("delete-view-grants-for-record", new { RecordId = recordId }, transaction, cancellationToken));
+        await connection.ExecuteAsync(Command("delete-record-chunks", new { RecordId = recordId }, transaction, cancellationToken));
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
+
     public async Task<PagedRows<RecordRow>> ListAsync(
         RecordCaller caller,
         RecordListScope scope,

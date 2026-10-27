@@ -1,5 +1,4 @@
 using FluentValidation;
-using Gisr.Api.Affiliations;
 using Gisr.Shared.Records;
 
 namespace Gisr.Api.Records;
@@ -10,6 +9,7 @@ public abstract class RecordContentValidator<T> : AbstractValidator<T>
     public const int TitleMaxLength = 200;
     public const int MaxIncidents = 100;
     public const int MaxAwards = 100;
+    public const int AffiliationMaxLength = 320;
     public const int OverrideCodeMinLength = 8;
     public const int OverrideCodeMaxLength = 64;
 
@@ -26,11 +26,7 @@ public abstract class RecordContentValidator<T> : AbstractValidator<T>
 
         RuleFor(r => r.Title).NotEmpty().MaximumLength(TitleMaxLength);
 
-        RuleFor(r => r.Affiliation)
-            .Cascade(CascadeMode.Stop)
-            .NotEmpty()
-            .Must(code => AffiliationCatalog.Find(code) is not null)
-            .WithMessage("'Affiliation' must be one of: " + string.Join(", ", AffiliationCatalog.All.Select(a => a.Code)) + ".");
+        RuleFor(r => r.Affiliation).NotEmpty().MaximumLength(AffiliationMaxLength);
 
         RuleFor(r => r.EngagementEnd)
             .Must((r, end) => end >= r.EngagementStart)
@@ -39,7 +35,7 @@ public abstract class RecordContentValidator<T> : AbstractValidator<T>
 
         RuleFor(r => r).Custom((request, context) =>
         {
-            foreach (var (key, message) in EngagementDetailValidator.Validate(request.Affiliation, request.EngagementDetail))
+            foreach (var (key, message) in EngagementDetailValidator.Validate(request.EngagementDetail))
             {
                 context.AddFailure(key.Length == 0 ? "EngagementDetail" : $"EngagementDetail.{key}", message);
             }

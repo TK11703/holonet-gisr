@@ -18,7 +18,7 @@ public class SearchResultsTests : BunitContext
     public SearchResultsTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
     }
 
@@ -35,7 +35,7 @@ public class SearchResultsTests : BunitContext
         string snippet = "Guarded the temple at dawn",
         double score = 0.87,
         bool isSealed = false,
-        string affiliation = "military",
+        string affiliation = "Military",
         string source = "record",
         string? fileName = null) =>
         new(Guid.NewGuid(), title, affiliation, "Rex", isSealed, source, source == "artifact" ? Guid.NewGuid() : null, fileName, snippet, score);
@@ -67,7 +67,7 @@ public class SearchResultsTests : BunitContext
     public void ListsTheResults_WithTitleLink_Affiliation_Source_Snippet_AndScore()
     {
         var record = Hit("Temple guard", "Guarded the temple at dawn", 0.87);
-        var file = Hit("Fleet logs", "Hyperdrive manual text", 0.62, affiliation: "jedi", source: "artifact", fileName: "manual.pdf");
+        var file = Hit("Fleet logs", "Hyperdrive manual text", 0.62, affiliation: "Jedi", source: "artifact", fileName: "manual.pdf");
         _api.OnJson(HttpMethod.Get, Path("temple"), Page(2, record, file));
 
         var cut = RenderSearch("temple");
@@ -161,11 +161,11 @@ public class SearchResultsTests : BunitContext
     public void TheAffiliationFilter_IsSentWithTheSearch_AndStartsOverOnPageOne()
     {
         _api.OnJson(HttpMethod.Get, Path("temple"), Page(1, Hit("Anyone")));
-        _api.OnJson(HttpMethod.Get, Path("temple", extra: "&affiliation=jedi"), Page(1, Hit("Knight", affiliation: "jedi")));
+        _api.OnJson(HttpMethod.Get, Path("temple", extra: "&affiliation=Jedi"), Page(1, Hit("Knight", affiliation: "Jedi")));
         var cut = RenderSearch("temple");
-        Assert.Equal(["", "military", "jedi"], cut.FindAll("select#search-affiliation option").Select(o => o.GetAttribute("value") ?? string.Empty).ToArray());
+        Assert.Equal(["", "Military", "Jedi"], cut.FindAll("select#search-affiliation option").Select(o => o.GetAttribute("value") ?? string.Empty).ToArray());
 
-        cut.Find("select#search-affiliation").Change("jedi");
+        cut.Find("select#search-affiliation").Change("Jedi");
 
         cut.WaitForAssertion(() => Assert.Equal("Knight", cut.Find("a.search-result-link").TextContent.Trim()));
     }

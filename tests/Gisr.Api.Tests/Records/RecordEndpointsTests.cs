@@ -73,12 +73,12 @@ public class RecordEndpointsTests(PostgresFixture postgres)
         var client = factory.CreateUserClient();
 
         var response = await client.PostAsJsonAsync("/api/records", NewRecord(
-            title: "", detail: new Dictionary<string, string> { ["summary"] = "x", ["branch"] = "Army" }));
+            title: "", detail: new Dictionary<string, string> { ["branch"] = "Army" }));
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("title", problem!.Errors.Keys);
-        Assert.Contains("engagementDetail.rank", problem.Errors.Keys);
+        Assert.Contains("engagementDetail.summary", problem.Errors.Keys);
         var page = await (await client.GetAsync("/api/records")).Content.ReadFromJsonAsync<PagedResult<RecordSummaryDto>>();
         Assert.Equal(0, page!.TotalCount);
     }
@@ -240,7 +240,6 @@ public class RecordEndpointsTests(PostgresFixture postgres)
     [Theory]
     [InlineData("?scope=everyone")]
     [InlineData("?sort=newest")]
-    [InlineData("?affiliation=sith")]
     [InlineData("?page=0")]
     [InlineData("?pageSize=0")]
     [InlineData("?pageSize=101")]

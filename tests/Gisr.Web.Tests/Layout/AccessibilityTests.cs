@@ -24,14 +24,14 @@ public partial class AccessibilityTests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddScoped<ShellInterop>();
-        _api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.OnJson(HttpMethod.Get, "api/me", new AccountDto(Guid.NewGuid(), "Leia Organa", "leia@example.test", null, true, true, DateTimeOffset.UtcNow));
         _api.OnJson(HttpMethod.Get, "api/notifications?pageSize=20", new Gisr.Shared.Notifications.NotificationListDto(0, []));
         _api.OnJson(HttpMethod.Get, "api/records?page=1&pageSize=20&sort=updatedDesc",
             new PagedResult<Gisr.Shared.Records.RecordSummaryDto>(1, 20, 2, [Samples.ListItem(title: "Alpha"), Samples.ListItem(title: "Sealed one", isSealed: true, isLocked: true)]));
         _api.OnJson(HttpMethod.Get, "api/search?q=temple&page=1&pageSize=10&scope=all",
             new PagedResult<SearchResultDto>(1, 10, 1,
-                [new SearchResultDto(Guid.NewGuid(), "Temple guard", "military", "Rex", false, "record", null, null, "Guarded the temple at dawn", 0.9)]));
+                [new SearchResultDto(Guid.NewGuid(), "Temple guard", "Military", "Rex", false, "record", null, null, "Guarded the temple at dawn", 0.9)]));
         _api.AddTo(Services);
     }
 

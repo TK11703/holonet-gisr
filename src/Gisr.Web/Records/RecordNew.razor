@@ -15,23 +15,28 @@ else if (_model is null)
 }
 else
 {
-    <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" SubmitLabel="Create record" CancelHref="/records"
-                ShowCitizenPicker="User.IsOfficer" AllowSealing="User.IsOfficer" />
+    <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" CancelHref="/records"
+                ShowCitizenPicker="User.IsOfficer" AllowSealing="User.IsOfficer"
+                OnSubjectChanged="SubjectChangedAsync" AffiliationOwner="@(_model.SubjectObjectId is null ? null : _model.SubjectDisplayName)"
+                AffiliationsLoading="_loadingAffiliations" AffiliationsFailed="_affiliationsFailed" />
 }
 
 @code {
     private static readonly Crumb[] Crumbs = [new("Citizen records", "/records"), new("New record")];
 
-    private IReadOnlyList<AffiliationDto> _affiliations = [];
+    private IReadOnlyList<AccountAffiliationDto> _affiliations = [];
+    private IReadOnlyList<AccountAffiliationDto> _mine = [];
     private RecordFormModel? _model;
     private bool _loadError;
+    private bool _loadingAffiliations;
+    private bool _affiliationsFailed;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _affiliations = await Api.GetAsync<List<AffiliationDto>>("api/affiliations") ?? [];
-            _model = RecordFormModel.New(_affiliations.FirstOrDefault()?.Code ?? string.Empty);
+            _mine = _affiliations = await Api.GetAsync<List<AccountAffiliationDto>>("api/me/affiliations") ?? [];
+            _model = RecordFormModel.New(RecordDisplay.AffiliationLabels(_affiliations).FirstOrDefault() ?? string.Empty);
             await LoadUserAsync();
         }
         catch (ApiException)
@@ -52,9 +57,42 @@ else
         }
     }
 
+    // The record's affiliation must come from the citizen it is about, so reload the list whenever the citizen changes.
+    private async Task SubjectChangedAsync()
+    {
+        var subject = _model!.SubjectObjectId;
+        _affiliationsFailed = false;
+        IReadOnlyList<AccountAffiliationDto> loaded = _mine;
+        if (subject is not null)
+        {
+            _loadingAffiliations = true;
+            _affiliations = [];
+            _model.Affiliation = string.Empty;
+            try
+            {
+                loaded = await Api.GetAsync<List<AccountAffiliationDto>>($"api/accounts/by-object/{subject}/affiliations") ?? [];
+            }
+            catch (ApiException)
+            {
+                loaded = [];
+                _affiliationsFailed = true;
+            }
+
+            if (_model.SubjectObjectId != subject)
+            {
+                return;
+            }
+        }
+
+        _loadingAffiliations = false;
+        _affiliations = loaded;
+        _model.Affiliation = RecordDisplay.AffiliationLabels(loaded).FirstOrDefault() ?? string.Empty;
+    }
+
     private async Task SaveAsync(RecordFormModel model)
     {
         var created = await Api.PostAsync<RecordDto>("api/records", model.ToCreateRequest());
-        Navigation.NavigateTo($"/records/{created!.Id}");
+        // Incidents, awards, and artifacts unlock once the record exists, so continue on its edit page.
+        Navigation.NavigateTo($"/records/{created!.Id}/edit");
     }
 }

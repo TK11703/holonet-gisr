@@ -13,7 +13,7 @@ namespace Gisr.Web.Tests.Records;
 
 public class SealedRecordFormTests : BunitContext
 {
-    private RecordFormModel _model = RecordFormModel.New("military");
+    private RecordFormModel _model = RecordFormModel.New("Military");
     private Func<RecordFormModel, Task> _save = _ => Task.CompletedTask;
     private int _saves;
     private readonly FakeApi _api = new();
@@ -21,7 +21,7 @@ public class SealedRecordFormTests : BunitContext
     public SealedRecordFormTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
         _model.Detail["summary"] = "x";
         _model.Detail["branch"] = "Navy";
@@ -307,6 +307,7 @@ public class SealedRecordFormTests : BunitContext
         var luke = new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null);
         _api.OnJson(HttpMethod.Get, "api/me", new AccountDto(Guid.NewGuid(), "Officer", null, null, true, true, DateTimeOffset.UtcNow));
         _api.OnJson(HttpMethod.Get, "api/accounts?query=lu&pageSize=10", new[] { luke });
+        _api.OnJson(HttpMethod.Get, $"api/accounts/by-object/{luke.ObjectId}/affiliations", Samples.Affiliations);
         _api.OnJson(HttpMethod.Post, "api/records", Samples.Record(), HttpStatusCode.Created);
         var cut = Render<RecordNew>();
         Assert.Empty(cut.FindAll("#seal-record"));
@@ -317,8 +318,6 @@ public class SealedRecordFormTests : BunitContext
         cut.Find("#override-code").Input("open sesame 42");
         cut.Find("#record-title").Change("Commendation");
         cut.Find("#detail-summary").Change("Details");
-        cut.Find("#detail-branch").Change("Navy");
-        cut.Find("#detail-rank").Change("Admiral");
         cut.Find("form").Submit();
 
         cut.WaitForAssertion(() => Assert.Contains(_api.Calls, c => c.Method == HttpMethod.Post));
@@ -354,7 +353,7 @@ public class SealedRecordListTests : BunitContext
     public SealedRecordListTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
     }
 

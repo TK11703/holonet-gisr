@@ -13,4 +13,4 @@ FROM record r
 CROSS JOIN LATERAL (SELECT record_is_locked(r.is_sealed, @IsOfficer, @Unlocked) AS locked) l
 JOIN account s ON s.id = r.subject_account_id
 JOIN account a ON a.id = r.author_account_id
-WHERE r.id = @Id AND (@IsOfficer OR r.subject_account_id = @CallerAccountId);
+WHERE r.id = @Id AND r.deleted_at IS NULL AND (@IsOfficer OR r.subject_account_id = @CallerAccountId);

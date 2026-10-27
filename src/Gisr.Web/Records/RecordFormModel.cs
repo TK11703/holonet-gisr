@@ -34,6 +34,22 @@ public sealed class RecordFormModel
 
     public DateOnly? EngagementEnd { get; set; }
 
+    public string Summary
+    {
+        get => Detail.TryGetValue(EngagementSummary.Key, out var value) ? value : string.Empty;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                Detail.Remove(EngagementSummary.Key);
+            }
+            else
+            {
+                Detail[EngagementSummary.Key] = value;
+            }
+        }
+    }
+
     public Dictionary<string, string> Detail { get; } = new(StringComparer.Ordinal);
 
     public List<IncidentModel> Incidents { get; } = [];
@@ -42,6 +58,10 @@ public sealed class RecordFormModel
 
     public int ExpectedVersion { get; set; }
 
+    public Guid? Id { get; set; }
+
+    // Incidents, awards, and artifacts attach to a stored record, so they wait for the first save.
+    public bool IsSaved => Id is not null && ExpectedVersion > 0;
     public Guid? SubjectObjectId { get; set; }
 
     public string? SubjectDisplayName { get; set; }
@@ -63,6 +83,7 @@ public sealed class RecordFormModel
     {
         var model = new RecordFormModel
         {
+            Id = record.Id,
             Title = record.Title,
             Affiliation = record.Affiliation,
             EngagementStart = record.EngagementStart,
@@ -72,9 +93,10 @@ public sealed class RecordFormModel
             HasOverrideCode = record.IsSealed,
         };
 
-        foreach (var (key, value) in record.EngagementDetail)
+        // Only the summary survives; the former per-affiliation fields (branch, rank, unit, service number...) are dropped on save.
+        if (record.EngagementDetail.TryGetValue(EngagementSummary.Key, out var summary))
         {
-            model.Detail[key] = value;
+            model.Summary = summary;
         }
 
         model.Incidents.AddRange(record.Incidents.Select(i =>

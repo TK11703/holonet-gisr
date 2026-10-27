@@ -109,10 +109,11 @@ public static class AccountEndpoints
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        endpoints.MapGroup("/api/accounts")
+        var accountsGroup = endpoints.MapGroup("/api/accounts")
             .WithTags("Accounts")
-            .AddEndpointFilter<ValidationEndpointFilter>()
-            .MapGet("/", async ([AsParameters] AccountSearchQuery query, AccountService accounts, CancellationToken cancellationToken) =>
+            .AddEndpointFilter<ValidationEndpointFilter>();
+
+        accountsGroup.MapGet("/", async ([AsParameters] AccountSearchQuery query, AccountService accounts, CancellationToken cancellationToken) =>
                 TypedResults.Ok(await accounts.SearchAsync(query, cancellationToken)))
             .WithName("searchAccounts")
             .WithSummary("Officer only. Search the Entra tenant directory by name or email for the record subject picker.")
@@ -120,6 +121,20 @@ public static class AccountEndpoints
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+
+        accountsGroup.MapGet("/{accountId:guid}/affiliations", async (Guid accountId, AccountAffiliationService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.ListForCitizenAsync(accountId, null, cancellationToken)))
+            .WithName("listCitizenAffiliations")
+            .WithSummary("Officer only. The affiliations a citizen associated with their account.")
+            .Produces<IReadOnlyList<AccountAffiliationDto>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        accountsGroup.MapGet("/by-object/{objectId:guid}/affiliations", async (Guid objectId, AccountAffiliationService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.ListForCitizenAsync(null, objectId, cancellationToken)))
+            .WithName("listCitizenAffiliationsByObjectId")
+            .WithSummary("Officer only. Same as above, for a citizen identified by Entra object id (empty when they have never signed in).")
+            .Produces<IReadOnlyList<AccountAffiliationDto>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         return endpoints;
     }

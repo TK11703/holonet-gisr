@@ -12,12 +12,12 @@ namespace Gisr.Web.Tests.Records;
 public class CitizenPickerTests : BunitContext
 {
     private readonly FakeApi _api = new();
-    private readonly RecordFormModel _model = RecordFormModel.New("military");
+    private readonly RecordFormModel _model = RecordFormModel.New("Military");
 
     public CitizenPickerTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
     }
 
@@ -140,7 +140,7 @@ public class CitizenPickerTests : BunitContext
         {
             other.JSInterop.Mode = JSRuntimeMode.Loose;
             var api = new FakeApi();
-            api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+            api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
             api.OnJson(HttpMethod.Get, "api/me", new AccountDto(Guid.NewGuid(), "Someone", null, null, true, false, DateTimeOffset.UtcNow));
             api.AddTo(other.Services);
 
@@ -160,16 +160,94 @@ public class CitizenPickerTests : BunitContext
         SignInAs(officer: true);
         var luke = new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null);
         _api.OnJson(HttpMethod.Get, Search("lu"), new[] { luke });
+        _api.OnJson(HttpMethod.Get, ByObject(luke), Samples.Affiliations);
         _api.OnJson(HttpMethod.Post, "api/records", Samples.Record(), HttpStatusCode.Created);
         var cut = Render<RecordNew>();
 
         cut.Find("#citizen-search").Input("lu");
         cut.WaitForAssertion(() => cut.Find("button.citizen-option").Click());
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("#record-affiliation-loading")));
         cut.Find("form").Submit();
 
         cut.WaitForAssertion(() => Assert.Contains(_api.Calls, c => c.Method == HttpMethod.Post));
         using var body = JsonDocument.Parse(_api.Calls.Single(c => c.Method == HttpMethod.Post).Body!);
         Assert.Equal(luke.ObjectId, body.RootElement.GetProperty("subjectObjectId").GetGuid());
+    }
+
+    private static string ByObject(DirectoryUserDto user) => $"api/accounts/by-object/{user.ObjectId}/affiliations";
+
+    private IRenderedComponent<RecordNew> ChooseLuke(DirectoryUserDto luke)
+    {
+        SignInAs(officer: true);
+        _api.OnJson(HttpMethod.Get, Search("lu"), new[] { luke });
+        var cut = Render<RecordNew>();
+        cut.Find("#citizen-search").Input("lu");
+        cut.WaitForAssertion(() => cut.Find("button.citizen-option").Click());
+        return cut;
+    }
+
+    [Fact]
+    public void ChoosingACitizen_ListsThatCitizensAffiliations_NotTheOfficers()
+    {
+        var luke = new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null);
+        _api.OnJson(HttpMethod.Get, ByObject(luke), new[] { new AccountAffiliationDto(Guid.NewGuid(), "Jedi Order", null, null, null, null, DateTimeOffset.UtcNow) });
+
+        var cut = ChooseLuke(luke);
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(["", "Jedi Order"], cut.FindAll("select#record-affiliation option").Select(o => o.GetAttribute("value") ?? "").ToArray());
+            Assert.Equal("Jedi Order", cut.Find("select#record-affiliation").GetAttribute("value"));
+            Assert.False(cut.Find("#save-record").HasAttribute("disabled"));
+        });
+    }
+
+    [Fact]
+    public void ACitizenWithoutAffiliations_CannotHaveARecordSavedYet()
+    {
+        var luke = new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null);
+        _api.OnJson(HttpMethod.Get, ByObject(luke), Array.Empty<AccountAffiliationDto>());
+
+        var cut = ChooseLuke(luke);
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Luke Skywalker has no affiliations yet", cut.Find("#record-affiliation-help").TextContent, StringComparison.Ordinal);
+            Assert.True(cut.Find("#save-record").HasAttribute("disabled"));
+            Assert.Equal([""], cut.FindAll("select#record-affiliation option").Select(o => o.GetAttribute("value") ?? "x").ToArray());
+        });
+    }
+
+    [Fact]
+    public void WhenTheCitizensAffiliationsFailToLoad_SavingIsBlocked()
+    {
+        var luke = new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null);
+        _api.On(HttpMethod.Get, ByObject(luke), _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+
+        var cut = ChooseLuke(luke);
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("could not be loaded", cut.Find("#record-affiliation-help").TextContent, StringComparison.Ordinal);
+            Assert.True(cut.Find("#save-record").HasAttribute("disabled"));
+        });
+    }
+
+    [Fact]
+    public void ChoosingMyselfAgain_RestoresTheOfficersOwnAffiliations()
+    {
+        var luke = new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null);
+        _api.OnJson(HttpMethod.Get, ByObject(luke), Array.Empty<AccountAffiliationDto>());
+        var cut = ChooseLuke(luke);
+        cut.WaitForAssertion(() => Assert.True(cut.Find("#save-record").HasAttribute("disabled")));
+
+        cut.Find("#citizen-myself").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("Military", cut.Find("select#record-affiliation").GetAttribute("value"));
+            Assert.False(cut.Find("#save-record").HasAttribute("disabled"));
+        });
     }
 
     [Fact]

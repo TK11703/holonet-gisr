@@ -49,7 +49,7 @@ else
                         <h2 class="h6 card-title mb-1">
                             <a class="gallery-card-link stretched-link" href="/gallery/@group.RecordId">@group.Title</a>
                         </h2>
-                        <span class="badge text-bg-secondary">@RecordDisplay.AffiliationName(_affiliations, group.Affiliation)</span>
+                        <span class="badge text-bg-secondary">@group.Affiliation</span>
                         <span class="small text-secondary ms-1">@(group.ImageCount == 1 ? "1 image" : $"{group.ImageCount} images")</span>
                         @if (_allScope)
                         {
@@ -76,7 +76,6 @@ else
 
     private static readonly Crumb[] Crumbs = [new("Home", "/"), new("Gallery")];
 
-    private IReadOnlyList<AffiliationDto> _affiliations = [];
     private PagedResult<GalleryGroupDto>? _page;
     private int _pageNumber = 1;
     private bool _allScope;
@@ -88,7 +87,6 @@ else
     {
         try
         {
-            _affiliations = await Api.GetAsync<List<AffiliationDto>>("api/affiliations") ?? [];
             await LoadUserAsync();
             await LoadAsync();
         }

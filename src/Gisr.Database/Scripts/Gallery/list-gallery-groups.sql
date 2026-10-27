@@ -11,6 +11,7 @@ CROSS JOIN LATERAL (
 ) g
 -- Sealed records are excluded for everyone; their images are reachable only from the record page.
 WHERE NOT r.is_sealed
+  AND r.deleted_at IS NULL
   AND g.image_count > 0
   AND ((@AllRecords AND @IsOfficer) OR (NOT @AllRecords AND r.subject_account_id = @CallerAccountId))
 ORDER BY g.latest_upload DESC, r.id

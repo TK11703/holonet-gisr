@@ -244,7 +244,6 @@ public class SearchEndpointsTests(PostgresFixture postgres, AzuriteFixture azuri
     [InlineData("pageSize=51")]
     [InlineData("page=0")]
     [InlineData("scope=everyone")]
-    [InlineData("affiliation=wookiee")]
     public async Task InvalidParameters_Give400(string extra)
     {
         await using var factory = await CreateFactoryAsync();

@@ -16,7 +16,7 @@ public class RecordPagesTests : BunitContext
     public RecordPagesTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
     }
 
@@ -30,19 +30,30 @@ public class RecordPagesTests : BunitContext
         var cut = Render<RecordNew>();
 
         Assert.Equal("New record", cut.Find("h1").TextContent.Trim());
-        Assert.Equal("military", cut.Find("select#record-affiliation").GetAttribute("value"));
+        Assert.Equal("Military", cut.Find("select#record-affiliation").GetAttribute("value"));
         cut.Find("#record-title").Change("Temple guard");
         cut.Find("#detail-summary").Change("Guarded the temple.");
-        cut.Find("#detail-branch").Change("Army");
-        cut.Find("#detail-rank").Change("Sergeant");
         cut.Find("form").Submit();
 
-        cut.WaitForAssertion(() => Assert.EndsWith($"/records/{created.Id}", CurrentUri, StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.EndsWith($"/records/{created.Id}/edit", CurrentUri, StringComparison.Ordinal));
         var post = _api.Calls.Single(c => c.Method == HttpMethod.Post);
         using var body = JsonDocument.Parse(post.Body!);
         Assert.Equal("Temple guard", body.RootElement.GetProperty("title").GetString());
-        Assert.Equal("military", body.RootElement.GetProperty("affiliation").GetString());
-        Assert.Equal("Sergeant", body.RootElement.GetProperty("engagementDetail").GetProperty("rank").GetString());
+        Assert.Equal("Military", body.RootElement.GetProperty("affiliation").GetString());
+        Assert.Equal("Guarded the temple.", body.RootElement.GetProperty("engagementDetail").GetProperty("summary").GetString());
+    }
+
+    [Fact]
+    public void New_LoadsTheAffiliationsFromTheUsersAccount_AndLocksTheDependentTabs()
+    {
+        var cut = Render<RecordNew>();
+
+        Assert.Contains(_api.Calls, c => c.PathAndQuery == "api/me/affiliations");
+        Assert.DoesNotContain(_api.Calls, c => c.PathAndQuery == "api/affiliations");
+        Assert.True(cut.Find("#tab-incidents").HasAttribute("disabled"));
+        Assert.True(cut.Find("#tab-awards").HasAttribute("disabled"));
+        Assert.True(cut.Find("#tab-artifacts").HasAttribute("disabled"));
+        Assert.True(cut.Find("#delete-record").HasAttribute("disabled"));
     }
 
     [Fact]
@@ -52,13 +63,13 @@ public class RecordPagesTests : BunitContext
         {
             title = "Validation",
             status = 400,
-            errors = new Dictionary<string, string[]> { ["engagementDetail.rank"] = ["'Rank' is required."] },
+            errors = new Dictionary<string, string[]> { ["engagementDetail.summary"] = ["'Summary' is required."] },
         }));
         var cut = Render<RecordNew>();
 
         cut.Find("form").Submit();
 
-        cut.WaitForAssertion(() => Assert.Contains("'Rank' is required.", cut.Find("#detail-rank-error").TextContent, StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.Contains("'Summary' is required.", cut.Find("#detail-summary-error").TextContent, StringComparison.Ordinal));
         Assert.DoesNotContain("/records/", CurrentUri, StringComparison.Ordinal);
     }
 
@@ -72,7 +83,7 @@ public class RecordPagesTests : BunitContext
 
         Assert.Equal("Edit record", cut.Find("h1").TextContent.Trim());
         Assert.Equal("Clone Wars service", cut.Find("#record-title").GetAttribute("value"));
-        Assert.Equal("Captain", cut.Find("#detail-rank").GetAttribute("value"));
+        Assert.Equal("Served with distinction.", cut.Find("#detail-summary").GetAttribute("value"));
         cut.Find("#record-title").Change("Renamed");
         cut.Find("form").Submit();
 
@@ -81,6 +92,34 @@ public class RecordPagesTests : BunitContext
         using var body = JsonDocument.Parse(put.Body!);
         Assert.Equal(3, body.RootElement.GetProperty("expectedVersion").GetInt32());
         Assert.Equal("Renamed", body.RootElement.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public void Edit_EnablesTheTabs()
+    {
+        var record = Samples.Record();
+        _api.OnJson(HttpMethod.Get, $"api/records/{record.Id}", record);
+
+        var cut = Render<RecordEdit>(p => p.Add(c => c.Id, record.Id));
+
+        Assert.Empty(cut.FindAll("[role=tab][disabled]"));
+        Assert.False(cut.Find("#delete-record").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Edit_DeleteRecord_ConfirmsThenDeletesAndReturnsToTheList()
+    {
+        var record = Samples.Record();
+        _api.OnJson(HttpMethod.Get, $"api/records/{record.Id}", record);
+        _api.On(HttpMethod.Delete, $"api/records/{record.Id}", _ => new HttpResponseMessage(HttpStatusCode.NoContent));
+        var cut = Render<RecordEdit>(p => p.Add(c => c.Id, record.Id));
+
+        cut.Find("#delete-record").Click();
+        Assert.DoesNotContain(_api.Calls, c => c.Method == HttpMethod.Delete);
+        cut.Find("#confirm-delete-record").Click();
+
+        cut.WaitForAssertion(() => Assert.EndsWith("/records", CurrentUri, StringComparison.Ordinal));
+        Assert.Single(_api.Calls, c => c.Method == HttpMethod.Delete);
     }
 
     [Fact]
@@ -119,7 +158,7 @@ public class RecordPagesTests : BunitContext
 
         var cut = Render<RecordEdit>(p => p.Add(c => c.Id, record.Id));
 
-        Assert.Equal("Artifacts", cut.Find("section#artifacts h2").TextContent.Trim());
+        Assert.Equal("Added artifacts", cut.Find("section#artifacts h3").TextContent.Trim());
         Assert.Contains("orders.pdf", cut.Find("section#artifacts").TextContent, StringComparison.Ordinal);
         Assert.NotNull(cut.Find($"#remove-{artifact.Id}"));
         Assert.NotNull(cut.Find("#artifact-uploader"));
@@ -147,6 +186,37 @@ public class RecordPagesTests : BunitContext
         cut.Find("#upload-artifacts").Click();
 
         cut.WaitForAssertion(() => Assert.Contains("orders.pdf", cut.Find("section#artifacts").TextContent, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Edit_AsAnOfficer_ListsTheRecordSubjectsAffiliations()
+    {
+        _api.OnJson(HttpMethod.Get, "api/me", new Gisr.Shared.Accounts.AccountDto(Guid.NewGuid(), "Officer", null, null, true, true, DateTimeOffset.UtcNow));
+        var record = Samples.Record(isServiceRecord: true);
+        _api.OnJson(HttpMethod.Get, $"api/records/{record.Id}", record);
+        _api.OnJson(HttpMethod.Get, $"api/accounts/{record.SubjectAccountId}/affiliations", new[]
+        {
+            new Gisr.Shared.Accounts.AccountAffiliationDto(Guid.NewGuid(), "Jedi Order", null, null, null, null, DateTimeOffset.UtcNow),
+        });
+
+        var cut = Render<RecordEdit>(p => p.Add(c => c.Id, record.Id));
+
+        Assert.Equal(["", "Military", "Jedi Order"], cut.FindAll("select#record-affiliation option").Select(o => o.GetAttribute("value") ?? "").ToArray());
+        Assert.DoesNotContain(_api.Calls, c => c.PathAndQuery == "api/me/affiliations");
+    }
+
+    [Fact]
+    public void Edit_AsAnOfficer_SubjectWithoutAffiliations_KeepsTheRecordsOwnValue()
+    {
+        _api.OnJson(HttpMethod.Get, "api/me", new Gisr.Shared.Accounts.AccountDto(Guid.NewGuid(), "Officer", null, null, true, true, DateTimeOffset.UtcNow));
+        var record = Samples.Record(isServiceRecord: true);
+        _api.OnJson(HttpMethod.Get, $"api/records/{record.Id}", record);
+        _api.OnJson(HttpMethod.Get, $"api/accounts/{record.SubjectAccountId}/affiliations", Array.Empty<Gisr.Shared.Accounts.AccountAffiliationDto>());
+
+        var cut = Render<RecordEdit>(p => p.Add(c => c.Id, record.Id));
+
+        Assert.Equal("Military", cut.Find("select#record-affiliation").GetAttribute("value"));
+        Assert.False(cut.Find("#save-record").HasAttribute("disabled"));
     }
 
     [Fact]

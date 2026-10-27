@@ -1,0 +1,81 @@
+@inject ApiClient Api
+
+<h3 id="history-heading" class="h6">Revision history</h3>
+@if (_loadFailed)
+{
+    <div class="alert alert-danger" role="alert">The history could not be loaded. Please try again.</div>
+}
+else if (!_loaded)
+{
+    <p class="text-secondary" role="status">Loading...</p>
+}
+else if (_items.Count == 0)
+{
+    <p id="history-empty" class="text-secondary mb-0">No revisions yet.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Version</th>
+                    <th scope="col">Changed by</th>
+                    <th scope="col">Changed</th>
+                    <th scope="col">Title</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var revision in _items)
+                {
+                    <tr>
+                        <td>@revision.Version</td>
+                        <td>@revision.ChangedByDisplayName</td>
+                        <td>@RecordDisplay.Instant(revision.ChangedAt)</td>
+                        <td>@revision.Title</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (_items.Count < _total)
+    {
+        <button type="button" id="more-history" class="btn btn-outline-secondary btn-sm mt-3" @onclick="LoadMoreAsync">Show older revisions</button>
+    }
+}
+
+@code {
+    private const int PageSize = 20;
+
+    private List<RevisionDto> _items = [];
+    private long _total;
+    private int _page;
+    private bool _loaded;
+    private bool _loadFailed;
+
+    [Parameter, EditorRequired]
+    public Guid RecordId { get; set; }
+
+    protected override Task OnInitializedAsync() => LoadMoreAsync();
+
+    private async Task LoadMoreAsync()
+    {
+        try
+        {
+            var next = _page + 1;
+            var page = await Api.GetAsync<PagedResult<RevisionDto>>($"api/records/{RecordId}/history?page={next}&pageSize={PageSize}");
+            if (page is not null)
+            {
+                _items = [.. _items, .. page.Items];
+                _total = page.TotalCount;
+                _page = next;
+            }
+
+            _loaded = true;
+        }
+        catch (ApiException)
+        {
+            _loadFailed = true;
+        }
+    }
+}

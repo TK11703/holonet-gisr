@@ -1,6 +1,5 @@
 using FluentValidation;
 using Gisr.Api.Accounts;
-using Gisr.Api.Affiliations;
 using Gisr.Api.Artifacts;
 using Gisr.Api.Common;
 using Gisr.Api.Gallery;
@@ -50,7 +49,6 @@ app.UseAuthorization();
 
 app.MapOpenApi();
 app.MapAccountEndpoints();
-app.MapAffiliationEndpoints();
 app.MapRecordEndpoints();
 app.MapArtifactEndpoints();
 app.MapGalleryEndpoints();

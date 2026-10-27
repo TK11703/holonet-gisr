@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
-using Gisr.Api.Affiliations;
 using Gisr.Database.Records;
+using Gisr.Shared.Records;
 
 namespace Gisr.Api.Search;
 
@@ -83,10 +83,9 @@ public static class RecordTextBuilder
     public static string Build(RecordAggregate aggregate)
     {
         var record = aggregate.Record;
-        var affiliation = AffiliationCatalog.Find(record.Affiliation);
         var text = new StringBuilder();
         text.AppendLine($"Title: {record.Title}");
-        text.AppendLine($"Affiliation: {affiliation?.Name ?? record.Affiliation}");
+        text.AppendLine($"Affiliation: {record.Affiliation}");
 
         if (record.EngagementStart is not null || record.EngagementEnd is not null)
         {
@@ -94,12 +93,9 @@ public static class RecordTextBuilder
         }
 
         var detail = ParseDetail(record.EngagementDetail);
-        foreach (var field in affiliation?.Fields ?? [])
+        if (detail.TryGetValue(EngagementSummary.Key, out var summary) && !string.IsNullOrWhiteSpace(summary))
         {
-            if (detail.TryGetValue(field.Key, out var value) && !string.IsNullOrWhiteSpace(value))
-            {
-                text.AppendLine($"{field.Label}: {value}");
-            }
+            text.AppendLine($"Summary: {summary}");
         }
 
         foreach (var incident in aggregate.Incidents.OrderBy(i => i.SortOrder))

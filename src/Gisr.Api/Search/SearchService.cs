@@ -1,11 +1,11 @@
 using FluentValidation;
 using Gisr.Api.Accounts;
-using Gisr.Api.Affiliations;
 using Gisr.Api.Common;
 using Gisr.Api.Records;
 using Gisr.Database.Records;
 using Gisr.Database.Search;
 using Gisr.Shared.Common;
+using Gisr.Shared.Records;
 using Gisr.Shared.Search;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
@@ -30,8 +30,8 @@ public sealed class SearchQueryValidator : AbstractValidator<SearchQuery>
             .When(q => q.Scope is not null);
 
         RuleFor(q => q.Affiliation)
-            .Must(code => AffiliationCatalog.Find(code) is not null)
-            .WithMessage("'Affiliation' must be one of: " + string.Join(", ", AffiliationCatalog.All.Select(a => a.Code)) + ".")
+            .NotEmpty()
+            .MaximumLength(RecordContentValidator<CreateRecordRequest>.AffiliationMaxLength)
             .When(q => q.Affiliation is not null);
 
         RuleFor(q => q.Page).GreaterThanOrEqualTo(1);

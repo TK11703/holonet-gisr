@@ -41,7 +41,6 @@ else
 {
     var record = _record;
     var viewing = _viewingId is not null;
-    var affiliation = _affiliations.FirstOrDefault(a => string.Equals(a.Code, record.Affiliation, StringComparison.Ordinal));
 
     if (viewing)
     {
@@ -54,7 +53,7 @@ else
     <div id="record-header" class="card mb-4">
         <div class="card-body d-flex flex-wrap gap-3 justify-content-between align-items-start">
             <div>
-                <span class="badge text-bg-secondary">@RecordDisplay.AffiliationName(_affiliations, record.Affiliation)</span>
+                <span class="badge text-bg-secondary">@record.Affiliation</span>
                 @if (record.IsServiceRecord)
                 {
                     <span class="badge text-bg-info ms-1">Service record</span>
@@ -85,13 +84,10 @@ else
             <dl class="mb-0">
                 <dt>Engagement period</dt>
                 <dd>@RecordDisplay.Engagement(record.EngagementStart, record.EngagementEnd)</dd>
-                @foreach (var field in affiliation?.Fields ?? [])
+                @if (record.EngagementDetail.TryGetValue(EngagementSummary.Key, out var summary) && summary.Length > 0)
                 {
-                    @if (record.EngagementDetail.TryGetValue(field.Key, out var value) && value.Length > 0)
-                    {
-                        <dt>@field.Label</dt>
-                        <dd class="pre-wrap">@value</dd>
-                    }
+                    <dt>Summary</dt>
+                    <dd class="pre-wrap">@summary</dd>
                 }
             </dl>
         </div>
@@ -203,7 +199,6 @@ else
 
     private Crumb[] Crumbs => [new("Citizen records", "/records"), new(_record?.Title ?? "Record")];
 
-    private IReadOnlyList<AffiliationDto> _affiliations = [];
     private RecordDto? _record;
     private List<RevisionDto> _history = [];
     private long _historyTotal;
@@ -250,7 +245,6 @@ else
         _code = string.Empty;
         try
         {
-            _affiliations = await Api.GetAsync<List<AffiliationDto>>("api/affiliations") ?? [];
             _record = await Api.GetAsync<RecordDto>($"api/records/{Id}");
             await LoadMoreHistoryAsync();
         }

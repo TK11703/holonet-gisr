@@ -98,13 +98,13 @@ public class ChunkerTests
 
 public class RecordTextBuilderTests
 {
-    private static RecordAggregate Aggregate(string detailJson = """{"summary":"Guarded the temple","rank":"Captain","branch":"Navy","unknown_key":"ignored value"}""") =>
+    private static RecordAggregate Aggregate(string detailJson = """{"summary":"Guarded the temple","rank":"Captain","unknown_key":"ignored value"}""") =>
         new(
             new RecordRow
             {
                 Id = Guid.NewGuid(),
                 Title = "Temple guard",
-                Affiliation = "military",
+                Affiliation = "Republic Military \u203A Rogue Squadron",
                 EngagementStart = new DateOnly(2019, 3, 4),
                 EngagementEnd = new DateOnly(2020, 5, 6),
                 EngagementDetail = detailJson,
@@ -116,12 +116,12 @@ public class RecordTextBuilderTests
             [new AwardRow { Name = "Medal of Honor", AwardedOn = new DateOnly(2021, 7, 8), Issuer = "Republic", Description = "For valor", SortOrder = 0 }]);
 
     [Fact]
-    public void IncludesTheTitleAndTheAffiliationName()
+    public void IncludesTheTitleAndTheAffiliation()
     {
         var text = RecordTextBuilder.Build(Aggregate());
 
         Assert.Contains("Temple guard", text, StringComparison.Ordinal);
-        Assert.Contains("Military", text, StringComparison.Ordinal);
+        Assert.Contains("Affiliation: Republic Military \u203A Rogue Squadron", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -134,19 +134,20 @@ public class RecordTextBuilderTests
     }
 
     [Fact]
-    public void IncludesTheEngagementDetails_WithTheirLabels()
+    public void IncludesTheSummary()
     {
         var text = RecordTextBuilder.Build(Aggregate());
 
         Assert.Contains("Summary: Guarded the temple", text, StringComparison.Ordinal);
-        Assert.Contains("Rank: Captain", text, StringComparison.Ordinal);
-        Assert.Contains("Branch: Navy", text, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void LeavesOutDetailKeysThatTheAffiliationDoesNotDefine()
+    public void LeavesOutDetailKeysOtherThanTheSummary()
     {
-        Assert.DoesNotContain("ignored value", RecordTextBuilder.Build(Aggregate()), StringComparison.Ordinal);
+        var text = RecordTextBuilder.Build(Aggregate());
+
+        Assert.DoesNotContain("ignored value", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Captain", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -181,7 +182,7 @@ public class RecordTextBuilderTests
     public void ARecordWithoutOptionalParts_StillBuilds()
     {
         var aggregate = new RecordAggregate(
-            new RecordRow { Title = "Plain", Affiliation = "civilian", EngagementDetail = "{}" }, [], []);
+            new RecordRow { Title = "Plain", Affiliation = "Civilian", EngagementDetail = "{}" }, [], []);
 
         var text = RecordTextBuilder.Build(aggregate);
 

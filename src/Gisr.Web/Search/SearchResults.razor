@@ -17,7 +17,7 @@
             <option value="">All affiliations</option>
             @foreach (var affiliation in _affiliations)
             {
-                <option value="@affiliation.Code">@affiliation.Name</option>
+                <option value="@affiliation">@affiliation</option>
             }
         </select>
     </div>
@@ -69,7 +69,7 @@ else if (_results is not null)
                     <div class="card-body">
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
                             <h2 class="h6 mb-0"><a class="search-result-link" href="/records/@hit.RecordId">@hit.RecordTitle</a></h2>
-                            <span class="badge text-bg-secondary">@RecordDisplay.AffiliationName(_affiliations, hit.Affiliation)</span>
+                            <span class="badge text-bg-secondary">@hit.Affiliation</span>
                             @if (hit.IsSealed)
                             {
                                 <span class="badge text-bg-warning badge-sealed">Sealed</span>
@@ -120,7 +120,7 @@ else if (_results is not null)
 
     private static readonly Crumb[] Crumbs = [new("Home", "/"), new("Search")];
 
-    private IReadOnlyList<AffiliationDto> _affiliations = [];
+    private IReadOnlyList<string> _affiliations = [];
     private PagedResult<SearchResultDto>? _results;
     private SearchState _state = SearchState.Prompt;
     private string _input = string.Empty;
@@ -159,7 +159,7 @@ else if (_results is not null)
     {
         try
         {
-            _affiliations = await Api.GetAsync<List<AffiliationDto>>("api/affiliations") ?? [];
+            _affiliations = RecordDisplay.AffiliationLabels(await Api.GetAsync<List<AccountAffiliationDto>>("api/me/affiliations") ?? []);
         }
         catch (ApiException)
         {

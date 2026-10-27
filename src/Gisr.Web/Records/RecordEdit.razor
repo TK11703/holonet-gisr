@@ -23,30 +23,23 @@ else if (!_canEdit)
 }
 else
 {
-    <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" OnReload="ReloadAsync"
-                SubmitLabel="Save changes" CancelHref="@($"/records/{Id}")" AllowSealing="@(User.IsOfficer && _isServiceRecord)" />
-
-    <section id="artifacts" class="card mt-4 mb-4" aria-labelledby="artifacts-heading">
-        <div class="card-body">
-            <h2 id="artifacts-heading" class="h5">Artifacts</h2>
-            <ArtifactList RecordId="Id" Editable="true" RefreshKey="_artifactRefresh" />
-        </div>
-    </section>
-
-    <ArtifactUploader RecordId="Id" OnUploaded="OnArtifactUploaded" />
+    <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" OnDelete="DeleteAsync" OnReload="ReloadAsync"
+                CancelHref="@($"/records/{Id}")" AllowSealing="@(User.IsOfficer && _isServiceRecord)"
+                AffiliationOwner="@_affiliationOwner" AffiliationsFailed="_affiliationsFailed" />
 }
 
 @code {
     private Crumb[] Crumbs => [new("Citizen records", "/records"), new("Record", $"/records/{Id}"), new("Edit")];
 
-    private IReadOnlyList<AffiliationDto> _affiliations = [];
+    private IReadOnlyList<AccountAffiliationDto> _affiliations = [];
     private RecordFormModel? _model;
     private Guid _loadedId;
     private bool _canEdit;
     private bool _isServiceRecord;
     private bool _notFound;
     private bool _loadError;
-    private int _artifactRefresh;
+    private bool _affiliationsFailed;
+    private string? _affiliationOwner;
 
     [Parameter]
     public Guid Id { get; set; }
@@ -64,7 +57,6 @@ else
         _loadError = false;
         try
         {
-            _affiliations = await Api.GetAsync<List<AffiliationDto>>("api/affiliations") ?? [];
             await LoadUserAsync();
             await LoadRecordAsync();
         }
@@ -96,6 +88,25 @@ else
         _canEdit = record!.CanEdit;
         _isServiceRecord = record.IsServiceRecord;
         _model = RecordFormModel.FromDto(record);
+        await LoadAffiliationsAsync(record);
+    }
+
+    // The affiliation choices belong to the citizen the record is about; Officers read other citizens' lists.
+    private async Task LoadAffiliationsAsync(RecordDto record)
+    {
+        var own = User.Account is { } account && account.Id == record.SubjectAccountId;
+        _affiliationOwner = own || !User.IsOfficer ? null : record.SubjectDisplayName;
+        _affiliationsFailed = false;
+        try
+        {
+            var path = User.IsOfficer ? $"api/accounts/{record.SubjectAccountId}/affiliations" : "api/me/affiliations";
+            _affiliations = await Api.GetAsync<List<AccountAffiliationDto>>(path) ?? [];
+        }
+        catch (ApiException)
+        {
+            _affiliations = [];
+            _affiliationsFailed = true;
+        }
     }
 
     private async Task ReloadAsync()
@@ -110,11 +121,15 @@ else
         }
     }
 
-    private void OnArtifactUploaded() => _artifactRefresh++;
-
     private async Task SaveAsync(RecordFormModel model)
     {
         await Api.PutAsync<RecordDto>($"api/records/{Id}", model.ToUpdateRequest());
         Navigation.NavigateTo($"/records/{Id}");
+    }
+
+    private async Task DeleteAsync()
+    {
+        await Api.SendAsync(HttpMethod.Delete, $"api/records/{Id}");
+        Navigation.NavigateTo("/records");
     }
 }

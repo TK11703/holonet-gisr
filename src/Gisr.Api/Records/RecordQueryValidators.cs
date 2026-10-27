@@ -1,5 +1,5 @@
 using FluentValidation;
-using Gisr.Api.Affiliations;
+using Gisr.Shared.Records;
 
 namespace Gisr.Api.Records;
 
@@ -20,8 +20,8 @@ public sealed class RecordListQueryValidator : AbstractValidator<RecordListQuery
             .When(q => q.Scope is not null);
 
         RuleFor(q => q.Affiliation)
-            .Must(code => AffiliationCatalog.Find(code) is not null)
-            .WithMessage("'Affiliation' must be one of: " + string.Join(", ", AffiliationCatalog.All.Select(a => a.Code)) + ".")
+            .NotEmpty()
+            .MaximumLength(RecordContentValidator<CreateRecordRequest>.AffiliationMaxLength)
             .When(q => q.Affiliation is not null);
 
         RuleFor(q => q.Sort)

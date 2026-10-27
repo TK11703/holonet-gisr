@@ -84,7 +84,7 @@ public class SearchQueryValidatorTests
 
     [Theory]
     [InlineData("ab", null, null, null, null)]
-    [InlineData("  temple guard  ", "mine", "military", 1, 10)]
+    [InlineData("  temple guard  ", "mine", "Republic Military", 1, 10)]
     [InlineData("temple", "all", null, 3, 50)]
     public void ValidQueriesPass(string q, string? scope, string? affiliation, int? page, int? pageSize) =>
         Assert.True(_validator.Validate(new SearchQuery(q, scope, affiliation, page, pageSize)).IsValid);
@@ -106,7 +106,7 @@ public class SearchQueryValidatorTests
 
     [Theory]
     [InlineData("everyone", null, null, null)]
-    [InlineData(null, "wookiee", null, null)]
+    [InlineData(null, "", null, null)]
     [InlineData(null, null, 0, null)]
     [InlineData(null, null, null, 0)]
     [InlineData(null, null, null, 51)]

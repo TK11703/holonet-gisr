@@ -16,7 +16,7 @@ public class RecordListTests : BunitContext
     public RecordListTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
     }
 
@@ -39,7 +39,7 @@ public class RecordListTests : BunitContext
     [Fact]
     public void Row_ShowsTheRecordWithALinkToItsPage()
     {
-        var item = Samples.ListItem(title: "Temple guard", affiliation: "jedi");
+        var item = Samples.ListItem(title: "Temple guard", affiliation: "Jedi");
         _api.OnJson(HttpMethod.Get, Default, Page(1, 1, item));
 
         var cut = Render<RecordList>();
@@ -93,25 +93,25 @@ public class RecordListTests : BunitContext
     public void AffiliationFilter_ListsAffiliations_AndReloadsFromPageOne()
     {
         _api.OnJson(HttpMethod.Get, Default, Page(1, 1, Samples.ListItem()));
-        _api.OnJson(HttpMethod.Get, $"{Default}&affiliation=jedi", Page(1, 1, Samples.ListItem(title: "Knight", affiliation: "jedi")));
+        _api.OnJson(HttpMethod.Get, $"{Default}&affiliation=Jedi", Page(1, 1, Samples.ListItem(title: "Knight", affiliation: "Jedi")));
         var cut = Render<RecordList>();
 
         Assert.Equal(["All affiliations", "Military", "Jedi"],
             cut.FindAll("select#filter-affiliation option").Select(o => o.TextContent.Trim()).ToArray());
-        cut.Find("select#filter-affiliation").Change("jedi");
+        cut.Find("select#filter-affiliation").Change("Jedi");
 
         cut.WaitForAssertion(() => Assert.Contains("Knight", cut.Find("tbody").TextContent, StringComparison.Ordinal));
-        Assert.Contains(_api.Calls, c => c.PathAndQuery == $"{Default}&affiliation=jedi");
+        Assert.Contains(_api.Calls, c => c.PathAndQuery == $"{Default}&affiliation=Jedi");
     }
 
     [Fact]
     public void FilterWithNoMatches_ShowsNoMatchMessage_NotTheFirstRecordInvitation()
     {
         _api.OnJson(HttpMethod.Get, Default, Page(1, 1, Samples.ListItem()));
-        _api.OnJson(HttpMethod.Get, $"{Default}&affiliation=jedi", Page(0));
+        _api.OnJson(HttpMethod.Get, $"{Default}&affiliation=Jedi", Page(0));
         var cut = Render<RecordList>();
 
-        cut.Find("select#filter-affiliation").Change("jedi");
+        cut.Find("select#filter-affiliation").Change("Jedi");
 
         cut.WaitForAssertion(() =>
         {

@@ -63,7 +63,7 @@ public static class RecordMapper
 
         return new RecordWrite(
             content.Title.Trim(),
-            content.Affiliation,
+            content.Affiliation.Trim(),
             content.EngagementStart,
             content.EngagementEnd,
             JsonSerializer.Serialize(detail, Json),

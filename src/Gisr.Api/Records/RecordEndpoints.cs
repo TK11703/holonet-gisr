@@ -57,6 +57,17 @@ public static class RecordEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
+        group.MapDelete("/{recordId:guid}", async (Guid recordId, RecordService records, CancellationToken cancellationToken) =>
+            {
+                await records.DeleteAsync(recordId, cancellationToken);
+                return TypedResults.NoContent();
+            })
+            .WithName("deleteRecord")
+            .WithSummary("Soft-deletes a record; revisions and the access log are kept")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         group.MapGet("/{recordId:guid}/history", async (Guid recordId, [AsParameters] HistoryQuery query, RecordService records, CancellationToken cancellationToken) =>
                 TypedResults.Ok(await records.HistoryAsync(recordId, query, cancellationToken)))
             .WithName("getRecordHistory")

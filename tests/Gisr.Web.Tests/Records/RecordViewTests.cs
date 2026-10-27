@@ -15,7 +15,7 @@ public class RecordViewTests : BunitContext
     public RecordViewTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        _api.OnJson(HttpMethod.Get, "api/affiliations", Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
     }
 
@@ -49,7 +49,7 @@ public class RecordViewTests : BunitContext
     [Fact]
     public void Header_ShowsTitleAffiliationSubjectAuthorAndVersion()
     {
-        var record = Samples.Record(title: "Temple guard", affiliation: "military", version: 4);
+        var record = Samples.Record(title: "Temple guard", affiliation: "Military", version: 4);
 
         var cut = RenderView(record);
 
@@ -84,18 +84,19 @@ public class RecordViewTests : BunitContext
     }
 
     [Fact]
-    public void EngagementDetails_ShowDatesAndAffiliationFieldsWithLabels()
+    public void EngagementDetails_ShowTheDatesAndTheSummary()
     {
-        var cut = RenderView(Samples.Record());
+        var cut = RenderView(Samples.Record() with
+        {
+            EngagementDetail = new Dictionary<string, string> { ["summary"] = "Served with distinction.", ["rank"] = "Captain" },
+        });
 
         var details = cut.Find("#engagement-details").TextContent;
         Assert.Contains("2019-01-01", details, StringComparison.Ordinal);
         Assert.Contains("2020-01-01", details, StringComparison.Ordinal);
         Assert.Contains("Summary", details, StringComparison.Ordinal);
         Assert.Contains("Served with distinction.", details, StringComparison.Ordinal);
-        Assert.Contains("Rank", details, StringComparison.Ordinal);
-        Assert.Contains("Captain", details, StringComparison.Ordinal);
-        Assert.DoesNotContain("Unit", details, StringComparison.Ordinal);
+        Assert.DoesNotContain("Captain", details, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -129,8 +130,8 @@ public class RecordViewTests : BunitContext
 
         var cut = RenderView(
             Samples.Record(),
-            new RevisionDto(2, "Rex", changedAt, "military", "Renamed"),
-            new RevisionDto(1, "Rex", changedAt.AddDays(-1), "military", "Original"));
+            new RevisionDto(2, "Rex", changedAt, "Military", "Renamed"),
+            new RevisionDto(1, "Rex", changedAt.AddDays(-1), "Military", "Original"));
 
         var rows = cut.FindAll("#history tbody tr").Select(r => r.TextContent).ToArray();
         Assert.Equal(2, rows.Length);

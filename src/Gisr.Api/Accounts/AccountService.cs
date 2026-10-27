@@ -17,6 +17,9 @@ public sealed class AccountService(AccountRepository accounts, ITenantDirectory 
         return await accounts.UpsertAsync(user.TenantId, user.ObjectId, displayName, user.Email, cancellationToken);
     }
 
+    public Task<AccountRow?> FindCitizenAsync(Guid objectId, CancellationToken cancellationToken) =>
+        accounts.FindByObjectAsync(user.TenantId, objectId, cancellationToken);
+
     // Officers pick the subject from the whole tenant, so the person may not have signed in yet.
     public async Task<AccountRow> ResolveSubjectAsync(Guid objectId, CancellationToken cancellationToken)
     {
