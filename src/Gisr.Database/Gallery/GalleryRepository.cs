@@ -20,6 +20,13 @@ public sealed class GalleryGroupRow
     public Guid[] CoverArtifactIds { get; set; } = [];
 }
 
+public enum GallerySort
+{
+    UpdatedDesc,
+    TitleAsc,
+    TitleDesc,
+}
+
 public sealed class GalleryRepository(NpgsqlDataSource dataSource, ISqlScriptLoader sql)
 {
     private const string Feature = "Gallery";
@@ -27,6 +34,7 @@ public sealed class GalleryRepository(NpgsqlDataSource dataSource, ISqlScriptLoa
     public async Task<PagedRows<GalleryGroupRow>> ListGroupsAsync(
         RecordCaller caller,
         RecordListScope scope,
+        GallerySort sort,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
@@ -36,11 +44,18 @@ public sealed class GalleryRepository(NpgsqlDataSource dataSource, ISqlScriptLoa
 
         var rows = await connection.QueryAsync<GalleryGroupRow>(new CommandDefinition(
             sql.Get(Feature, "list-gallery-groups"),
-            new { filter.CallerAccountId, filter.IsOfficer, filter.AllRecords, PageSize = pageSize, Offset = (page - 1) * pageSize },
+            new { filter.CallerAccountId, filter.IsOfficer, filter.AllRecords, Sort = SortKey(sort), PageSize = pageSize, Offset = (page - 1) * pageSize },
             cancellationToken: cancellationToken));
         var total = await connection.ExecuteScalarAsync<long>(new CommandDefinition(
             sql.Get(Feature, "count-gallery-groups"), filter, cancellationToken: cancellationToken));
 
         return new PagedRows<GalleryGroupRow>([.. rows], total);
     }
+
+    private static string SortKey(GallerySort sort) => sort switch
+    {
+        GallerySort.TitleAsc => "titleAsc",
+        GallerySort.TitleDesc => "titleDesc",
+        _ => "updatedDesc",
+    };
 }

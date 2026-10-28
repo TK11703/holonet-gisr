@@ -91,6 +91,21 @@ public class GalleryEndpointsTests(PostgresFixture postgres, AzuriteFixture azur
     }
 
     [Fact]
+    public async Task Sort_OrdersGroupsByTitle()
+    {
+        await using var factory = await CreateFactoryAsync();
+        var client = factory.CreateUserClient();
+        var bravo = await RecordWithImagesAsync(client, 1, "Bravo");
+        var alpha = await RecordWithImagesAsync(client, 1, "Alpha");
+
+        var ascending = await GetAsync(client, "?sort=titleAsc");
+        var descending = await GetAsync(client, "?sort=titleDesc");
+
+        Assert.Equal([alpha.Id, bravo.Id], ascending.Items.Select(g => g.RecordId));
+        Assert.Equal([bravo.Id, alpha.Id], descending.Items.Select(g => g.RecordId));
+    }
+
+    [Fact]
     public async Task RemovedImages_LeaveTheGallery()
     {
         await using var factory = await CreateFactoryAsync();
@@ -162,9 +177,10 @@ public class GalleryEndpointsTests(PostgresFixture postgres, AzuriteFixture azur
 
     [Theory]
     [InlineData("pageSize=0")]
-    [InlineData("pageSize=51")]
+    [InlineData("pageSize=101")]
     [InlineData("page=0")]
     [InlineData("scope=everyone")]
+    [InlineData("sort=updatedAsc")]
     public async Task InvalidQueries_Give400(string query)
     {
         await using var factory = await CreateFactoryAsync();

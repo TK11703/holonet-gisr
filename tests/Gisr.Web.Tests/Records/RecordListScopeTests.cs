@@ -10,7 +10,7 @@ namespace Gisr.Web.Tests.Records;
 
 public class RecordListScopeTests : BunitContext
 {
-    private const string Mine = "api/records?page=1&pageSize=20&sort=updatedDesc";
+    private const string Mine = "api/records?page=1&pageSize=25&sort=updatedDesc";
     private const string All = Mine + "&scope=all";
 
     private readonly FakeApi _api = new();
@@ -64,7 +64,7 @@ public class RecordListScopeTests : BunitContext
         Assert.Equal("mine", cut.Find("#filter-scope").GetAttribute("value"));
         Assert.Equal("Records", cut.Find("label[for='filter-scope']").TextContent.Trim());
         var toolbar = cut.Find("#filter-primary-affiliation").ParentElement!.ParentElement!;
-        Assert.Equal(["filter-scope", "filter-primary-affiliation", "filter-secondary-affiliation", "sort"],
+        Assert.Equal(["filter-scope", "filter-primary-affiliation", "filter-secondary-affiliation", "sort", "page-size"],
             toolbar.QuerySelectorAll("select").Select(select => select.Id ?? string.Empty).ToArray());
     }
 

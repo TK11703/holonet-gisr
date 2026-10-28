@@ -7,7 +7,6 @@
         <div class="lightbox-toolbar">
             <span class="lightbox-counter" aria-live="polite">@(Index + 1) of @Items.Count</span>
             <div class="d-flex gap-2 ms-auto">
-                <a class="btn btn-sm btn-outline-secondary lightbox-open-record" href="/records/@RecordId">Open record</a>
                 <button type="button" id="lightbox-close" class="btn btn-sm btn-outline-secondary" aria-label="Close image viewer" @onclick="CloseAsync">
                     <Icon Name="close" Size="16" />
                 </button>
@@ -38,9 +37,6 @@
 
     [Parameter]
     public int Index { get; set; }
-
-    [Parameter, EditorRequired]
-    public Guid RecordId { get; set; }
 
     [Parameter]
     public EventCallback<int> IndexChanged { get; set; }

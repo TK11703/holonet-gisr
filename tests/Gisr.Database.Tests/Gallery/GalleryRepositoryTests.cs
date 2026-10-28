@@ -12,8 +12,8 @@ public class GalleryRepositoryTests(PostgresFixture postgres)
 {
     private static GalleryRepository Gallery(TestDatabase db) => new(db.DataSource, new SqlScriptLoader());
 
-    private static Task<PagedRows<GalleryGroupRow>> ListAsync(TestDatabase db, RecordCaller caller, RecordListScope scope = RecordListScope.Mine, int page = 1, int pageSize = 12) =>
-        Gallery(db).ListGroupsAsync(caller, scope, page, pageSize, CancellationToken.None);
+    private static Task<PagedRows<GalleryGroupRow>> ListAsync(TestDatabase db, RecordCaller caller, RecordListScope scope = RecordListScope.Mine, int page = 1, int pageSize = 12, GallerySort sort = GallerySort.UpdatedDesc) =>
+        Gallery(db).ListGroupsAsync(caller, scope, sort, page, pageSize, CancellationToken.None);
 
     private static async Task<Guid> RecordWithImagesAsync(TestDatabase db, Gisr.Database.Accounts.AccountRow subject, int images, string title = "Clone Wars service")
     {
@@ -129,6 +129,25 @@ public class GalleryRepositoryTests(PostgresFixture postgres)
         Assert.Equal(3, page1.TotalCount);
         Assert.Equal([third, second], page1.Items.Select(g => g.RecordId));
         Assert.Equal([first], page2.Items.Select(g => g.RecordId));
+    }
+
+    [Fact]
+    public async Task TitleSorts_OrderGroupsAlphabetically_AndPage()
+    {
+        await using var db = await postgres.CreateMigratedDatabaseAsync();
+        var account = await RecordTestData.CreateAccountAsync(db);
+        var bravo = await RecordWithImagesAsync(db, account, 1, "Bravo");
+        var charlie = await RecordWithImagesAsync(db, account, 1, "Charlie");
+        var alpha = await RecordWithImagesAsync(db, account, 1, "Alpha");
+        var caller = new RecordCaller(account.Id);
+
+        var ascending = await ListAsync(db, caller, sort: GallerySort.TitleAsc);
+        var descending = await ListAsync(db, caller, sort: GallerySort.TitleDesc);
+        var ascendingPage2 = await ListAsync(db, caller, page: 2, pageSize: 2, sort: GallerySort.TitleAsc);
+
+        Assert.Equal([alpha, bravo, charlie], ascending.Items.Select(g => g.RecordId));
+        Assert.Equal([charlie, bravo, alpha], descending.Items.Select(g => g.RecordId));
+        Assert.Equal([charlie], ascendingPage2.Items.Select(g => g.RecordId));
     }
 
     [Fact]

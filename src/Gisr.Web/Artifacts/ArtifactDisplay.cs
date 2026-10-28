@@ -11,7 +11,8 @@ public static class ArtifactDisplay
     {
         < 1024 => $"{bytes} B",
         < 1024 * 1024 => (bytes / 1024d).ToString("F1", CultureInfo.InvariantCulture) + " KB",
-        _ => (bytes / (1024d * 1024d)).ToString("F1", CultureInfo.InvariantCulture) + " MB",
+        < 1024 * 1024 * 1024 => (bytes / (1024d * 1024d)).ToString("F1", CultureInfo.InvariantCulture) + " MB",
+        _ => (bytes / (1024d * 1024d * 1024d)).ToString("F1", CultureInfo.InvariantCulture) + " GB",
     };
 
     public static bool IsImageName(string fileName) =>

@@ -1,0 +1,31 @@
+<section id="@Id" class="accordion-item">
+    <h2 class="accordion-header">
+        <button type="button" id="@($"{Id}-toggle")" class="@(_open ? "accordion-button" : "accordion-button collapsed")"
+                aria-expanded="@(_open ? "true" : "false")" aria-controls="@($"{Id}-panel")" @onclick="Toggle"><span class="accordion-title">@Title</span>@if (Count > 0)
+        {
+            <span id="@($"{Id}-count")" class="badge rounded-pill text-bg-secondary ms-2">@Count</span>
+        }</button>
+    </h2>
+    <div id="@($"{Id}-panel")" class="@(_open ? "accordion-collapse collapse show" : "accordion-collapse collapse")"
+         role="region" aria-labelledby="@($"{Id}-toggle")">
+        <div class="accordion-body">@ChildContent</div>
+    </div>
+</section>
+
+@code {
+    private bool _open;
+
+    [Parameter, EditorRequired]
+    public string Id { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public int Count { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private void Toggle() => _open = !_open;
+}

@@ -11,7 +11,7 @@ namespace Gisr.Web.Tests.Gallery;
 
 public class GalleryIndexTests : BunitContext
 {
-    private const string Default = "api/gallery?page=1&pageSize=12";
+    private const string Default = "api/gallery?page=1&pageSize=25&sort=updatedDesc";
 
     private readonly FakeApi _api = new();
 
@@ -25,7 +25,7 @@ public class GalleryIndexTests : BunitContext
     private static GalleryGroupDto Group(string title = "Clone Wars service", int images = 2, string affiliation = "Military", int covers = -1) =>
         new(Guid.NewGuid(), title, affiliation, "Rex", images, [.. Enumerable.Range(0, covers < 0 ? Math.Min(images, 4) : covers).Select(_ => Guid.NewGuid())]);
 
-    private static PagedResult<GalleryGroupDto> Page(long total, params GalleryGroupDto[] items) => new(1, 12, total, items);
+    private static PagedResult<GalleryGroupDto> Page(long total, params GalleryGroupDto[] items) => new(1, 25, total, items);
 
     private void SetOfficer(bool officer) =>
         _api.OnJson(HttpMethod.Get, "api/me", new AccountDto(Guid.NewGuid(), "Someone", null, null, true, officer, DateTimeOffset.UtcNow));
@@ -37,7 +37,7 @@ public class GalleryIndexTests : BunitContext
 
         var cut = Render<GalleryIndex>();
 
-        Assert.Equal("Gallery", cut.Find("h1").TextContent.Trim());
+        Assert.Equal("List of galleries", cut.Find("h1").TextContent.Trim());
         Assert.NotNull(cut.Find("nav[aria-label=breadcrumb]"));
     }
 
@@ -110,15 +110,14 @@ public class GalleryIndexTests : BunitContext
     }
 
     [Fact]
-    public void Citizens_GetNoScopeSwitch()
+    public void Citizens_GetNoOwnerSelector()
     {
         SetOfficer(false);
         _api.OnJson(HttpMethod.Get, Default, Page(1, Group()));
 
         var cut = Render<GalleryIndex>();
 
-        Assert.Empty(cut.FindAll("#scope-mine"));
-        Assert.Empty(cut.FindAll("#scope-all"));
+        Assert.Empty(cut.FindAll("#filter-scope"));
     }
 
     [Fact]
@@ -128,35 +127,66 @@ public class GalleryIndexTests : BunitContext
         _api.OnJson(HttpMethod.Get, Default, Page(1, Group("Mine")));
         _api.OnJson(HttpMethod.Get, $"{Default}&scope=all", Page(2, Group("Everyone A"), Group("Everyone B")));
         var cut = Render<GalleryIndex>();
-        Assert.Equal("true", cut.Find("#scope-mine").GetAttribute("aria-pressed"));
+        Assert.Equal("Gallery Owner", cut.Find("label[for=filter-scope]").TextContent.Trim());
+        Assert.Equal(["My records", "All records"], cut.FindAll("select#filter-scope option").Select(o => o.TextContent.Trim()).ToArray());
 
-        cut.Find("#scope-all").Click();
+        cut.Find("select#filter-scope").Change("all");
 
-        cut.WaitForAssertion(() =>
-        {
-            Assert.Equal(2, cut.FindAll(".gallery-card").Count);
-            Assert.Equal("true", cut.Find("#scope-all").GetAttribute("aria-pressed"));
-            Assert.Equal("false", cut.Find("#scope-mine").GetAttribute("aria-pressed"));
-        });
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".gallery-card").Count));
     }
 
     [Fact]
-    public void Officers_StillSeeTheSwitch_WhenTheirOwnGalleryIsEmpty()
+    public void Officers_StillSeeTheSelector_WhenTheirOwnGalleryIsEmpty()
     {
         SetOfficer(true);
         _api.OnJson(HttpMethod.Get, Default, Page(0));
 
         var cut = Render<GalleryIndex>();
 
-        Assert.NotNull(cut.Find("#scope-all"));
+        Assert.NotNull(cut.Find("#filter-scope"));
         Assert.NotNull(cut.Find("#gallery-empty"));
+    }
+
+    [Fact]
+    public void Sort_OffersRecentlyUpdatedAndTitleOrders_AndReloads()
+    {
+        _api.OnJson(HttpMethod.Get, Default, Page(1, Group("Recent")));
+        _api.OnJson(HttpMethod.Get, "api/gallery?page=1&pageSize=25&sort=titleDesc", Page(1, Group("Zulu")));
+        var cut = Render<GalleryIndex>();
+
+        Assert.Equal(["Recently updated", "Title A-Z", "Title Z-A"], cut.FindAll("select#sort option").Select(o => o.TextContent.Trim()).ToArray());
+        Assert.Equal(["updatedDesc", "titleAsc", "titleDesc"], cut.FindAll("select#sort option").Select(o => o.GetAttribute("value")!).ToArray());
+        cut.Find("select#sort").Change("titleDesc");
+
+        cut.WaitForAssertion(() => Assert.Contains("Zulu", cut.Find(".gallery-card").TextContent, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PageSize_OffersTheFixedChoices_AndReloadsFromPageOne()
+    {
+        _api.OnJson(HttpMethod.Get, Default, Page(60, Group("Default size")));
+        _api.OnJson(HttpMethod.Get, "api/gallery?page=2&pageSize=25&sort=updatedDesc", new PagedResult<GalleryGroupDto>(2, 25, 60, [Group("Second")]));
+        _api.OnJson(HttpMethod.Get, "api/gallery?page=1&pageSize=50&sort=updatedDesc", new PagedResult<GalleryGroupDto>(1, 50, 60, [Group("Fifty")]));
+        var cut = Render<GalleryIndex>();
+
+        Assert.Equal(["10", "25", "50", "100"], cut.FindAll("select#page-size option").Select(o => o.TextContent.Trim()).ToArray());
+        Assert.Equal("Page Size", cut.Find("label[for=page-size]").TextContent.Trim());
+        cut.Find("#next-page").Click();
+        cut.WaitForAssertion(() => Assert.Contains("Page 2 of 3", cut.Find("nav[aria-label='Gallery pages']").TextContent, StringComparison.Ordinal));
+        cut.Find("select#page-size").Change("50");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Fifty", cut.Find(".gallery-card").TextContent, StringComparison.Ordinal);
+            Assert.Contains("Page 1 of 2", cut.Find("nav[aria-label='Gallery pages']").TextContent, StringComparison.Ordinal);
+        });
     }
 
     [Fact]
     public void Paging_ShowsThePosition_AndLoadsTheNextPage()
     {
-        _api.OnJson(HttpMethod.Get, Default, Page(25, Group("Page one")));
-        _api.OnJson(HttpMethod.Get, "api/gallery?page=2&pageSize=12", new PagedResult<GalleryGroupDto>(2, 12, 25, [Group("Page two")]));
+        _api.OnJson(HttpMethod.Get, Default, Page(60, Group("Page one")));
+        _api.OnJson(HttpMethod.Get, "api/gallery?page=2&pageSize=25&sort=updatedDesc", new PagedResult<GalleryGroupDto>(2, 25, 60, [Group("Page two")]));
         var cut = Render<GalleryIndex>();
         Assert.Contains("Page 1 of 3", cut.Find("nav[aria-label='Gallery pages']").TextContent, StringComparison.Ordinal);
         Assert.True(cut.Find("#previous-page").HasAttribute("disabled"));

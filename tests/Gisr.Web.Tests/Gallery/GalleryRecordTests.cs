@@ -38,16 +38,80 @@ public class GalleryRecordTests : BunitContext
     private IRenderedComponent<GalleryRecord> RenderPage() => Render<GalleryRecord>(p => p.Add(c => c.RecordId, _record.Id));
 
     [Fact]
-    public void ShowsTheRecordTitle_WithABreadcrumbBackToTheGallery_AndALinkToTheRecord()
+    public void ShowsGalleryDetailsAsThePageTitle_WithABreadcrumbBackToTheGallery_AndALinkToTheRecord()
     {
         ServeImages(1, 0);
 
         var cut = RenderPage();
 
-        Assert.Equal("Temple guard", cut.Find("h1").TextContent.Trim());
+        Assert.Equal("Gallery details", cut.Find("h1").TextContent.Trim());
         var crumbs = cut.FindAll("nav[aria-label=breadcrumb] a");
         Assert.Equal("/gallery", crumbs[^1].GetAttribute("href"));
         Assert.Equal($"/records/{_record.Id}", cut.Find("a#open-record").GetAttribute("href"));
+    }
+
+    [Fact]
+    public void ShowsARecordSummary_WithTitleSubjectAndAffiliation_AboveTheImages()
+    {
+        ServeImages(1, 1, Image("a.png", "A temple at dawn"));
+
+        var cut = RenderPage();
+
+        var summary = cut.Find("#gallery-record-summary");
+        Assert.Equal("Record details", summary.QuerySelector("legend")!.TextContent.Trim());
+        Assert.Equal("Temple guard", summary.QuerySelector("#gallery-record-title")!.TextContent.Trim());
+        Assert.Equal(["Title", "Subject", "Affiliation"], summary.QuerySelectorAll("dt").Select(t => t.TextContent.Trim()));
+        Assert.Equal($"/records/{_record.Id}", summary.QuerySelector("a#open-record")!.GetAttribute("href"));
+        Assert.Contains("col-md-1", summary.QuerySelector("a#open-record")!.ParentElement!.ClassList);
+        Assert.Contains(_record.SubjectDisplayName, summary.TextContent, StringComparison.Ordinal);
+        Assert.Contains(_record.Affiliation, summary.TextContent, StringComparison.Ordinal);
+        Assert.True(cut.Markup.IndexOf("gallery-record-summary", StringComparison.Ordinal) < cut.Markup.IndexOf("artifact-grid", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TheSummaryBarShowsTheItemCountAndTotalSize_AboveTilesWithNameAndSize()
+    {
+        var a = Image("a.png", "A") with { SizeBytes = 2048 };
+        var b = Image("b.png", "B") with { SizeBytes = 1024 * 1024 };
+        ServeImages(1, 2, a, b);
+
+        var cut = RenderPage();
+
+        Assert.Empty(cut.FindAll("#gallery-images .card-header"));
+        var bar = cut.Find("#gallery-images-summary");
+        Assert.Contains("Items in this gallery", bar.TextContent, StringComparison.Ordinal);
+        Assert.Equal("2", cut.Find("#gallery-item-count").TextContent.Trim());
+        var total = System.Text.RegularExpressions.Regex.Replace(cut.Find("#gallery-total-size").TextContent, @"\s+", " ").Trim();
+        Assert.Equal("Total memory used 1.0 MB", total);
+        var tiles = cut.FindAll("#gallery-images .artifact-tile");
+        Assert.Equal(2, tiles.Count);
+        Assert.Contains("a.png", tiles[0].TextContent, StringComparison.Ordinal);
+        Assert.Contains("2.0 KB", tiles[0].TextContent, StringComparison.Ordinal);
+        Assert.Equal(2, cut.FindAll("button.gallery-thumb").Count);
+    }
+
+    [Fact]
+    public void OpenRecord_IsAnIconOnlyLinkWithATitle()
+    {
+        ServeImages(1, 0);
+
+        var link = RenderPage().Find("a#open-record");
+
+        Assert.Equal("Open record", link.GetAttribute("title"));
+        Assert.Equal("Open record", link.GetAttribute("aria-label"));
+        Assert.Equal(string.Empty, link.TextContent.Trim());
+    }
+
+    [Fact]
+    public void TotalSize_CoversEveryPage()
+    {
+        ServeImages(1, 30, Image("one.png", "First") with { SizeBytes = 1024 });
+        _api.OnJson(HttpMethod.Get, $"api/records/{_record.Id}/artifacts?kind=image&pageSize=100",
+            new PagedResult<ArtifactDto>(1, 100, 30, [Image("one.png", "First") with { SizeBytes = 1024 * 1024 }, Image("two.png", "Second") with { SizeBytes = 1024 * 1024 }]));
+
+        var cut = RenderPage();
+
+        Assert.Contains("2.0 MB", cut.Find("#gallery-total-size").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -109,7 +173,7 @@ public class GalleryRecordTests : BunitContext
     }
 
     [Fact]
-    public void TheLightbox_NavigatesWithinThePage_AndLinksToTheRecord()
+    public void TheLightbox_NavigatesWithinThePage()
     {
         var a = Image("a.png", "First");
         var b = Image("b.png", "Second");
@@ -120,7 +184,6 @@ public class GalleryRecordTests : BunitContext
         cut.Find("#lightbox-next").Click();
 
         Assert.Equal($"/media/artifacts/{b.Id}", cut.Find("img.lightbox-image").GetAttribute("src"));
-        Assert.Equal($"/records/{_record.Id}", cut.Find("a.lightbox-open-record").GetAttribute("href"));
     }
 
     [Fact]

@@ -9,11 +9,12 @@ using Gisr.Shared.Gallery;
 
 namespace Gisr.Api.Gallery;
 
-public sealed record GalleryQuery(string? Scope, int? Page, int? PageSize);
+public sealed record GalleryQuery(string? Scope, int? Page, int? PageSize, string? Sort = null);
 
 public sealed class GalleryQueryValidator : AbstractValidator<GalleryQuery>
 {
     public static readonly IReadOnlyList<string> Scopes = ["mine", "all"];
+    public static readonly IReadOnlyList<string> Sorts = ["updatedDesc", "titleAsc", "titleDesc"];
 
     public GalleryQueryValidator()
     {
@@ -22,8 +23,13 @@ public sealed class GalleryQueryValidator : AbstractValidator<GalleryQuery>
             .WithMessage("'Scope' must be one of: " + string.Join(", ", Scopes) + ".")
             .When(q => q.Scope is not null);
 
+        RuleFor(q => q.Sort)
+            .Must(sort => Sorts.Contains(sort!, StringComparer.Ordinal))
+            .WithMessage("'Sort' must be one of: " + string.Join(", ", Sorts) + ".")
+            .When(q => q.Sort is not null);
+
         RuleFor(q => q.Page).GreaterThanOrEqualTo(1);
-        RuleFor(q => q.PageSize).InclusiveBetween(1, 50);
+        RuleFor(q => q.PageSize).InclusiveBetween(1, 100);
     }
 }
 
@@ -51,7 +57,13 @@ public sealed class GalleryService(GalleryRepository gallery, AccountService acc
 
         var page = query.Page ?? 1;
         var pageSize = query.PageSize ?? DefaultPageSize;
-        var rows = await gallery.ListGroupsAsync(caller, scope, page, pageSize, cancellationToken);
+        var sort = query.Sort switch
+        {
+            "titleAsc" => GallerySort.TitleAsc,
+            "titleDesc" => GallerySort.TitleDesc,
+            _ => GallerySort.UpdatedDesc,
+        };
+        var rows = await gallery.ListGroupsAsync(caller, scope, sort, page, pageSize, cancellationToken);
         return new PagedResult<GalleryGroupDto>(page, pageSize, rows.TotalCount, [.. rows.Items.Select(GalleryMapper.ToDto)]);
     }
 }

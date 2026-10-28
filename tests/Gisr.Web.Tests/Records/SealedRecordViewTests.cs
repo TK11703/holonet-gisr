@@ -4,6 +4,7 @@ using System.Text.Json;
 using Bunit;
 using Gisr.Shared.Artifacts;
 using Gisr.Shared.Records;
+using Gisr.Web.Layout;
 using Gisr.Web.Records;
 using Gisr.Web.Tests.Common;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -24,6 +25,7 @@ public class SealedRecordViewTests : BunitContext
         JSInterop.Mode = JSRuntimeMode.Loose;
         _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.AddTo(Services);
+        Services.AddScoped<ShellInterop>();
         _record = Samples.Record(title: "Secret commendation", isSealed: true, canEdit: false);
         ServeLocked();
         ServeArtifacts();
@@ -170,7 +172,7 @@ public class SealedRecordViewTests : BunitContext
 
         cut.WaitForAssertion(() =>
         {
-            Assert.Equal("Secret commendation", cut.Find("h1").TextContent.Trim());
+            Assert.Equal("Secret commendation", cut.Find("nav[aria-label=breadcrumb] li.active").TextContent.Trim());
             Assert.Equal("Viewing under override. Access ends when you leave this page.", cut.Find("#override-banner > div").TextContent.Trim());
             Assert.Empty(cut.FindAll("#history"));
             Assert.Empty(cut.FindAll("a#edit-record"));
@@ -204,7 +206,7 @@ public class SealedRecordViewTests : BunitContext
         cut.WaitForAssertion(() =>
         {
             Assert.Empty(cut.FindAll("#override-banner"));
-            Assert.Equal("Secret commendation", cut.Find("h1").TextContent.Trim());
+            Assert.Equal("Secret commendation", cut.Find("nav[aria-label=breadcrumb] li.active").TextContent.Trim());
         });
         var call = _api.Calls.Single(c => c.PathAndQuery.EndsWith("/unseal", StringComparison.Ordinal));
         Assert.Equal(HttpMethod.Post, call.Method);
@@ -256,7 +258,7 @@ public class SealedRecordViewTests : BunitContext
         EnterCode(cut, "open sesame 42");
 
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#override-banner")));
-        Assert.Empty(cut.FindAll("a#edit-record"));
+        Assert.Empty(cut.FindAll("#record-actions-button"));
     }
 
     [Fact]
@@ -457,9 +459,11 @@ public class SealedRecordViewTests : BunitContext
         _api.OnJson(HttpMethod.Get, $"{RecordPath}/history?page=1&pageSize=20", new Gisr.Shared.Common.PagedResult<RevisionDto>(1, 20, 0, []));
         var cut = RenderView();
 
-        Assert.Equal("Secret commendation", cut.Find("h1").TextContent.Trim());
-        Assert.Contains("Sealed", cut.Find("#record-header").TextContent, StringComparison.Ordinal);
-        Assert.NotNull(cut.Find("a#edit-record"));
+        Assert.Equal("Secret commendation", cut.Find("nav[aria-label=breadcrumb] li.active").TextContent.Trim());
+        var padlock = cut.Find("#record-header #sealed-indicator");
+        Assert.Equal("Sealed", padlock.QuerySelector("svg[role=img]")!.GetAttribute("aria-label"));
+        Assert.False(string.IsNullOrWhiteSpace(padlock.GetAttribute("title")));
+        Assert.NotNull(cut.Find("#record-actions-button"));
         Assert.NotNull(cut.Find("#history"));
         Assert.Empty(cut.FindAll("#override-banner"));
         Assert.Empty(cut.FindAll("form#override-form"));

@@ -138,9 +138,9 @@ public class ScaleSmokeTests(PostgresFixture postgres)
         await CheckAsync("search (Officer, affiliation filter, page 3)", async () =>
             await search.SearchAsync(officer, RecordListScope.All, query, "jedi", 0.7, 3, 10, CancellationToken.None));
         await CheckAsync("gallery (Officer, all)", async () =>
-            Assert.NotEmpty((await gallery.ListGroupsAsync(officer, RecordListScope.All, 1, 12, CancellationToken.None)).Items));
+            Assert.NotEmpty((await gallery.ListGroupsAsync(officer, RecordListScope.All, GallerySort.UpdatedDesc, 1, 12, CancellationToken.None)).Items));
         await CheckAsync("gallery (citizen)", async () =>
-            Assert.NotEmpty((await gallery.ListGroupsAsync(citizen, RecordListScope.Mine, 1, 12, CancellationToken.None)).Items));
+            Assert.NotEmpty((await gallery.ListGroupsAsync(citizen, RecordListScope.Mine, GallerySort.UpdatedDesc, 1, 12, CancellationToken.None)).Items));
         await CheckAsync("record list (Officer, all)", async () =>
             Assert.Equal(20, (await records.ListAsync(officer, RecordListScope.All, null, null, RecordSort.UpdatedDesc, 1, 20, CancellationToken.None)).Items.Count));
         await CheckAsync("record list (Officer, all, last page)", async () =>

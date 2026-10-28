@@ -9,7 +9,7 @@ namespace Gisr.Web.Tests.Records;
 
 public class RecordListTests : BunitContext
 {
-    private const string Default = "api/records?page=1&pageSize=20&sort=updatedDesc";
+    private const string Default = "api/records?page=1&pageSize=25&sort=updatedDesc";
     private const string Options = "api/records/affiliations?scope=mine";
 
     private readonly FakeApi _api = new();
@@ -22,7 +22,7 @@ public class RecordListTests : BunitContext
     }
 
     private static PagedResult<RecordSummaryDto> Page(int total, int page = 1, params RecordSummaryDto[] items) =>
-        new(page, 20, total, items);
+        new(page, 25, total, items);
 
     [Fact]
     public void RendersTitleBreadcrumbAndColumns()
@@ -31,7 +31,7 @@ public class RecordListTests : BunitContext
 
         var cut = Render<RecordList>();
 
-        Assert.Equal("Citizen records", cut.Find("h1").TextContent.Trim());
+        Assert.Equal("List of records", cut.Find("h1").TextContent.Trim());
         Assert.NotNull(cut.Find("nav[aria-label=breadcrumb]"));
         var headers = cut.FindAll("table thead th").Select(h => h.TextContent.Trim()).ToArray();
         Assert.Equal(["Title", "Affiliation", "Subject", "Engagement", "Artifacts", "Updated"], headers);
@@ -180,7 +180,7 @@ public class RecordListTests : BunitContext
     public void Sort_OffersTheDocumentedOrders_AndReloads()
     {
         _api.OnJson(HttpMethod.Get, Default, Page(1, 1, Samples.ListItem()));
-        _api.OnJson(HttpMethod.Get, "api/records?page=1&pageSize=20&sort=titleAsc", Page(1, 1, Samples.ListItem(title: "Alpha")));
+        _api.OnJson(HttpMethod.Get, "api/records?page=1&pageSize=25&sort=titleAsc", Page(1, 1, Samples.ListItem(title: "Alpha")));
         var cut = Render<RecordList>();
 
         Assert.Equal(["updatedDesc", "updatedAsc", "titleAsc", "titleDesc"],
@@ -191,10 +191,31 @@ public class RecordListTests : BunitContext
     }
 
     [Fact]
+    public void PageSize_OffersTheFixedChoices_AndReloadsFromPageOne()
+    {
+        _api.OnJson(HttpMethod.Get, Default, Page(60, 1, Samples.ListItem(title: "Default size")));
+        _api.OnJson(HttpMethod.Get, "api/records?page=2&pageSize=25&sort=updatedDesc", Page(60, 2, Samples.ListItem(title: "Second page")));
+        _api.OnJson(HttpMethod.Get, "api/records?page=1&pageSize=50&sort=updatedDesc", new PagedResult<RecordSummaryDto>(1, 50, 60, [Samples.ListItem(title: "Fifty per page")]));
+        var cut = Render<RecordList>();
+
+        Assert.Equal("Page Size", cut.Find("label[for=page-size]").TextContent.Trim());
+        Assert.Equal(["10", "25", "50", "100"], cut.FindAll("select#page-size option").Select(o => o.TextContent.Trim()).ToArray());
+        cut.Find("button#next-page").Click();
+        cut.WaitForAssertion(() => Assert.Contains("Page 2 of 3", cut.Find("nav[aria-label='Record pages']").TextContent, StringComparison.Ordinal));
+        cut.Find("select#page-size").Change("50");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Fifty per page", cut.Find("tbody").TextContent, StringComparison.Ordinal);
+            Assert.Contains("Page 1 of 2", cut.Find("nav[aria-label='Record pages']").TextContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public void Paging_ShowsPosition_AndMovesBetweenPages()
     {
-        _api.OnJson(HttpMethod.Get, Default, Page(45, 1, Samples.ListItem(title: "First page")));
-        _api.OnJson(HttpMethod.Get, "api/records?page=2&pageSize=20&sort=updatedDesc", Page(45, 2, Samples.ListItem(title: "Second page")));
+        _api.OnJson(HttpMethod.Get, Default, Page(60, 1, Samples.ListItem(title: "First page")));
+        _api.OnJson(HttpMethod.Get, "api/records?page=2&pageSize=25&sort=updatedDesc", Page(60, 2, Samples.ListItem(title: "Second page")));
         var cut = Render<RecordList>();
 
         Assert.Contains("Page 1 of 3", cut.Find("nav[aria-label='Record pages']").TextContent, StringComparison.Ordinal);

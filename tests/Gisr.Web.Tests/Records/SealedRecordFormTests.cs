@@ -459,7 +459,7 @@ public class SealedRecordFormTests : BunitContext
 
 public class SealedRecordListTests : BunitContext
 {
-    private const string Default = "api/records?page=1&pageSize=20&sort=updatedDesc";
+    private const string Default = "api/records?page=1&pageSize=25&sort=updatedDesc";
 
     private readonly FakeApi _api = new();
 

@@ -14,5 +14,9 @@ WHERE NOT r.is_sealed
   AND r.deleted_at IS NULL
   AND g.image_count > 0
   AND ((@AllRecords AND @IsOfficer) OR (NOT @AllRecords AND r.subject_account_id = @CallerAccountId))
-ORDER BY g.latest_upload DESC, r.id
+ORDER BY
+    CASE WHEN @Sort = 'titleAsc' THEN r.title END ASC,
+    CASE WHEN @Sort = 'titleDesc' THEN r.title END DESC,
+    CASE WHEN @Sort = 'updatedDesc' THEN g.latest_upload END DESC,
+    g.latest_upload DESC, r.id
 LIMIT @PageSize OFFSET @Offset;

@@ -2,7 +2,7 @@
 @inject ApiClient Api
 @inject NavigationManager Navigation
 
-<PageHeader Title="@(_title ?? "Gallery")" Crumbs="Crumbs" />
+<PageHeader Title="Gallery details" Crumbs="Crumbs" />
 
 @if (_notFound)
 {
@@ -18,7 +18,32 @@ else if (_page is null)
 }
 else
 {
-    <p><a id="open-record" href="/records/@RecordId">Open record</a></p>
+    <fieldset id="gallery-record-summary" class="card card-accent mb-4">
+        <legend class="float-none w-auto px-2 ms-3 mb-0 h6">Record details</legend>
+        <div class="card-body">
+            <div class="row">
+                <div class="col">
+                    <dl class="row gy-3 mb-0">
+                        <div class="col-12">
+                            <dt>Title</dt>
+                            <dd id="gallery-record-title" class="mb-0">@_record!.Title</dd>
+                        </div>
+                        <div class="col-md-6">
+                            <dt>Subject</dt>
+                            <dd class="mb-0">@_record.SubjectDisplayName</dd>
+                        </div>
+                        <div class="col-md-6">
+                            <dt>Affiliation</dt>
+                            <dd class="mb-0">@_record.Affiliation</dd>
+                        </div>
+                    </dl>
+                </div>
+                <div class="col-md-1 d-flex align-items-center justify-content-end">
+                    <a id="open-record" class="btn btn-sm btn-outline-secondary d-inline-flex" href="/records/@RecordId" title="Open record" aria-label="Open record"><Icon Name="open" Size="20" /></a>
+                </div>
+            </div>
+        </div>
+    </fieldset>
 
     @if (_page.TotalCount == 0)
     {
@@ -26,32 +51,51 @@ else
     }
     else
     {
-        <ul class="gallery-grid list-unstyled mb-3">
-            @for (var i = 0; i < _page.Items.Count; i++)
-            {
-                var index = i;
-                var image = _page.Items[i];
-                <li>
-                    <button type="button" class="gallery-thumb" aria-label="@($"Open {Label(image)}")" @onclick="() => _lightbox = index">
-                        <img src="@ArtifactDisplay.MediaUrl(image.Id, true, null)" alt="@Label(image)" loading="lazy" />
-                    </button>
-                </li>
-            }
-        </ul>
+        <div id="gallery-images" class="mb-4">
+            <div id="gallery-images-summary" class="input-group seal-control mb-3">
+                <span class="input-group-text">
+                    Items in this gallery <span id="gallery-item-count" class="badge rounded-pill text-bg-secondary ms-2">@_page.TotalCount</span>
+                </span>
+                <span id="gallery-total-size" class="input-group-text flex-grow-1 justify-content-end">
+                    Total memory used <span class="fw-semibold ms-1">@(_totalBytes is { } bytes ? ArtifactDisplay.Size(bytes) : "unavailable")</span>
+                </span>
+            </div>
 
-        @if (PageCount > 1)
-        {
-            <nav aria-label="Gallery pages" class="d-flex align-items-center gap-3">
-                <button type="button" id="previous-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber <= 1)" @onclick="PreviousAsync">Previous</button>
-                <span>Page @_pageNumber of @PageCount</span>
-                <button type="button" id="next-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber >= PageCount)" @onclick="NextAsync">Next</button>
-            </nav>
-        }
+            <ul class="artifact-grid list-unstyled mb-0">
+                @for (var i = 0; i < _page.Items.Count; i++)
+                {
+                    var index = i;
+                    var image = _page.Items[i];
+                    <li>
+                        <div class="artifact-tile">
+                            <div class="artifact-preview">
+                                <button type="button" class="gallery-thumb" aria-label="@($"Open {Label(image)}")" @onclick="() => _lightbox = index">
+                                    <img src="@ArtifactDisplay.MediaUrl(image.Id, true, null)" alt="@Label(image)" loading="lazy" />
+                                </button>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="gallery-name text-truncate fw-semibold" title="@image.FileName">@image.FileName</div>
+                                <div class="small text-secondary">@ArtifactDisplay.Size(image.SizeBytes)</div>
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ul>
+
+            @if (PageCount > 1)
+            {
+                <nav aria-label="Gallery pages" class="d-flex align-items-center gap-3 mt-3">
+                    <button type="button" id="previous-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber <= 1)" @onclick="PreviousAsync">Previous</button>
+                    <span>Page @_pageNumber of @PageCount</span>
+                    <button type="button" id="next-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber >= PageCount)" @onclick="NextAsync">Next</button>
+                </nav>
+            }
+        </div>
     }
 
     @if (_lightbox is { } open && open < _page.Items.Count)
     {
-        <Lightbox Items="_page.Items" Index="open" RecordId="RecordId" IndexChanged="i => _lightbox = i" OnClose="() => _lightbox = null" />
+        <Lightbox Items="_page.Items" Index="open" IndexChanged="i => _lightbox = i" OnClose="() => _lightbox = null" />
     }
 }
 
@@ -59,6 +103,8 @@ else
     private const int PageSize = 24;
 
     private PagedResult<ArtifactDto>? _page;
+    private RecordDto? _record;
+    private long? _totalBytes;
     private string? _title;
     private Guid _loadedId;
     private int _pageNumber = 1;
@@ -84,6 +130,8 @@ else
 
         _loadedId = RecordId;
         _page = null;
+        _record = null;
+        _totalBytes = null;
         _title = null;
         _lightbox = null;
         _pageNumber = 1;
@@ -98,8 +146,10 @@ else
                 return;
             }
 
+            _record = record;
             _title = record.Title;
             await LoadAsync();
+            await LoadTotalBytesAsync();
         }
         catch (ApiException ex) when (ex.Status == StatusCodes.Status403Forbidden && ex.IsSealed)
         {
@@ -128,6 +178,31 @@ else
         catch (ApiException)
         {
             _loadError = true;
+        }
+    }
+
+    // A record holds at most 50 artifacts, so one request covers every image when the first page is not the whole set.
+    private async Task LoadTotalBytesAsync()
+    {
+        if (_page is null)
+        {
+            return;
+        }
+
+        if (_page.TotalCount <= _page.Items.Count)
+        {
+            _totalBytes = _page.Items.Sum(i => i.SizeBytes);
+            return;
+        }
+
+        try
+        {
+            var all = await Api.GetAsync<PagedResult<ArtifactDto>>($"api/records/{RecordId}/artifacts?kind=image&pageSize=100");
+            _totalBytes = all?.Items.Sum(i => i.SizeBytes);
+        }
+        catch (ApiException)
+        {
+            _totalBytes = null;
         }
     }
 

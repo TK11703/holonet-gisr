@@ -9,9 +9,27 @@ public class GalleryQueryValidatorTests
     [Theory]
     [InlineData(null, null, null)]
     [InlineData("mine", 1, 12)]
-    [InlineData("all", 5, 50)]
+    [InlineData("all", 5, 100)]
     public void ValidQueriesPass(string? scope, int? page, int? pageSize) =>
         Assert.True(_validator.Validate(new GalleryQuery(scope, page, pageSize)).IsValid);
+
+    [Theory]
+    [InlineData("updatedDesc")]
+    [InlineData("titleAsc")]
+    [InlineData("titleDesc")]
+    public void KnownSortsPass(string sort) =>
+        Assert.True(_validator.Validate(new GalleryQuery(null, null, null, sort)).IsValid);
+
+    [Theory]
+    [InlineData("updatedAsc")]
+    [InlineData("")]
+    [InlineData("TITLEASC")]
+    public void SortMustBeKnown(string sort)
+    {
+        var result = _validator.Validate(new GalleryQuery(null, null, null, sort));
+
+        Assert.Equal(nameof(GalleryQuery.Sort), Assert.Single(result.Errors).PropertyName);
+    }
 
     [Theory]
     [InlineData("everyone")]
@@ -32,7 +50,7 @@ public class GalleryQueryValidatorTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(51)]
-    public void PageSizeMustBeBetween1And50(int pageSize) =>
+    [InlineData(101)]
+    public void PageSizeMustBeBetween1And100(int pageSize) =>
         Assert.False(_validator.Validate(new GalleryQuery(null, null, pageSize)).IsValid);
 }

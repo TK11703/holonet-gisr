@@ -11,7 +11,6 @@ namespace Gisr.Web.Tests.Gallery;
 
 public class LightboxTests : BunitContext
 {
-    private readonly Guid _recordId = Guid.NewGuid();
     private readonly List<int> _indexChanges = [];
     private int _closed;
 
@@ -30,7 +29,6 @@ public class LightboxTests : BunitContext
         {
             p.Add(c => c.Items, Items);
             p.Add(c => c.Index, index);
-            p.Add(c => c.RecordId, _recordId);
             p.Add(c => c.IndexChanged, EventCallback.Factory.Create<int>(this, i => _indexChanges.Add(i)));
             p.Add(c => c.OnClose, EventCallback.Factory.Create(this, () => _closed++));
         });
@@ -67,14 +65,13 @@ public class LightboxTests : BunitContext
         {
             p.Add(c => c.Items, items);
             p.Add(c => c.Index, 0);
-            p.Add(c => c.RecordId, _recordId);
         });
 
         Assert.Equal("fallback.png", cut.Find("img.lightbox-image").GetAttribute("alt"));
     }
 
     [Fact]
-    public void IsADialog_WithAnAccessibleName_AndOffersTheOpenRecordLink()
+    public void IsADialog_WithAnAccessibleName_AndNoOpenRecordLink()
     {
         SetupTrap();
 
@@ -83,9 +80,7 @@ public class LightboxTests : BunitContext
         var dialog = cut.Find("[role=dialog]");
         Assert.Equal("true", dialog.GetAttribute("aria-modal"));
         Assert.Equal("Image viewer", dialog.GetAttribute("aria-label"));
-        var link = cut.Find("a.lightbox-open-record");
-        Assert.Equal($"/records/{_recordId}", link.GetAttribute("href"));
-        Assert.Equal("Open record", link.TextContent.Trim());
+        Assert.Empty(cut.FindAll("a.lightbox-open-record"));
     }
 
     [Fact]

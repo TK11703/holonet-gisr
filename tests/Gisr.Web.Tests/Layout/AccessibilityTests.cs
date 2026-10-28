@@ -27,7 +27,7 @@ public partial class AccessibilityTests : BunitContext
         _api.OnJson(HttpMethod.Get, "api/me/affiliations", Samples.Affiliations);
         _api.OnJson(HttpMethod.Get, "api/me", new AccountDto(Guid.NewGuid(), "Leia Organa", "leia@example.test", null, true, true, DateTimeOffset.UtcNow));
         _api.OnJson(HttpMethod.Get, "api/notifications?pageSize=20", new Gisr.Shared.Notifications.NotificationListDto(0, []));
-        _api.OnJson(HttpMethod.Get, "api/records?page=1&pageSize=20&sort=updatedDesc",
+        _api.OnJson(HttpMethod.Get, "api/records?page=1&pageSize=25&sort=updatedDesc",
             new PagedResult<Gisr.Shared.Records.RecordSummaryDto>(1, 20, 2, [Samples.ListItem(title: "Alpha"), Samples.ListItem(title: "Sealed one", isSealed: true, isLocked: true)]));
         _api.OnJson(HttpMethod.Get, "api/search?q=temple&page=1&pageSize=10&scope=all",
             new PagedResult<SearchResultDto>(1, 10, 1,

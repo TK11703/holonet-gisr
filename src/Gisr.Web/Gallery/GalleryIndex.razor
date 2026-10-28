@@ -2,15 +2,40 @@
 @inject ApiClient Api
 @inject CurrentUserState User
 
-<PageHeader Title="Gallery" Crumbs="Crumbs" />
+<PageHeader Title="List of galleries" Crumbs="Crumbs" />
 
-@if (User.IsOfficer && !_loadError)
+@if (!_loadError && _page is not null && (User.IsOfficer || _page.TotalCount > 0))
 {
-    <div class="btn-group mb-3" role="group" aria-label="Gallery scope">
-        <button type="button" id="scope-mine" class="@(_allScope ? "btn btn-outline-secondary" : "btn btn-secondary")"
-                aria-pressed="@(_allScope ? "false" : "true")" @onclick="() => SetScopeAsync(false)">My records</button>
-        <button type="button" id="scope-all" class="@(_allScope ? "btn btn-secondary" : "btn btn-outline-secondary")"
-                aria-pressed="@(_allScope ? "true" : "false")" @onclick="() => SetScopeAsync(true)">All records</button>
+    <div class="d-flex flex-wrap gap-3 align-items-end mb-3">
+        @if (User.IsOfficer)
+        {
+            <div>
+                <label for="filter-scope" class="form-label">Gallery Owner</label>
+                <select id="filter-scope" class="form-select" value="@(_allScope ? "all" : "mine")"
+                        @onchange="OnScopeChanged">
+                    <option value="mine">My records</option>
+                    <option value="all">All records</option>
+                </select>
+            </div>
+        }
+        <div>
+            <label for="sort" class="form-label">Sort by</label>
+            <select id="sort" class="form-select" value="@_sort" @onchange="OnSortChanged">
+                @foreach (var (value, label) in SortOptions)
+                {
+                    <option value="@value">@label</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="page-size" class="form-label">Page Size</label>
+            <select id="page-size" class="form-select" value="@_pageSize" @onchange="OnPageSizeChanged">
+                @foreach (var size in PageSizes)
+                {
+                    <option value="@size">@size</option>
+                }
+            </select>
+        </div>
     </div>
 }
 
@@ -72,16 +97,25 @@ else
 }
 
 @code {
-    private const int PageSize = 12;
+    private static readonly int[] PageSizes = [10, 25, 50, 100];
 
     private static readonly Crumb[] Crumbs = [new("Home", "/"), new("Gallery")];
 
+    private static readonly (string Value, string Label)[] SortOptions =
+    [
+        ("updatedDesc", "Recently updated"),
+        ("titleAsc", "Title A-Z"),
+        ("titleDesc", "Title Z-A"),
+    ];
+
     private PagedResult<GalleryGroupDto>? _page;
     private int _pageNumber = 1;
+    private int _pageSize = 25;
+    private string _sort = "updatedDesc";
     private bool _allScope;
     private bool _loadError;
 
-    private long PageCount => _page is null ? 1 : Math.Max(1, (_page.TotalCount + PageSize - 1) / PageSize);
+    private long PageCount => _page is null ? 1 : Math.Max(1, (_page.TotalCount + _pageSize - 1) / _pageSize);
 
     protected override async Task OnInitializedAsync()
     {
@@ -110,7 +144,7 @@ else
 
     private async Task LoadAsync()
     {
-        var path = $"api/gallery?page={_pageNumber}&pageSize={PageSize}";
+        var path = $"api/gallery?page={_pageNumber}&pageSize={_pageSize}&sort={_sort}";
         if (_allScope)
         {
             path += "&scope=all";
@@ -127,6 +161,8 @@ else
         }
     }
 
+    private Task OnScopeChanged(ChangeEventArgs e) => SetScopeAsync(e.Value?.ToString() == "all");
+
     private async Task SetScopeAsync(bool all)
     {
         if (_allScope == all)
@@ -135,6 +171,20 @@ else
         }
 
         _allScope = all;
+        _pageNumber = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnSortChanged(ChangeEventArgs e)
+    {
+        _sort = e.Value?.ToString() ?? "updatedDesc";
+        _pageNumber = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        _pageSize = int.TryParse(e.Value?.ToString(), out var size) && PageSizes.Contains(size) ? size : _pageSize;
         _pageNumber = 1;
         await LoadAsync();
     }

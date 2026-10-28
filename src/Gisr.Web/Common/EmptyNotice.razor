@@ -1,0 +1,12 @@
+<div id="@Id" class="alert alert-info d-flex align-items-start gap-2 mb-0" role="status">
+    <span class="flex-shrink-0"><Icon Name="info" /></span>
+    <span>@ChildContent</span>
+</div>
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}
