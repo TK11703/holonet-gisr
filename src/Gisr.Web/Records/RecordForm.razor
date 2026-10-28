@@ -103,11 +103,12 @@
                         </div>
                         <div class="col-md-6">
                             <label for="engagement-start" class="form-label">Engagement start</label>
-                            <input id="engagement-start" type="date" class="form-control" @bind="Model.EngagementStart" @bind:format="yyyy-MM-dd" />
+                            <input id="engagement-start" type="date" class="form-control" @bind="Model.EngagementStart" @bind:format="yyyy-MM-dd" @bind:after="OnStartChanged" />
                         </div>
                         <div class="col-md-6">
                             <label for="engagement-end" class="form-label">Engagement end</label>
                             <input id="engagement-end" type="date" class="@(EndError is null ? "form-control" : "form-control is-invalid")"
+                                   min="@(Model.EngagementStart is { } startDate ? RecordDisplay.Date(startDate) : null)"
                                    aria-invalid="@(EndError is null ? null : "true")" aria-describedby="@(EndError is null ? null : "engagement-end-error")"
                                    @bind="Model.EngagementEnd" @bind:format="yyyy-MM-dd" />
                             @if (EndError is not null)
@@ -371,6 +372,15 @@
     }
 
     private void OnArtifactUploaded() => _artifactRefresh++;
+
+    // An empty or now-earlier end date follows the start date, so the end only needs touching when it differs.
+    private void OnStartChanged()
+    {
+        if (Model.EngagementStart is { } start && (Model.EngagementEnd is null || Model.EngagementEnd < start))
+        {
+            Model.EngagementEnd = start;
+        }
+    }
 
     private void ConfirmDelete()
     {

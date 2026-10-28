@@ -254,6 +254,50 @@ public class RecordFormTests : BunitContext
     }
 
     [Fact]
+    public void ChoosingAStartDate_FillsAnEmptyEndDateWithTheSameDay()
+    {
+        var cut = RenderForm();
+
+        cut.Find("#engagement-start").Change("2019-03-04");
+
+        Assert.Equal(new DateOnly(2019, 3, 4), _model.EngagementEnd);
+        Assert.Equal("2019-03-04", cut.Find("#engagement-end").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void ChoosingAStartDate_LeavesALaterEndDateAlone()
+    {
+        _model.EngagementEnd = new DateOnly(2020, 6, 1);
+        var cut = RenderForm();
+
+        cut.Find("#engagement-start").Change("2019-03-04");
+
+        Assert.Equal(new DateOnly(2020, 6, 1), _model.EngagementEnd);
+    }
+
+    [Fact]
+    public void ChoosingAStartDateAfterTheEndDate_MovesTheEndDateToTheStart()
+    {
+        _model.EngagementEnd = new DateOnly(2019, 1, 1);
+        var cut = RenderForm();
+
+        cut.Find("#engagement-start").Change("2019-03-04");
+
+        Assert.Equal(new DateOnly(2019, 3, 4), _model.EngagementEnd);
+    }
+
+    [Fact]
+    public void TheEndDatePicker_CannotGoBeforeTheStartDate()
+    {
+        var cut = RenderForm();
+        Assert.Null(cut.Find("#engagement-end").GetAttribute("min"));
+
+        cut.Find("#engagement-start").Change("2019-03-04");
+
+        Assert.Equal("2019-03-04", cut.Find("#engagement-end").GetAttribute("min"));
+    }
+
+    [Fact]
     public void Submit_PassesTheEnteredValuesToOnSave()
     {
         RecordFormModel? saved = null;
