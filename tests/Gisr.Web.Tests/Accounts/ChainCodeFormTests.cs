@@ -105,7 +105,84 @@ public class ChainCodeFormTests : BunitContext
             groups[1].QuerySelectorAll(".row > .col-sm-6 > .input-group > input,.row > .col-sm-6 > .input-group > select,.row > .col-sm-6 > select").Select(field => field.Id));
         Assert.Empty(groups[0].QuerySelectorAll(".col-sm-6"));
         Assert.Empty(cut.FindAll("#chain-birth-date"));
-        Assert.Equal(4, cut.FindAll("#chain-code-form .col-md-6 textarea").Count);
+        Assert.Equal(4, cut.FindAll("#chain-code-form .accordion textarea").Count);
+        Assert.Empty(cut.FindAll("#chain-code-form .col-md-6"));
+    }
+
+    private static readonly (string Id, string Title, int Max)[] Narratives =
+    [
+        ("chain-distinguishing-marks", "Distinguishing marks", 1000),
+        ("chain-family-history", "Family history", 4000),
+        ("chain-criminal-history", "Criminal history", 4000),
+        ("chain-biography", "Biography", 4000),
+    ];
+
+    [Fact]
+    public void NarrativeFields_AreFullWidthAccordionItems_CollapsedWhenEmpty()
+    {
+        var cut = Render<ChainCodeForm>();
+
+        Assert.Equal(Narratives.Select(n => n.Title), cut.FindAll("#chain-code-form .accordion > .accordion-item .accordion-button").Select(b => b.TextContent.Trim()));
+        Assert.All(Narratives, narrative =>
+        {
+            var toggle = cut.Find($"#{narrative.Id}-section-toggle");
+            Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+            Assert.DoesNotContain("show", cut.Find($"#{narrative.Id}-section-panel").ClassList);
+        });
+    }
+
+    [Fact]
+    public void NarrativeFields_WithContentStartExpanded_AndAllCanBeOpenTogether()
+    {
+        var profile = new UpdateChainCodeRequest { FamilyHistory = "House of Organa", Biography = "Senator" };
+        _api.OnJson(HttpMethod.Get, Path, new ChainCodeProfileDto(profile, "12345", DateTimeOffset.UtcNow));
+        var cut = Render<ChainCodeForm>();
+
+        Assert.Equal("true", cut.Find("#chain-family-history-section-toggle").GetAttribute("aria-expanded"));
+        Assert.Equal("true", cut.Find("#chain-biography-section-toggle").GetAttribute("aria-expanded"));
+        Assert.Equal("false", cut.Find("#chain-distinguishing-marks-section-toggle").GetAttribute("aria-expanded"));
+        Assert.Equal("false", cut.Find("#chain-criminal-history-section-toggle").GetAttribute("aria-expanded"));
+
+        cut.Find("#chain-distinguishing-marks-section-toggle").Click();
+        cut.Find("#chain-criminal-history-section-toggle").Click();
+
+        Assert.All(Narratives, narrative =>
+            Assert.Equal("true", cut.Find($"#{narrative.Id}-section-toggle").GetAttribute("aria-expanded")));
+    }
+
+    [Fact]
+    public void NarrativeFields_ShowLiveCharacterCount_UnderEachField()
+    {
+        var cut = Render<ChainCodeForm>();
+
+        Assert.All(Narratives, narrative =>
+        {
+            var count = cut.Find($"#{narrative.Id}-count");
+            Assert.Equal($"0 characters / {narrative.Max} available characters", count.TextContent.Trim());
+            Assert.Contains($"{narrative.Id}-count", cut.Find($"#{narrative.Id}").GetAttribute("aria-describedby")!, StringComparison.Ordinal);
+        });
+
+        cut.Find("#chain-biography").Input("Senator");
+        cut.Find("#chain-distinguishing-marks").Input("Scar");
+
+        Assert.Equal("7 characters / 4000 available characters", cut.Find("#chain-biography-count").TextContent.Trim());
+        Assert.Equal("4 characters / 1000 available characters", cut.Find("#chain-distinguishing-marks-count").TextContent.Trim());
+        Assert.Equal("0 characters / 4000 available characters", cut.Find("#chain-family-history-count").TextContent.Trim());
+    }
+
+    [Fact]
+    public void NarrativeFields_TypedWhileExpanded_AreSaved()
+    {
+        var dto = new ChainCodeProfileDto(new UpdateChainCodeRequest { Biography = "Senator" }, "12345", DateTimeOffset.UtcNow);
+        _api.OnJson(HttpMethod.Put, Path, dto);
+        var cut = Render<ChainCodeForm>();
+        cut.Find("#chain-biography-section-toggle").Click();
+        cut.Find("#chain-biography").Input("Senator");
+
+        cut.Find("form").Submit();
+
+        using var body = JsonDocument.Parse(Assert.Single(_api.Calls, call => call.Method == HttpMethod.Put).Body!);
+        Assert.Equal("Senator", body.RootElement.GetProperty("biography").GetString());
     }
 
     [Fact]

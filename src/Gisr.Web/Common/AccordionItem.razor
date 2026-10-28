@@ -27,5 +27,11 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
+    // Read once when the item is created; later changes are the user's.
+    [Parameter]
+    public bool InitiallyOpen { get; set; }
+
+    protected override void OnInitialized() => _open = InitiallyOpen;
+
     private void Toggle() => _open = !_open;
 }

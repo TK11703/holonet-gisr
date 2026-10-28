@@ -59,7 +59,7 @@ public class AccountSettingsPageTests : BunitContext
         Assert.NotNull(cut.Find(".row > .col-lg-4:nth-child(4) #affiliations-heading"));
         Assert.Equal("Not provided", cut.Find("input#chain-code-value[readonly]").GetAttribute("value"));
         Assert.Equal(2, cut.FindAll("#chain-code-form .col-lg-6 > fieldset").Count);
-        Assert.Equal(4, cut.FindAll("#chain-code-form .col-md-6 textarea").Count);
+        Assert.Equal(4, cut.FindAll("#chain-code-form .accordion textarea").Count);
     }
 
     [Fact]

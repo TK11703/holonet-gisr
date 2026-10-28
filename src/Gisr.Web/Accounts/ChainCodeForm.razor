@@ -34,15 +34,15 @@
                 <fieldset disabled="@_busy">
                     <legend class="visually-hidden">Fictional personal details</legend>
                     <div class="row g-3">
-                        @foreach (var group in Fields.GroupBy(field => field.Multiline ? null : field.Key is "fullName" or "homeworld" or "species" ? "Identity/Biographical Data" : "Biometric Data"))
+                        @foreach (var group in Fields.Where(field => !field.Multiline).GroupBy(field => field.Key is "fullName" or "homeworld" or "species" ? "Identity/Biographical Data" : "Biometric Data"))
                         {
-                            <div class="@(group.Key is null ? "col-12" : "col-12 col-lg-6")">
-                                <fieldset class="@(group.Key is null ? "h-100" : "h-100 border rounded px-3 pb-3")">
-                                    <legend class="@(group.Key is null ? "visually-hidden" : "float-none w-auto px-2 h6 mb-3")">@(group.Key ?? "Additional biographical details")</legend>
+                            <div class="col-12 col-lg-6">
+                                <fieldset class="h-100 border rounded px-3 pb-3">
+                                    <legend class="float-none w-auto px-2 h6 mb-3">@group.Key</legend>
                                     <div class="row g-3">
                                         @foreach (var field in group)
                                         {
-                                            <div class="@(field.Multiline ? "col-12 col-md-6" : group.Key == "Biometric Data" ? "col-12 col-sm-6" : "col-12")">
+                                            <div class="@(group.Key == "Biometric Data" ? "col-12 col-sm-6" : "col-12")">
                                                 <label for="@field.Id" class="form-label">@field.Label</label>
                                                 @if (field.Color)
                                                 {
@@ -82,12 +82,6 @@
                                                         </select>
                                                     </div>
                                                 }
-                                                else if (field.Multiline)
-                                                {
-                                                    <textarea id="@field.Id" class="@FieldClass(field, "form-control")" rows="3" maxlength="@field.MaxLength"
-                                                              value="@_values[field.Key]" @onchange="eventArgs => Change(field.Key, eventArgs.Value?.ToString())"
-                                                              aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)">@_values[field.Key]</textarea>
-                                                }
                                                 else
                                                 {
                                                     <input id="@field.Id" class="@FieldClass(field, "form-control")" maxlength="@field.MaxLength"
@@ -103,6 +97,23 @@
                                     </div>
                                 </fieldset>
                             </div>
+                        }
+                    </div>
+                    <div class="accordion mt-3">
+                        @foreach (var field in Fields.Where(field => field.Multiline))
+                        {
+                            var length = _values[field.Key]?.Length ?? 0;
+                            <AccordionItem Id="@($"{field.Id}-section")" Title="@field.Label" InitiallyOpen="@(length > 0)">
+                                <label for="@field.Id" class="visually-hidden">@field.Label</label>
+                                <textarea id="@field.Id" class="@FieldClass(field, "form-control")" rows="4" maxlength="@field.MaxLength"
+                                          value="@_values[field.Key]" @oninput="eventArgs => Change(field.Key, eventArgs.Value?.ToString())"
+                                          aria-invalid="@Invalid(field.Key)" aria-describedby="@($"{field.Id}-count{(_errors.ContainsKey(field.Key) ? $" {field.Id}-error" : string.Empty)}")">@_values[field.Key]</textarea>
+                                <div id="@($"{field.Id}-count")" class="form-text text-end">@length characters / @field.MaxLength available characters</div>
+                                @if (_errors.TryGetValue(field.Key, out var fieldMessages))
+                                {
+                                    <div id="@($"{field.Id}-error")" class="invalid-feedback d-block">@string.Join(" ", fieldMessages)</div>
+                                }
+                            </AccordionItem>
                         }
                     </div>
                 </fieldset>
