@@ -42,8 +42,20 @@ public sealed class AccountService(AccountRepository accounts, ITenantDirectory 
             throw new ProblemException(StatusCodes.Status403Forbidden, "Forbidden", "Only Officers can look up other citizens.");
         }
 
-        var users = await InDirectoryAsync(() => directory.SearchAsync(query.Query!.Trim(), query.PageSize ?? DefaultSearchPageSize, cancellationToken));
-        return [.. users.Select(found => new DirectoryUserDto(found.ObjectId, found.DisplayName, found.Email))];
+        var term = query.Query!.Trim();
+        var pageSize = query.PageSize ?? DefaultSearchPageSize;
+        var users = await InDirectoryAsync(() => directory.SearchAsync(term, pageSize, cancellationToken));
+
+        // The directory fields we can read don't include EmployeeId, so Operating Numbers are matched on stored accounts.
+        var byNumber = await accounts.SearchByOperatingNumberAsync(user.TenantId, term, pageSize, cancellationToken);
+        return
+        [
+            .. byNumber
+                .Select(row => new DirectoryUserDto(row.EntraObjectId, row.DisplayName, row.SignInEmail))
+                .Concat(users.Select(found => new DirectoryUserDto(found.ObjectId, found.DisplayName, found.Email)))
+                .DistinctBy(found => found.ObjectId)
+                .Take(pageSize)
+        ];
     }
 
     private static async Task<T> InDirectoryAsync<T>(Func<Task<T>> lookup)

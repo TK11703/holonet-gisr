@@ -74,6 +74,7 @@ public class SealedRecordFormTests : BunitContext
         var toggle = cut.Find("input#seal-record");
         Assert.Equal("switch", toggle.GetAttribute("role"));
         Assert.Equal("Seal this record", cut.Find($"label[for={toggle.Id}]").TextContent.Trim());
+        Assert.NotNull(cut.Find($"label[for={toggle.Id}] svg.icon"));
     }
 
     [Fact]
@@ -90,8 +91,15 @@ public class SealedRecordFormTests : BunitContext
         Assert.Equal("new-password", input.GetAttribute("autocomplete"));
         Assert.Equal("true", input.GetAttribute("aria-required"));
         Assert.Equal("Override code", cut.Find($"label[for={input.Id}]").TextContent.Replace("*", string.Empty).Trim());
-        Assert.Contains("shown to no one afterwards", cut.Find("#override-code-help").TextContent, StringComparison.Ordinal);
-        Assert.Contains("out of band", cut.Find("#override-code-help").TextContent, StringComparison.Ordinal);
+        Assert.Equal("Override Code - 8 to 64 characters", input.GetAttribute("placeholder"));
+        const string help = "8 to 64 characters. The code is shown to no one afterwards and must be shared with the citizen out of band.";
+        var info = cut.Find("#override-code-info");
+        Assert.Equal(help, info.GetAttribute("title"));
+        Assert.NotNull(info.QuerySelector("svg.icon"));
+        Assert.True(info.ClassList.Contains("input-group-text"));
+        Assert.Equal("override-code-help", input.GetAttribute("aria-describedby"));
+        Assert.Contains("visually-hidden", cut.Find("#override-code-help").ClassList);
+        Assert.Empty(cut.FindAll(".form-text"));
     }
 
     [Fact]
@@ -202,6 +210,102 @@ public class SealedRecordFormTests : BunitContext
         Assert.Empty(cut.FindAll("input#override-code"));
         Assert.DoesNotContain(cut.FindAll("#seal-section button"), b => b.TextContent.Contains("Remove", StringComparison.OrdinalIgnoreCase)
                                                                         || b.TextContent.Contains("Clear", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void TheSealingControl_IsOneBorderedInputGroupRow_WithNoHeadingOrListGroup()
+    {
+        _model.SubjectObjectId = Guid.NewGuid();
+        var cut = RenderForm();
+
+        var group = cut.Find("#seal-section > .input-group");
+
+        Assert.Empty(cut.FindAll("#seal-section legend"));
+        Assert.Empty(cut.FindAll("#seal-section .list-group"));
+        Assert.Contains("seal-control", group.ClassList);
+        Assert.Contains("flex-nowrap", group.ClassList);
+        Assert.Equal("Sealing", group.QuerySelector("#seal-label")!.TextContent.Trim());
+        Assert.Contains("input-group-text", group.QuerySelector("#seal-label")!.ClassList);
+        Assert.Equal("seal-label", cut.Find("#seal-section").GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void TheToggleTooltip_SaysWhatClickingDoes()
+    {
+        var cut = RenderForm();
+
+        Assert.Equal("Not sealed. Click to seal and provide an unlock code.", cut.Find("label[for=seal-record]").GetAttribute("title"));
+
+        cut.Find("input#seal-record").Change(true);
+
+        Assert.Equal("Sealed. Click to unseal.", cut.Find("label[for=seal-record]").GetAttribute("title"));
+    }
+
+    [Fact]
+    public void TheToggle_ShowsAnOpenPadlockWhenNotSealed_AndAClosedOneWhenSealed()
+    {
+        var cut = RenderForm();
+        var unlocked = cut.Find("label[for=seal-record] svg.icon").InnerHtml;
+
+        cut.Find("input#seal-record").Change(true);
+
+        Assert.NotEqual(unlocked, cut.Find("label[for=seal-record] svg.icon").InnerHtml);
+    }
+
+    [Fact]
+    public void TheCodeField_SitsInTheSameRowAsTheSwitch()
+    {
+        var cut = RenderForm();
+        cut.Find("input#seal-record").Change(true);
+
+        var row = cut.Find("input#seal-record").ParentElement!;
+
+        Assert.NotNull(row.QuerySelector("input#override-code"));
+        Assert.Contains("input-group", row.ClassList);
+    }
+
+    [Fact]
+    public void ASealedRecordWithACode_ShowsTheHighlightedNoticeAndChangeCode_InTheSameRowAsTheSwitch()
+    {
+        _model = ExistingSealed();
+        var cut = RenderForm();
+
+        var row = cut.Find("input#seal-record").ParentElement!;
+        var notice = row.QuerySelector("#override-code-set")!;
+
+        Assert.Contains("text-success", notice.ClassList);
+        Assert.NotNull(notice.QuerySelector("svg.icon"));
+        Assert.NotNull(row.QuerySelector("button#change-code"));
+        Assert.Empty(cut.FindAll("#cancel-change-code"));
+    }
+
+    [Fact]
+    public void ChangeCode_OffersCancel_WhichRestoresTheCodeIsSetNotice_AndDropsTheTypedCode()
+    {
+        _model = ExistingSealed();
+        var cut = RenderForm();
+        cut.Find("button#change-code").Click();
+        cut.Find("#override-code").Input("half typed code");
+
+        cut.Find("button#cancel-change-code").Click();
+
+        Assert.NotNull(cut.Find("#override-code-set"));
+        Assert.Empty(cut.FindAll("input#override-code"));
+        Assert.False(_model.ChangingCode);
+        Assert.Null(_model.OverrideCode);
+        cut.Find("form").Submit();
+        Assert.Equal(1, _saves);
+        Assert.Null(_model.ToUpdateRequest().OverrideCode);
+    }
+
+    [Fact]
+    public void ACodeFieldForANewSeal_HasNoCancelButton()
+    {
+        var cut = RenderForm();
+
+        cut.Find("input#seal-record").Change(true);
+
+        Assert.Empty(cut.FindAll("#cancel-change-code"));
     }
 
     [Fact]

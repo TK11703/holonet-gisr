@@ -14,6 +14,20 @@ public sealed class AccountRepository(NpgsqlDataSource dataSource, ISqlScriptLoa
             cancellationToken: cancellationToken));
     }
 
+    public async Task<IReadOnlyList<AccountRow>> SearchByOperatingNumberAsync(
+        Guid tenantId,
+        string term,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<AccountRow>(new CommandDefinition(
+            sql.Get("Accounts", "search-accounts-by-operating-number"),
+            new { TenantId = tenantId, Term = term, Limit = limit },
+            cancellationToken: cancellationToken));
+        return [.. rows];
+    }
+
     public async Task<AccountRow> UpsertAsync(
         Guid tenantId,
         Guid entraObjectId,

@@ -18,4 +18,5 @@ public sealed record RecordDto(
     int Version,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    int ArtifactCount = 0);
+    int ArtifactCount = 0,
+    string? SubjectOperatingNumber = null);

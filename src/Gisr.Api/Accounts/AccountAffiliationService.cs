@@ -13,13 +13,17 @@ public sealed class AccountAffiliationService(AccountAffiliationRepository affil
         return (await affiliations.ListAsync(account.Id, cancellationToken)).Select(ToDto).ToList();
     }
 
+    public async Task<CitizenDto> GetCitizenAsync(Guid objectId, CancellationToken cancellationToken)
+    {
+        RequireOfficer();
+        var account = await accounts.FindCitizenAsync(objectId, cancellationToken);
+        return new CitizenDto(account?.Id, account?.OperatingNumber);
+    }
+
     // Officers pick a citizen to write about; a citizen who never signed in has no account yet and so no affiliations.
     public async Task<IReadOnlyList<AccountAffiliationDto>> ListForCitizenAsync(Guid? accountId, Guid? objectId, CancellationToken cancellationToken)
     {
-        if (!user.IsOfficer)
-        {
-            throw new ProblemException(StatusCodes.Status403Forbidden, "Forbidden", "Only Officers can look up another citizen's affiliations.");
-        }
+        RequireOfficer();
 
         var id = accountId ?? (await accounts.FindCitizenAsync(objectId!.Value, cancellationToken))?.Id;
         return id is null ? [] : (await affiliations.ListAsync(id.Value, cancellationToken)).Select(ToDto).ToList();
@@ -45,6 +49,14 @@ public sealed class AccountAffiliationService(AccountAffiliationRepository affil
         if (!await affiliations.DeleteAsync(account.Id, id, cancellationToken))
         {
             throw new ProblemException(StatusCodes.Status404NotFound, "Not Found", "The affiliation was not found.");
+        }
+    }
+
+    private void RequireOfficer()
+    {
+        if (!user.IsOfficer)
+        {
+            throw new ProblemException(StatusCodes.Status403Forbidden, "Forbidden", "Only Officers can look up another citizen.");
         }
     }
 

@@ -8,6 +8,7 @@ SELECT r.id, r.subject_account_id, r.author_account_id,
        CASE WHEN l.locked THEN 0 ELSE (SELECT count(*)::int FROM artifact x WHERE x.record_id = r.id AND x.removed_at IS NULL) END AS artifact_count,
        r.version, r.created_at, r.updated_at, r.updated_by_account_id,
        CASE WHEN l.locked THEN '' ELSE s.display_name END AS subject_display_name,
+       CASE WHEN l.locked THEN NULL ELSE s.operating_number END AS subject_operating_number,
        CASE WHEN l.locked THEN '' ELSE a.display_name END AS author_display_name
 FROM record r
 CROSS JOIN LATERAL (SELECT record_is_locked(r.is_sealed, @IsOfficer, @Unlocked) AS locked) l

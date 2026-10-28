@@ -50,6 +50,20 @@ public class AccountDirectoryEndpointsTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Officer_FindsKnownAccounts_ByOperatingNumberPrefix_WithoutDuplicates()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+        var oid = Guid.NewGuid();
+        (await factory.CreateUserClient(oid, name: "Rex").GetAsync("/api/me")).EnsureSuccessStatusCode();
+        await factory.ScalarAsync<int>($"UPDATE account SET operating_number = 'CT-7567' WHERE entra_object_id = '{oid}' RETURNING 1");
+        factory.Directory.Add("Other Person");
+
+        var users = (await factory.CreateUserClient(officer: true).GetFromJsonAsync<List<DirectoryUserDto>>("/api/accounts?query=ct-75"))!;
+
+        Assert.Equal(oid, Assert.Single(users).ObjectId);
+    }
+
+    [Fact]
     public async Task Search_TrimsTheQuery_BeforeAskingTheDirectory()
     {
         await using var factory = await ApiFactory.CreateAsync(postgres);

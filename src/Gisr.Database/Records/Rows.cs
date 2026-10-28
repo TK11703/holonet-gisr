@@ -34,6 +34,8 @@ public sealed class RecordRow
 
     public string SubjectDisplayName { get; set; } = string.Empty;
 
+    public string? SubjectOperatingNumber { get; set; }
+
     public string AuthorDisplayName { get; set; } = string.Empty;
 }
 

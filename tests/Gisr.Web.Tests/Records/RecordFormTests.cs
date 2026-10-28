@@ -45,9 +45,54 @@ public class RecordFormTests : BunitContext
         var cut = RenderForm();
 
         var card = cut.Find("div#record-card.card");
-        Assert.Equal("Citizen Record", card.QuerySelector(":scope > .card-header")!.TextContent.Trim());
+        Assert.StartsWith("Citizen Record", card.QuerySelector(":scope > .card-header")!.TextContent.Trim(), StringComparison.Ordinal);
         Assert.NotNull(card.QuerySelector(":scope > .card-body"));
         Assert.NotNull(card.QuerySelector(":scope > .card-footer"));
+    }
+
+    [Fact]
+    public void TheHeader_SaysNew_WhenNoCitizenIsKnownYet()
+    {
+        var cut = RenderForm();
+
+        Assert.Equal("Citizen Record - New", cut.Find("#record-card-heading").TextContent.Trim());
+    }
+
+    [Fact]
+    public void TheHeader_ShowsTheCitizensNameAndOperatingNumber()
+    {
+        var cut = Render<RecordForm>(p => p
+            .Add(c => c.Model, _model)
+            .Add(c => c.Affiliations, Samples.Affiliations)
+            .Add(c => c.OnSave, _save)
+            .Add(c => c.SubjectName, "Anakin Skywalker")
+            .Add(c => c.SubjectOperatingNumber, "TK-421"));
+
+        var heading = System.Text.RegularExpressions.Regex.Replace(cut.Find("#record-card-heading").TextContent, "\\s+", " ").Trim();
+        Assert.Equal("Citizen Record - Anakin Skywalker (TK-421)", heading);
+        Assert.Equal("(TK-421)", cut.Find("#record-card-number").TextContent.Trim());
+    }
+
+    [Fact]
+    public void TheHeader_LeavesOutTheNumberWhenThereIsNone()
+    {
+        var cut = Render<RecordForm>(p => p
+            .Add(c => c.Model, _model)
+            .Add(c => c.Affiliations, Samples.Affiliations)
+            .Add(c => c.OnSave, _save)
+            .Add(c => c.SubjectName, "Anakin Skywalker"));
+
+        Assert.Equal("Citizen Record - Anakin Skywalker", cut.Find("#record-card-heading").TextContent.Trim());
+        Assert.Empty(cut.FindAll("#record-card-number"));
+    }
+
+    [Fact]
+    public void TheHeader_OfASavedRecordWithoutAName_IsJustCitizenRecord()
+    {
+        _model = Saved();
+        var cut = RenderForm();
+
+        Assert.Equal("Citizen Record", cut.Find("#record-card-heading").TextContent.Trim());
     }
 
     [Fact]

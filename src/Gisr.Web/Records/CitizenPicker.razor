@@ -2,7 +2,8 @@
 
 <fieldset id="citizen-picker" class="mb-3">
     <legend class="visually-hidden">Who is this record for?</legend>
-    <div class="btn-group segmented-choice" role="group" aria-label="Who is this record for?">
+    <div class="d-flex flex-wrap align-items-start gap-3">
+    <div class="btn-group segmented-choice flex-shrink-0" role="group" aria-label="Who is this record for?">
         <input type="radio" class="btn-check" name="citizen-for" id="citizen-for-myself" autocomplete="off"
                checked="@(!Model.ForAnother)" @onchange="UseMyself" />
         <label class="btn d-inline-flex align-items-center gap-2" for="citizen-for-myself"><Icon Name="user" /> For myself</label>
@@ -13,7 +14,7 @@
 
     @if (Model.ForAnother && Model.SubjectObjectId is not null)
     {
-        <div class="input-group mt-3">
+        <div class="input-group flex-grow-1" style="flex-basis: 16rem;">
             <span class="input-group-text"><Icon Name="user" /></span>
             <input id="citizen-selected" type="text" class="form-control" readonly aria-label="Selected citizen" value="@Model.SubjectDisplayName" />
             <button type="button" id="citizen-change" class="btn btn-outline-secondary" @onclick="Change">Change</button>
@@ -21,14 +22,14 @@
     }
     else if (Model.ForAnother)
     {
-        <div class="mt-3">
+        <div class="flex-grow-1 position-relative" style="flex-basis: 16rem;">
             <label for="citizen-search" class="visually-hidden">Search the tenant directory</label>
             <input id="citizen-search" type="search" class="form-control" autocomplete="off" maxlength="100"
-                   placeholder="Search the tenant directory by name or email..." aria-describedby="citizen-results-status"
-                   value="@_query" @oninput="OnInputAsync" />
+                   placeholder="Search for the citizen by name, email, or operating number..."
+                   value="@_query" @oninput="OnInputAsync" @onkeydown="OnKeyDown" />
             @if (_results.Count > 0)
             {
-                <ul class="list-group mt-2">
+                <ul class="list-group position-absolute start-0 end-0 mt-1 shadow z-3 overflow-auto" style="max-height: 20rem;">
                     @foreach (var account in _results)
                     {
                         <li class="list-group-item p-0">
@@ -42,9 +43,15 @@
                     }
                 </ul>
             }
-            <p id="citizen-results-status" class="small text-secondary mt-2 mb-0" role="status">@(_status ?? "Search for the citizen this record is about, then choose them from the list.")</p>
+            @if (_status is not null)
+            {
+                <div id="citizen-results-status" class="list-group position-absolute start-0 end-0 mt-1 shadow z-3" role="status">
+                    <div class="list-group-item small text-secondary">@_status</div>
+                </div>
+            }
         </div>
     }
+    </div>
 </fieldset>
 
 @code {
@@ -86,6 +93,15 @@
         {
             _results = [];
             _status = "The citizen search is unavailable.";
+        }
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _results = [];
+            _status = null;
         }
     }
 

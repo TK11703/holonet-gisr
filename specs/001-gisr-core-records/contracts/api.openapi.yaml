@@ -94,6 +94,16 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AccountAffiliationDto" } } } } }
         "403": { $ref: "#/components/responses/Problem" }
+  /api/accounts/by-object/{objectId}:
+    parameters:
+      - { name: objectId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Accounts]
+      operationId: getCitizenByObjectId
+      summary: Officer only. The account id and operating number of a citizen identified by Entra object id; both null when they have never signed in.
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CitizenDto" } } } }
+        "403": { $ref: "#/components/responses/Problem" }
   /api/accounts/by-object/{objectId}/affiliations:
     parameters:
       - { name: objectId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -561,6 +571,11 @@ components:
         chainCode: { type: string, pattern: '^\d{5}(-\d{5}){7}$', readOnly: true }
         updatedAt: { type: string, format: date-time, readOnly: true }
 
+    CitizenDto:
+      type: object
+      properties:
+        accountId: { type: [string, "null"], format: uuid }
+        operatingNumber: { type: [string, "null"] }
     AccountAffiliationDto:
       type: object
       required: [id, primary, createdAt]
@@ -656,6 +671,7 @@ components:
         canEdit: { type: boolean }
         isSealed: { type: boolean }
         artifactCount: { type: integer, description: "Active artifacts on the record" }
+        subjectOperatingNumber: { type: [string, "null"], description: "The subject's operating number, when known" }
         version: { type: integer }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }

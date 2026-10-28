@@ -29,7 +29,8 @@ public static class RecordMapper
             row.Version,
             row.CreatedAt,
             row.UpdatedAt,
-            row.ArtifactCount);
+            row.ArtifactCount,
+            row.SubjectOperatingNumber);
     }
 
     public static UnlockedRecordDto ToUnlocked(RecordAggregate aggregate, RecordCaller caller, string viewToken, DateTimeOffset expiresAt) =>

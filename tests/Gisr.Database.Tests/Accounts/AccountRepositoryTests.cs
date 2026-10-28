@@ -27,6 +27,23 @@ public class AccountRepositoryTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task SearchByOperatingNumber_MatchesPrefixIgnoringCase_WithinTheTenant_TreatingWildcardsLiterally()
+    {
+        await using var db = await postgres.CreateMigratedDatabaseAsync();
+        var repository = Repository(db);
+        var tenant = Guid.NewGuid();
+        var rex = await repository.UpsertAsync(tenant, Guid.NewGuid(), "Rex", null, CancellationToken.None);
+        await repository.UpdateOperatingNumberAsync(rex.Id, "CT-7567", CancellationToken.None);
+        var foreign = await repository.UpsertAsync(Guid.NewGuid(), Guid.NewGuid(), "Foreign", null, CancellationToken.None);
+        await repository.UpdateOperatingNumberAsync(foreign.Id, "CT-7568", CancellationToken.None);
+        await repository.UpsertAsync(tenant, Guid.NewGuid(), "No Number", null, CancellationToken.None);
+
+        Assert.Equal(["Rex"], (await repository.SearchByOperatingNumberAsync(tenant, "ct-75", 10, CancellationToken.None)).Select(a => a.DisplayName));
+        Assert.Empty(await repository.SearchByOperatingNumberAsync(tenant, "7567", 10, CancellationToken.None));
+        Assert.Empty(await repository.SearchByOperatingNumberAsync(tenant, "%", 10, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task ChainCode_OptionalAtomicReplacementAndDeletion_AreOwnerScoped()
     {
         await using var db = await postgres.CreateMigratedDatabaseAsync();

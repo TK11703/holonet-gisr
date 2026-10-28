@@ -116,7 +116,7 @@ public static class AccountEndpoints
         accountsGroup.MapGet("/", async ([AsParameters] AccountSearchQuery query, AccountService accounts, CancellationToken cancellationToken) =>
                 TypedResults.Ok(await accounts.SearchAsync(query, cancellationToken)))
             .WithName("searchAccounts")
-            .WithSummary("Officer only. Search the Entra tenant directory by name or email for the record subject picker.")
+            .WithSummary("Officer only. Search the Entra tenant directory by name or email, and known accounts by Operating Number, for the record subject picker.")
             .Produces<IReadOnlyList<DirectoryUserDto>>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status403Forbidden)
@@ -127,6 +127,13 @@ public static class AccountEndpoints
             .WithName("listCitizenAffiliations")
             .WithSummary("Officer only. The affiliations a citizen associated with their account.")
             .Produces<IReadOnlyList<AccountAffiliationDto>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        accountsGroup.MapGet("/by-object/{objectId:guid}", async (Guid objectId, AccountAffiliationService service, CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetCitizenAsync(objectId, cancellationToken)))
+            .WithName("getCitizenByObjectId")
+            .WithSummary("Officer only. What is known about a citizen identified by Entra object id; empty when they have never signed in.")
+            .Produces<CitizenDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
         accountsGroup.MapGet("/by-object/{objectId:guid}/affiliations", async (Guid objectId, AccountAffiliationService service, CancellationToken cancellationToken) =>

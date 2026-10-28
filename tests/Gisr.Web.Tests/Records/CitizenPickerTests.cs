@@ -136,6 +136,29 @@ public class CitizenPickerTests : BunitContext
     }
 
     [Fact]
+    public void SearchBox_HasThePlaceholder_AndNoHintTextBeforeSearching()
+    {
+        var cut = RenderPicker(forAnother: true);
+
+        Assert.Equal("Search for the citizen by name, email, or operating number...", cut.Find("#citizen-search").GetAttribute("placeholder"));
+        Assert.Empty(cut.FindAll("#citizen-results-status"));
+        Assert.Empty(cut.FindAll("p.text-secondary"));
+    }
+
+    [Fact]
+    public void Results_FloatOverTheForm_AndEscapeClosesThem()
+    {
+        _api.OnJson(HttpMethod.Get, Search("lu"), new[] { new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null) });
+        var cut = RenderPicker(forAnother: true);
+
+        cut.Find("#citizen-search").Input("lu");
+
+        cut.WaitForAssertion(() => Assert.Contains("position-absolute", cut.Find("ul.list-group").ClassList));
+        cut.Find("#citizen-search").KeyDown("Escape");
+        Assert.Empty(cut.FindAll("button.citizen-option"));
+    }
+
+    [Fact]
     public void NoMatches_ShowsAMessage()
     {
         _api.OnJson(HttpMethod.Get, Search("zz"), Array.Empty<DirectoryUserDto>());
@@ -219,6 +242,49 @@ public class CitizenPickerTests : BunitContext
         cut.WaitForAssertion(() => cut.Find("button.citizen-option").Click());
         return cut;
     }
+
+    [Fact]
+    public void NewRecordHeader_ForMyself_ShowsTheSignedInUser_AndForAnotherWithNobodyChosen_SaysNew()
+    {
+        _api.OnJson(HttpMethod.Get, "api/me", new AccountDto(Guid.NewGuid(), "Officer Cody", null, null, true, true, DateTimeOffset.UtcNow, "CC-2224"));
+        var cut = Render<RecordNew>();
+
+        Assert.Equal("Citizen Record - Officer Cody (CC-2224)", Heading(cut));
+
+        cut.Find("#citizen-for-other").Change(true);
+
+        cut.WaitForAssertion(() => Assert.Equal("Citizen Record - New", Heading(cut)));
+
+        cut.Find("#citizen-for-myself").Change(true);
+
+        cut.WaitForAssertion(() => Assert.Equal("Citizen Record - Officer Cody (CC-2224)", Heading(cut)));
+    }
+
+    [Fact]
+    public void NewRecordHeader_ForSomeoneElse_ShowsTheChosenCitizen_AndTheirOperatingNumber()
+    {
+        var luke = new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null);
+        _api.OnJson(HttpMethod.Get, ByObject(luke), Samples.Affiliations);
+        _api.OnJson(HttpMethod.Get, $"api/accounts/by-object/{luke.ObjectId}", new CitizenDto(Guid.NewGuid(), "TK-421"));
+
+        var cut = ChooseLuke(luke);
+
+        cut.WaitForAssertion(() => Assert.Equal("Citizen Record - Luke Skywalker (TK-421)", Heading(cut)));
+    }
+
+    [Fact]
+    public void NewRecordHeader_ForSomeoneElse_OmitsTheNumberWhenItCannotBeRead()
+    {
+        var luke = new DirectoryUserDto(Guid.NewGuid(), "Luke Skywalker", null);
+        _api.OnJson(HttpMethod.Get, ByObject(luke), Samples.Affiliations);
+
+        var cut = ChooseLuke(luke);
+
+        cut.WaitForAssertion(() => Assert.Equal("Citizen Record - Luke Skywalker", Heading(cut)));
+    }
+
+    private static string Heading(IRenderedComponent<RecordNew> cut) =>
+        System.Text.RegularExpressions.Regex.Replace(cut.Find("#record-card-heading").TextContent, "\\s+", " ").Trim();
 
     [Fact]
     public void ForSomeoneElse_WithNobodyChosenYet_BlocksSaving_AndShowsNoAffiliations()

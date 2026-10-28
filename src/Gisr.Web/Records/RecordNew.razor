@@ -18,7 +18,8 @@ else
     <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" CancelHref="/records"
                 ShowCitizenPicker="User.IsOfficer" AllowSealing="User.IsOfficer"
                 OnSubjectChanged="SubjectChangedAsync" AffiliationOwner="@(_model.SubjectObjectId is null ? null : _model.SubjectDisplayName)"
-                AffiliationsLoading="_loadingAffiliations" AffiliationsFailed="_affiliationsFailed" />
+                AffiliationsLoading="_loadingAffiliations" AffiliationsFailed="_affiliationsFailed"
+                SubjectName="@HeaderName" SubjectOperatingNumber="@HeaderNumber" />
 }
 
 @code {
@@ -30,6 +31,12 @@ else
     private bool _loadError;
     private bool _loadingAffiliations;
     private bool _affiliationsFailed;
+    private string? _subjectNumber;
+
+    // "For myself" shows the signed-in user; "for someone else" shows the chosen citizen, or nothing until one is chosen.
+    private string? HeaderName => _model!.ForAnother ? (_model.SubjectObjectId is null ? null : _model.SubjectDisplayName) : User.Account?.DisplayName;
+
+    private string? HeaderNumber => _model!.ForAnother ? _subjectNumber : User.Account?.OperatingNumber;
 
     protected override async Task OnInitializedAsync()
     {
@@ -62,6 +69,7 @@ else
     {
         var subject = _model!.SubjectObjectId;
         _affiliationsFailed = false;
+        _subjectNumber = null;
         if (_model.NeedsCitizen)
         {
             _loadingAffiliations = false;
@@ -84,6 +92,15 @@ else
             {
                 loaded = [];
                 _affiliationsFailed = true;
+            }
+
+            try
+            {
+                _subjectNumber = (await Api.GetAsync<CitizenDto>($"api/accounts/by-object/{subject}"))?.OperatingNumber;
+            }
+            catch (ApiException)
+            {
+                // The header just omits the number when it cannot be read.
             }
 
             if (_model.SubjectObjectId != subject)

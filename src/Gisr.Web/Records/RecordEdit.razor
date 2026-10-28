@@ -25,7 +25,8 @@ else
 {
     <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" OnDelete="DeleteAsync" OnReload="ReloadAsync"
                 CancelHref="@($"/records/{Id}")" AllowSealing="User.IsOfficer"
-                AffiliationOwner="@_affiliationOwner" AffiliationsFailed="_affiliationsFailed" />
+                AffiliationOwner="@_affiliationOwner" AffiliationsFailed="_affiliationsFailed"
+                SubjectName="@_subjectName" SubjectOperatingNumber="@_subjectNumber" />
 }
 
 @code {
@@ -39,6 +40,8 @@ else
     private bool _loadError;
     private bool _affiliationsFailed;
     private string? _affiliationOwner;
+    private string? _subjectName;
+    private string? _subjectNumber;
 
     [Parameter]
     public Guid Id { get; set; }
@@ -86,6 +89,8 @@ else
         var record = await Api.GetAsync<RecordDto>($"api/records/{Id}");
         _canEdit = record!.CanEdit;
         _model = RecordFormModel.FromDto(record);
+        _subjectName = record.SubjectDisplayName;
+        _subjectNumber = record.SubjectOperatingNumber;
         await LoadAffiliationsAsync(record);
     }
 

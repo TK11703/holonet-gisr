@@ -1,6 +1,20 @@
 <div id="record-card" class="card mb-4">
     <header class="card-header">
-        <h2 id="record-card-heading" class="h5 mb-0">Citizen Record</h2>
+        <h2 id="record-card-heading" class="h5 mb-0">
+            @if (SubjectName is null)
+            {
+                <span id="record-card-title">@(Model.IsSaved ? "Citizen Record" : "Citizen Record - New")</span>
+            }
+            else
+            {
+                <span id="record-card-title">Citizen Record - @SubjectName</span>
+                @if (!string.IsNullOrWhiteSpace(SubjectOperatingNumber))
+                {
+                    @(" ")
+                    <span id="record-card-number" class="text-secondary fw-normal">(@SubjectOperatingNumber)</span>
+                }
+            }
+        </h2>
     </header>
 
     <div class="card-body">
@@ -134,38 +148,49 @@
 
                     @if (ShowSealControls)
                     {
-                        <fieldset id="seal-section" class="mb-2">
-                            <legend class="h5">Sealing</legend>
-                            <div class="form-check form-switch mb-2">
-                                <input id="seal-record" type="checkbox" role="switch" class="form-check-input" checked="@Model.IsSealed" @onchange="OnSealChanged" />
-                                <label for="seal-record" class="form-check-label">Seal this record</label>
+                        <fieldset id="seal-section" class="mb-2" aria-labelledby="seal-label">
+                            <div class="input-group flex-nowrap segmented-choice seal-control">
+                                <span id="seal-label" class="input-group-text">Sealing</span>
+                                <input id="seal-record" type="checkbox" role="switch" class="btn-check" autocomplete="off" checked="@Model.IsSealed" @onchange="OnSealChanged" />
+                                <label for="seal-record" class="btn d-inline-flex align-items-center" title="@(Model.IsSealed ? "Sealed. Click to unseal." : "Not sealed. Click to seal and provide an unlock code.")">
+                                    <Icon Name="@(Model.IsSealed ? "lock" : "unlock")" />
+                                    <span class="visually-hidden">Seal this record</span>
+                                </label>
+                                @if (Model.IsSealed)
+                                {
+                                    @if (Model.HasOverrideCode && !Model.ChangingCode)
+                                    {
+                                        <span id="override-code-set" class="input-group-text flex-grow-1 gap-2 text-success" role="status">
+                                            <Icon Name="check-circle" /> <span>An override code is set.</span>
+                                        </span>
+                                        <button type="button" id="change-code" class="btn btn-outline-secondary" @onclick="ChangeCode">Change code</button>
+                                    }
+                                    else
+                                    {
+                                        <label for="override-code" class="visually-hidden">Override code <span aria-hidden="true">*</span></label>
+                                        <input id="override-code" type="password" autocomplete="new-password" maxlength="64" placeholder="Override Code - 8 to 64 characters"
+                                               class="@(CodeError is null ? "form-control" : "form-control is-invalid")"
+                                               aria-required="true" aria-invalid="@(CodeError is null ? null : "true")"
+                                               aria-describedby="@(CodeError is null ? "override-code-help" : "override-code-error")"
+                                               value="@Model.OverrideCode" @oninput="OnCodeInput" />
+                                        <span id="override-code-info" class="input-group-text" title="@CodeHelp"><Icon Name="info" /></span>
+                                        @if (Model.HasOverrideCode)
+                                        {
+                                            <button type="button" id="cancel-change-code" class="btn btn-outline-secondary" @onclick="CancelChangeCode">Cancel</button>
+                                        }
+                                    }
+                                }
                             </div>
+                            <span id="override-code-help" class="visually-hidden">@CodeHelp</span>
                             @if (SealError is not null)
                             {
-                                <div class="invalid-feedback d-block mb-2">@SealError</div>
+                                <div class="invalid-feedback d-block mt-2">@SealError</div>
                             }
-                            @if (Model.IsSealed)
+                            @if (Model.IsSealed && (!Model.HasOverrideCode || Model.ChangingCode))
                             {
-                                @if (Model.HasOverrideCode && !Model.ChangingCode)
+                                @if (CodeError is not null)
                                 {
-                                    <p id="override-code-set" class="mb-2">An override code is set.</p>
-                                    <button type="button" id="change-code" class="btn btn-sm btn-outline-secondary" @onclick="ChangeCode">Change code</button>
-                                }
-                                else
-                                {
-                                    <label for="override-code" class="form-label">Override code <span class="text-danger" aria-hidden="true">*</span></label>
-                                    <input id="override-code" type="password" autocomplete="new-password" maxlength="64"
-                                           class="@(CodeError is null ? "form-control" : "form-control is-invalid")"
-                                           aria-required="true" aria-invalid="@(CodeError is null ? null : "true")"
-                                           aria-describedby="@(CodeError is null ? "override-code-help" : "override-code-error")"
-                                           value="@Model.OverrideCode" @oninput="OnCodeInput" />
-                                    @if (CodeError is not null)
-                                    {
-                                        <div id="override-code-error" class="invalid-feedback d-block">@CodeError</div>
-                                    }
-                                    <div id="override-code-help" class="form-text">
-                                        8 to 64 characters. The code is shown to no one afterwards and must be shared with the citizen out of band.
-                                    </div>
+                                    <div id="override-code-error" class="invalid-feedback d-block mt-2">@CodeError</div>
                                 }
                             }
                         </fieldset>
@@ -243,6 +268,8 @@
 </div>
 
 @code {
+    private const string CodeHelp = "8 to 64 characters. The code is shown to no one afterwards and must be shared with the citizen out of band.";
+
     private sealed record TabDefinition(string Key, string Label, bool NeedsSaved);
 
     private static readonly TabDefinition[] Tabs =
@@ -296,6 +323,12 @@
     [Parameter]
     public bool AffiliationsLoading { get; set; }
 
+    // The citizen the record belongs to, shown in the card header; null until one is known.
+    [Parameter]
+    public string? SubjectName { get; set; }
+
+    [Parameter]
+    public string? SubjectOperatingNumber { get; set; }
     [Parameter]
     public bool AffiliationsFailed { get; set; }
 
@@ -403,6 +436,13 @@
     private void OnCodeInput(ChangeEventArgs e) => Model.OverrideCode = e.Value?.ToString();
 
     private void ChangeCode() => Model.ChangingCode = true;
+
+    private void CancelChangeCode()
+    {
+        Model.ChangingCode = false;
+        Model.OverrideCode = null;
+        _errors = _errors.Where(e => e.Key != "overrideCode").ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
+    }
 
     private async Task DeleteAsync()
     {

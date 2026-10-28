@@ -98,6 +98,7 @@ public class AccessMatrixTests(PostgresFixture postgres, AzuriteFixture azurite)
         // Officer-only scope and directory.
         Case("GET /api/accounts", _ => Get("/api/accounts?query=Sub"), 401, 403, 403, 200, 403),
         Case("GET /api/accounts/{id}/affiliations", w => Get($"/api/accounts/{w.OwnRecord.SubjectAccountId}/affiliations"), 401, 403, 403, 200, 403),
+        Case("GET /api/accounts/by-object/{oid}", w => Get($"/api/accounts/by-object/{w.SubjectOid}"), 401, 403, 403, 200, 403),
         Case("GET /api/accounts/by-object/{oid}/affiliations", w => Get($"/api/accounts/by-object/{w.SubjectOid}/affiliations"), 401, 403, 403, 200, 403),
         Case("GET /api/records?scope=all", _ => Get("/api/records?scope=all"), 401, 403, 403, 200, 403),
         Case("GET /api/records?scope=mine", _ => Get("/api/records"), 401, 200, 200, 200, 200),

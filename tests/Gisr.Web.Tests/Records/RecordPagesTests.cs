@@ -93,6 +93,18 @@ public class RecordPagesTests : BunitContext
     }
 
     [Fact]
+    public void Edit_HeaderShowsTheRecordsCitizenAndOperatingNumber()
+    {
+        var record = Samples.Record() with { SubjectDisplayName = "Rex", SubjectOperatingNumber = "CT-7567" };
+        _api.OnJson(HttpMethod.Get, $"api/records/{record.Id}", record);
+
+        var cut = Render<RecordEdit>(p => p.Add(c => c.Id, record.Id));
+
+        var heading = System.Text.RegularExpressions.Regex.Replace(cut.Find("#record-card-heading").TextContent, "\\s+", " ").Trim();
+        Assert.Equal("Citizen Record - Rex (CT-7567)", heading);
+    }
+
+    [Fact]
     public void Edit_EnablesTheTabs()
     {
         var record = Samples.Record();

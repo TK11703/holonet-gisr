@@ -23,6 +23,50 @@ public class CitizenAffiliationsEndpointsTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Officer_ReadsACitizensOperatingNumber_ByObjectId()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+        var citizen = await SignedInAsync(factory, "Citizen");
+        await factory.ScalarAsync<long>($"WITH u AS (UPDATE account SET operating_number = 'TK-421' WHERE id = '{citizen.AccountId}' RETURNING 1) SELECT count(*) FROM u");
+        var officer = factory.CreateUserClient(officer: true);
+
+        var known = await officer.GetFromJsonAsync<CitizenDto>($"/api/accounts/by-object/{citizen.Oid}");
+        var unknown = await officer.GetFromJsonAsync<CitizenDto>($"/api/accounts/by-object/{Guid.NewGuid()}");
+
+        Assert.Equal(new CitizenDto(citizen.AccountId, "TK-421"), known);
+        Assert.Equal(new CitizenDto(null, null), unknown);
+    }
+
+    [Fact]
+    public async Task NonOfficers_CannotLookUpACitizen()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+        var citizen = await SignedInAsync(factory, "Citizen");
+
+        var response = await factory.CreateUserClient().GetAsync($"/api/accounts/by-object/{citizen.Oid}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheRecordCarriesTheSubjectsOperatingNumber()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+        var citizen = await SignedInAsync(factory, "Citizen");
+        await factory.ScalarAsync<long>($"WITH u AS (UPDATE account SET operating_number = 'TK-421' WHERE id = '{citizen.AccountId}' RETURNING 1) SELECT count(*) FROM u");
+        var officer = factory.CreateUserClient(officer: true);
+        var request = new Gisr.Shared.Records.CreateRecordRequest(
+            "Commendation", "Jedi Order", null, null, new Dictionary<string, string> { ["summary"] = "s" }, SubjectObjectId: citizen.Oid);
+
+        var created = await (await officer.PostAsJsonAsync("/api/records", request)).Content.ReadFromJsonAsync<Gisr.Shared.Records.RecordDto>();
+        var read = await citizen.Client.GetFromJsonAsync<Gisr.Shared.Records.RecordDto>($"/api/records/{created!.Id}");
+
+        Assert.Equal("TK-421", created.SubjectOperatingNumber);
+        Assert.Equal("TK-421", read!.SubjectOperatingNumber);
+        Assert.Equal("Citizen", read.SubjectDisplayName);
+    }
+
+    [Fact]
     public async Task Officer_ReadsACitizensAffiliations_ByAccountId_AndByObjectId()
     {
         await using var factory = await ApiFactory.CreateAsync(postgres);
