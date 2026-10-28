@@ -20,7 +20,7 @@ public class SideNavTests : BunitContext
 
         Assert.Equal("Primary", cut.Find("nav").GetAttribute("aria-label"));
         var headings = cut.FindAll(".sidenav-heading").Select(h => h.TextContent.Trim()).ToArray();
-        Assert.Equal(["Databank", "Records", "Find", "Account"], headings);
+        Assert.Equal(["Databank", "Records", "Find", "Account", "Help"], headings);
 
         var links = cut.FindAll("a.sidenav-link").ToDictionary(a => a.TextContent.Trim(), a => a.GetAttribute("href"));
         Assert.Equal("/", links["Home"]);
@@ -28,6 +28,8 @@ public class SideNavTests : BunitContext
         Assert.Equal("/gallery", links["Gallery"]);
         Assert.Equal("/search", links["Search"]);
         Assert.Equal("/account", links["Account Settings"]);
+        Assert.Equal("/about", links["About"]);
+        Assert.Equal("/faq", links["FAQ"]);
     }
 
     [Theory]

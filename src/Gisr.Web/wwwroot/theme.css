@@ -555,6 +555,84 @@ h1[tabindex="-1"]:focus-visible {
     max-width: 80ch;
 }
 
+.about-page,
+.faq-page {
+    max-width: 80rem;
+}
+
+.faq-search {
+    max-width: 32rem;
+}
+
+.faq-chip {
+    padding: 0.15rem 0.7rem;
+    border: 1px solid var(--gisr-border);
+    border-radius: 999px;
+    background: var(--gisr-bg-2);
+    color: var(--gisr-accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.faq-chip:hover {
+    background: var(--gisr-surface-2);
+    border-color: var(--gisr-accent-strong);
+}
+
+.faq-card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px dashed var(--gisr-border);
+    background: transparent;
+}
+
+.faq-item {
+    border-radius: 0.5rem;
+    background: var(--gisr-bg-2);
+}
+
+.faq-question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--gisr-text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: left;
+}
+
+.faq-question:hover {
+    color: var(--gisr-accent);
+}
+
+.faq-question .icon {
+    flex-shrink: 0;
+    color: var(--gisr-muted);
+    transition: transform 0.15s ease-in-out;
+}
+
+.faq-question[aria-expanded="true"] .icon {
+    transform: rotate(180deg);
+}
+
+.faq-answer {
+    padding: 0 1rem 1rem;
+    color: var(--gisr-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .faq-question .icon {
+        transition: none;
+    }
+}
+
 .breadcrumb {
     --bs-breadcrumb-divider-color: var(--gisr-muted);
     --bs-breadcrumb-item-active-color: var(--gisr-muted);

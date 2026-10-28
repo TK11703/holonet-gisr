@@ -1,0 +1,122 @@
+@page "/faq"
+
+<PageHeader Title="Frequently asked questions" Crumbs="Crumbs" />
+
+<div class="faq-page mx-auto">
+    <div class="faq-search mx-auto mb-3" role="search">
+        <label for="faq-query" class="visually-hidden">Search questions</label>
+        <div class="input-group input-group-lg">
+            <span class="input-group-text rounded-start-pill bg-body text-secondary"><Icon Name="search" /></span>
+            <input id="faq-query" type="search" class="form-control rounded-end-pill" maxlength="100" autocomplete="off"
+                   placeholder="Search questions..." @bind="Query" @bind:event="oninput" />
+        </div>
+    </div>
+
+    <div class="faq-popular d-flex flex-wrap justify-content-center align-items-center gap-2 mb-4" aria-label="Popular searches" role="group">
+        <span class="small text-secondary fw-semibold">Popular searches:</span>
+        @foreach (var term in FaqContent.PopularSearches)
+        {
+            <button type="button" class="faq-chip" @onclick="() => Query = term">@term</button>
+        }
+    </div>
+
+    <p class="visually-hidden" role="status" aria-live="polite">@Status</p>
+
+    @if (Visible.Count == 0)
+    {
+        <div id="faq-empty" class="text-center text-secondary py-5">
+            <p class="mb-2">No questions match &ldquo;@Query&rdquo;.</p>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="Clear">Show all questions</button>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4 align-items-start">
+            @foreach (var (topic, items) in Visible)
+            {
+                <div class="col-lg-6">
+                    <section class="card faq-card" aria-labelledby="@($"faq-topic-{topic.Id}")">
+                        <header class="card-header faq-card-header">
+                            <h2 id="@($"faq-topic-{topic.Id}")" class="h6 mb-1">@topic.Title</h2>
+                            <p class="small text-secondary mb-0">@topic.Description</p>
+                        </header>
+                        <div class="card-body d-flex flex-column gap-2">
+                            @foreach (var (key, item) in items)
+                            {
+                                var open = _open.Contains(key);
+                                <div class="faq-item">
+                                    <h3 class="h6 mb-0">
+                                        <button type="button" id="@($"{key}-question")" class="faq-question" aria-expanded="@(open ? "true" : "false")"
+                                                aria-controls="@($"{key}-answer")" @onclick="() => Toggle(key)">
+                                            <span>@item.Question</span>
+                                            <Icon Name="chevron" />
+                                        </button>
+                                    </h3>
+                                    <div id="@($"{key}-answer")" class="faq-answer" role="region" aria-labelledby="@($"{key}-question")" hidden="@(!open)">
+                                        <p class="mb-0">@item.Answer</p>
+                                        @if (item.Href is not null)
+                                        {
+                                            <a class="d-inline-block mt-2" href="@item.Href">@(item.LinkText ?? "Learn more")<span class="ms-2" aria-hidden="true">&rarr;</span></a>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                </div>
+            }
+        </div>
+    }
+
+    <p class="text-center text-secondary small mt-5 mb-0">
+        Looking for the bigger picture? Read <a href="/about">About GISR</a>.
+    </p>
+</div>
+
+@code {
+    private static readonly Crumb[] Crumbs = [new("Home", "/"), new("Help"), new("FAQ")];
+
+    private readonly HashSet<string> _open = new(StringComparer.Ordinal);
+
+    private string _query = string.Empty;
+
+    private string Query
+    {
+        get => _query;
+        set => _query = value ?? string.Empty;
+    }
+
+    private List<(FaqTopic Topic, List<(string Key, FaqItem Item)> Items)> Visible =>
+        [.. FaqContent.Topics
+            .Select(topic => (
+                topic,
+                items: topic.Items
+                    .Select((item, index) => (Key: $"faq-{topic.Id}-{index}", Item: item))
+                    .Where(entry => FaqContent.Matches(entry.Item, _query))
+                    .ToList()))
+            .Where(entry => entry.items.Count > 0)];
+
+    private string Status
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_query))
+            {
+                return string.Empty;
+            }
+
+            var count = Visible.Sum(entry => entry.Items.Count);
+            return count == 0 ? "No questions found." : $"{count} {(count == 1 ? "question" : "questions")} found.";
+        }
+    }
+
+    private void Toggle(string key)
+    {
+        if (!_open.Remove(key))
+        {
+            _open.Add(key);
+        }
+    }
+
+    private void Clear() => _query = string.Empty;
+}
