@@ -40,7 +40,7 @@ public class AccessMatrixTests(PostgresFixture postgres, AzuriteFixture azurite)
 
     private static async Task<RecordDto> CreateRecordAsync(HttpClient client, Guid? subjectOid)
     {
-        var response = await client.PostAsJsonAsync("/api/records", SealedTestData.Request(subjectOid, "Disposable", sealedRecord: false, code: null));
+        var response = await client.PostAsJsonAsync("/api/records", SealedTestData.Request(subjectOid, "Disposable", sealedRecord: false, code: null) with { Incidents = null });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<RecordDto>())!;
     }
@@ -108,7 +108,7 @@ public class AccessMatrixTests(PostgresFixture postgres, AzuriteFixture azurite)
         Case("GET /api/gallery", _ => Get("/api/gallery"), 401, 200, 200, 200, 200),
         Case("GET /api/search?scope=all", _ => Get("/api/search?q=temple&scope=all"), 401, 403, 403, 200, 403),
         Case("GET /api/search", _ => Get("/api/search?q=temple"), 401, 200, 200, 200, 200),
-        Case("POST /api/records naming the Subject's account", w => Send(HttpMethod.Post, "/api/records", SealedTestData.Request(w.SubjectOid, "Service", sealedRecord: false, code: null)), 401, 201, 403, 201, 403),
+        Case("POST /api/records naming the Subject's account", w => Send(HttpMethod.Post, "/api/records", SealedTestData.Request(w.SubjectOid, "Service", sealedRecord: false, code: null) with { Incidents = null }), 401, 201, 403, 201, 403),
         Case("POST /api/records sealed for self", _ => Send(HttpMethod.Post, "/api/records", SealedTestData.Request(null, "Own sealed", sealedRecord: true)), 401, 403, 403, 201, 403),
 
         // A non-sealed record the subject authored.

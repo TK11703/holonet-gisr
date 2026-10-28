@@ -89,7 +89,7 @@ internal static class ArtifactApi
 
     public static async Task<RecordDto> CreateOwnRecordAsync(HttpClient client, string title = "My service")
     {
-        var response = await client.PostAsJsonAsync("/api/records", SealedTestData.Request(null, title, sealedRecord: false, code: null));
+        var response = await client.PostAsJsonAsync("/api/records", SealedTestData.Request(null, title, sealedRecord: false, code: null) with { Incidents = null });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<RecordDto>())!;
     }

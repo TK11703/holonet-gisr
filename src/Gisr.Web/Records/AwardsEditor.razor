@@ -1,42 +1,52 @@
-<section class="mb-4" aria-labelledby="new-award-heading">
-    <h3 id="new-award-heading" class="h6">New award</h3>
-    <div class="card card-body mb-3">
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label for="new-award-name" class="form-label">Name <span class="text-danger" aria-hidden="true">*</span></label>
-                <input id="new-award-name" type="text" class="@(_nameError is null ? "form-control" : "form-control is-invalid")" maxlength="200"
+<fieldset id="new-award" class="border rounded px-3 pb-3 mb-4">
+    <legend class="float-none w-auto px-2 h6 mb-3">New award</legend>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="form-floating">
+                <input id="new-award-name" type="text" class="@(_nameError is null ? "form-control" : "form-control is-invalid")" maxlength="200" placeholder="Name"
+                       title="Required. The name of the award, up to 200 characters."
                        aria-required="true" aria-invalid="@(_nameError is null ? null : "true")" aria-describedby="@(_nameError is null ? null : "new-award-name-error")"
                        @bind="_draft.Name" />
-                @if (_nameError is not null)
-                {
-                    <div id="new-award-name-error" class="invalid-feedback d-block">@_nameError</div>
-                }
+                <label for="new-award-name">Name <span class="text-danger" aria-hidden="true">*</span></label>
             </div>
-            <div class="col-md-3">
-                <label for="new-award-date" class="form-label">Date awarded <span class="text-danger" aria-hidden="true">*</span></label>
-                <input id="new-award-date" type="date" class="@(_dateError is null ? "form-control" : "form-control is-invalid")"
+            @if (_nameError is not null)
+            {
+                <div id="new-award-name-error" class="invalid-feedback d-block">@_nameError</div>
+            }
+        </div>
+        <div class="col-md-3">
+            <div class="form-floating">
+                <input id="new-award-date" type="date" class="@(_dateError is null ? "form-control" : "form-control is-invalid")" placeholder="Date awarded"
+                       title="Required. The date the award was given."
                        aria-required="true" aria-invalid="@(_dateError is null ? null : "true")" aria-describedby="@(_dateError is null ? null : "new-award-date-error")"
                        @bind="_draft.AwardedOn" @bind:format="yyyy-MM-dd" />
-                @if (_dateError is not null)
-                {
-                    <div id="new-award-date-error" class="invalid-feedback d-block">@_dateError</div>
-                }
+                <label for="new-award-date">Date awarded <span class="text-danger" aria-hidden="true">*</span></label>
             </div>
-            <div class="col-md-3">
-                <label for="new-award-issuer" class="form-label">Issuer</label>
-                <input id="new-award-issuer" type="text" class="form-control" maxlength="200" @bind="_draft.Issuer" />
-            </div>
-            <div class="col-12">
-                <label for="new-award-description" class="form-label">Description</label>
-                <textarea id="new-award-description" class="form-control" rows="2" maxlength="2000" @bind="_draft.Description"></textarea>
+            @if (_dateError is not null)
+            {
+                <div id="new-award-date-error" class="invalid-feedback d-block">@_dateError</div>
+            }
+        </div>
+        <div class="col-md-3">
+            <div class="form-floating">
+                <input id="new-award-issuer" type="text" class="form-control" maxlength="200" placeholder="Issuer"
+                       title="Optional. Who gave the award, up to 200 characters." @bind="_draft.Issuer" />
+                <label for="new-award-issuer">Issuer</label>
             </div>
         </div>
-        <div class="mt-3">
-            <button type="button" id="add-award" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
-                    disabled="@(Items.Count >= RecordFormModel.MaxItems)" @onclick="Add"><Icon Name="plus" /> Add award</button>
+        <div class="col-12">
+            <div class="form-floating">
+                <textarea id="new-award-description" class="form-control" rows="2" maxlength="2000" placeholder="Description"
+                          title="Optional. Why the award was given, up to 2000 characters." @bind="_draft.Description"></textarea>
+                <label for="new-award-description">Description</label>
+            </div>
         </div>
     </div>
-</section>
+    <div class="mt-3">
+        <button type="button" id="add-award" class="btn btn-primary d-inline-flex align-items-center gap-2"
+                disabled="@(Items.Count >= RecordFormModel.MaxItems)" @onclick="Add"><Icon Name="plus" /> Add award</button>
+    </div>
+</fieldset>
 
 <section aria-labelledby="added-awards-heading">
     <h3 id="added-awards-heading" class="h6">Added awards</h3>
@@ -47,67 +57,52 @@
 
     @if (Items.Count == 0)
     {
-        <p id="awards-empty" class="text-secondary">No awards added yet.</p>
-    }
-
-    @for (var i = 0; i < Items.Count; i++)
-    {
-        var index = i;
-        var item = Items[i];
-        var prefix = $"award-{index}";
-        var name = RecordDisplay.ErrorText(Errors, $"awards[{index}].name");
-        var date = RecordDisplay.ErrorText(Errors, $"awards[{index}].awardedOn");
-        var issuer = RecordDisplay.ErrorText(Errors, $"awards[{index}].issuer");
-        var description = RecordDisplay.ErrorText(Errors, $"awards[{index}].description");
-
-        <div class="card mb-3" @key="item">
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label for="@($"{prefix}-name")" class="form-label">Name <span class="text-danger" aria-hidden="true">*</span></label>
-                        <input id="@($"{prefix}-name")" type="text" class="@(name is null ? "form-control" : "form-control is-invalid")" maxlength="200"
-                               aria-required="true" aria-invalid="@(name is null ? null : "true")" aria-describedby="@(name is null ? null : $"{prefix}-name-error")"
-                               @bind="item.Name" />
-                        @if (name is not null)
-                        {
-                            <div id="@($"{prefix}-name-error")" class="invalid-feedback d-block">@name</div>
-                        }
-                    </div>
-                    <div class="col-md-3">
-                        <label for="@($"{prefix}-date")" class="form-label">Date awarded <span class="text-danger" aria-hidden="true">*</span></label>
-                        <input id="@($"{prefix}-date")" type="date" class="@(date is null ? "form-control" : "form-control is-invalid")"
-                               aria-required="true" aria-invalid="@(date is null ? null : "true")" aria-describedby="@(date is null ? null : $"{prefix}-date-error")"
-                               @bind="item.AwardedOn" @bind:format="yyyy-MM-dd" />
-                        @if (date is not null)
-                        {
-                            <div id="@($"{prefix}-date-error")" class="invalid-feedback d-block">@date</div>
-                        }
-                    </div>
-                    <div class="col-md-3">
-                        <label for="@($"{prefix}-issuer")" class="form-label">Issuer</label>
-                        <input id="@($"{prefix}-issuer")" type="text" class="@(issuer is null ? "form-control" : "form-control is-invalid")" maxlength="200"
-                               aria-invalid="@(issuer is null ? null : "true")" aria-describedby="@(issuer is null ? null : $"{prefix}-issuer-error")"
-                               @bind="item.Issuer" />
-                        @if (issuer is not null)
-                        {
-                            <div id="@($"{prefix}-issuer-error")" class="invalid-feedback d-block">@issuer</div>
-                        }
-                    </div>
-                    <div class="col-12">
-                        <label for="@($"{prefix}-description")" class="form-label">Description</label>
-                        <textarea id="@($"{prefix}-description")" class="@(description is null ? "form-control" : "form-control is-invalid")" rows="2" maxlength="2000"
-                                  aria-invalid="@(description is null ? null : "true")" aria-describedby="@(description is null ? null : $"{prefix}-description-error")"
-                                  @bind="item.Description"></textarea>
-                        @if (description is not null)
-                        {
-                            <div id="@($"{prefix}-description-error")" class="invalid-feedback d-block">@description</div>
-                        }
-                    </div>
-                </div>
-                <button type="button" class="btn btn-outline-danger btn-sm mt-3" aria-label="@($"Remove award {index + 1}")"
-                        @onclick="@(() => Items.Remove(item))">Remove</button>
-            </div>
+        <div id="awards-empty" class="alert alert-info d-flex align-items-start gap-2 mb-0" role="status">
+            <span class="flex-shrink-0"><Icon Name="info" /></span>
+            <span>No awards added yet.</span>
         </div>
+    }
+    else
+    {
+        <ul id="award-list" class="list-group">
+            @for (var i = 0; i < Items.Count; i++)
+            {
+                var index = i;
+                var item = Items[i];
+                var itemError = RecordDisplay.ErrorText(Errors, $"awards[{index}].name")
+                    ?? RecordDisplay.ErrorText(Errors, $"awards[{index}].awardedOn")
+                    ?? RecordDisplay.ErrorText(Errors, $"awards[{index}].issuer")
+                    ?? RecordDisplay.ErrorText(Errors, $"awards[{index}].description");
+
+                <li class="list-group-item" id="@($"award-{index}")" @key="item">
+                    <div class="d-flex w-100 justify-content-between align-items-start gap-3">
+                        <div class="min-w-0">
+                            <h4 class="h6 mb-1 text-break">@item.Name</h4>
+                            @if (!string.IsNullOrWhiteSpace(item.Description))
+                            {
+                                <p class="mb-1 pre-wrap text-break">@item.Description</p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.Issuer))
+                            {
+                                <div class="small text-secondary text-break">Issued by @item.Issuer</div>
+                            }
+                            @if (itemError is not null)
+                            {
+                                <div class="invalid-feedback d-block">@itemError</div>
+                            }
+                        </div>
+                        <div class="d-flex flex-column align-items-end gap-2 flex-shrink-0">
+                            @if (item.AwardedOn is { } date)
+                            {
+                                <time class="small text-secondary text-nowrap" datetime="@RecordDisplay.Date(date)">@RecordDisplay.Date(date)</time>
+                            }
+                            <button type="button" class="btn btn-outline-danger btn-sm d-inline-flex" title="Remove this award"
+                                    aria-label="@($"Remove award {index + 1}")" @onclick="@(() => Items.Remove(item))"><Icon Name="delete" /></button>
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
     }
 </section>
 

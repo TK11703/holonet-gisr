@@ -45,7 +45,7 @@ public class RecordEndpointsTests(PostgresFixture postgres)
     public async Task Create_Returns201WithLocation_AndTheRecordForSelf()
     {
         await using var factory = await ApiFactory.CreateAsync(postgres);
-        var client = factory.CreateUserClient(name: "Rex");
+        var client = factory.CreateUserClient(officer: true, name: "Rex");
 
         var response = await client.PostAsJsonAsync("/api/records", NewRecord(
             incidents: [new IncidentDto(null, new DateOnly(2020, 5, 4), "Geonosis", "First battle")],
@@ -141,7 +141,7 @@ public class RecordEndpointsTests(PostgresFixture postgres)
     public async Task Update_Returns200_BumpsVersion_AndReplacesCollections()
     {
         await using var factory = await ApiFactory.CreateAsync(postgres);
-        var client = factory.CreateUserClient();
+        var client = factory.CreateUserClient(officer: true);
         var created = await CreateAsync(client, NewRecord(incidents: [new IncidentDto(null, new DateOnly(2020, 5, 4), "Old", null)]));
 
         var response = await client.PutAsJsonAsync($"/api/records/{created.Id}",
@@ -154,6 +154,40 @@ public class RecordEndpointsTests(PostgresFixture postgres)
         Assert.Empty(updated.Incidents);
         var reloaded = await (await client.GetAsync($"/api/records/{created.Id}")).Content.ReadFromJsonAsync<RecordDto>();
         Assert.Equal(2, reloaded!.Version);
+    }
+
+    [Fact]
+    public async Task Create_WithIncidents_ByANonOfficer_Returns403()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+        var client = factory.CreateUserClient();
+
+        var response = await client.PostAsJsonAsync("/api/records", NewRecord(
+            incidents: [new IncidentDto(null, new DateOnly(2020, 5, 4), "Geonosis", null)]));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, await factory.ScalarAsync<long>("SELECT count(*) FROM record"));
+    }
+
+    [Fact]
+    public async Task Update_AddingOrRemovingIncidents_ByANonOfficer_Returns403_ButUnchangedIncidentsAreAccepted()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+        var oid = Guid.NewGuid();
+        var asOfficer = factory.CreateUserClient(oid, officer: true, name: "Rex");
+        var created = await CreateAsync(asOfficer, NewRecord(incidents: [new IncidentDto(null, new DateOnly(2020, 5, 4), "Geonosis", null)]));
+        var citizen = factory.CreateUserClient(oid, name: "Rex");
+
+        var added = await citizen.PutAsJsonAsync($"/api/records/{created.Id}",
+            Edit(created) with { Incidents = [.. created.Incidents, new IncidentDto(null, new DateOnly(2021, 1, 1), "Umbara", null)] });
+        var removed = await citizen.PutAsJsonAsync($"/api/records/{created.Id}", Edit(created) with { Incidents = [] });
+        var unchanged = await citizen.PutAsJsonAsync($"/api/records/{created.Id}", Edit(created, title: "Renamed"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, added.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, removed.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, unchanged.StatusCode);
+        var reloaded = await (await citizen.GetAsync($"/api/records/{created.Id}")).Content.ReadFromJsonAsync<RecordDto>();
+        Assert.Equal("Geonosis", Assert.Single(reloaded!.Incidents).Title);
     }
 
     [Fact]

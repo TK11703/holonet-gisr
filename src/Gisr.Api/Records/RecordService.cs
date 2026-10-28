@@ -39,6 +39,11 @@ public sealed class RecordService(
             OverrideCodeHash = request.IsSealed ? OverrideCodeHasher.Hash(request.OverrideCode!) : null,
         };
 
+        if (write.Incidents.Count > 0 && !user.IsOfficer)
+        {
+            throw IncidentsForbidden();
+        }
+
         var created = await records.CreateAsync(subject.Id, caller.AccountId, write, notification, cancellationToken);
         return RecordMapper.ToDto(created, caller);
     }
@@ -71,6 +76,11 @@ public sealed class RecordService(
         }
 
         var write = RecordMapper.ToWrite(request) with { IsSealed = request.IsSealed, OverrideCodeHash = SealedCodeHash(existing.Record, request) };
+
+        if (!user.IsOfficer && !SameIncidents(existing.Incidents, write.Incidents))
+        {
+            throw IncidentsForbidden();
+        }
 
         var result = await records.UpdateAsync(
             recordId, caller, request.ExpectedVersion, caller.AccountId, write, cancellationToken);
@@ -163,6 +173,16 @@ public sealed class RecordService(
 
         return OverrideCodeHasher.Hash(request.OverrideCode);
     }
+
+    private static bool SameIncidents(IReadOnlyList<IncidentRow> existing, IReadOnlyList<IncidentWrite> requested) =>
+        existing.Count == requested.Count
+        && existing.OrderBy(i => i.SortOrder).Zip(requested).All(pair =>
+            pair.First.OccurredOn == pair.Second.OccurredOn
+            && string.Equals(pair.First.Title, pair.Second.Title, StringComparison.Ordinal)
+            && string.Equals(pair.First.Description, pair.Second.Description, StringComparison.Ordinal));
+
+    private static ProblemException IncidentsForbidden() =>
+        new(StatusCodes.Status403Forbidden, "Forbidden", "Only an Officer can add or remove incidents.");
 
     private async Task<RecordCaller> CallerAsync(CancellationToken cancellationToken)
     {

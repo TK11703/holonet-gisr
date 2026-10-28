@@ -1,13 +1,10 @@
 @inject ApiClient Api
 
-<section id="artifact-uploader" class="card mb-4" aria-labelledby="artifact-uploader-heading">
-    <div class="card-body">
-        <h3 id="artifact-uploader-heading" class="h6">Add files</h3>
-        <label for="artifact-file" class="form-label">Choose files or drag them here</label>
-        <InputFile id="artifact-file" class="form-control" multiple accept="@Accept" OnChange="OnFilesChosen" aria-describedby="artifact-file-help" />
-        <div id="artifact-file-help" class="form-text mb-3">
-            JPEG, PNG, WebP, GIF, PDF, DOCX, TXT or Markdown, up to 25 MB each. Images need a description; it is used as alt text.
-        </div>
+<fieldset id="artifact-uploader" class="border rounded px-3 pb-3 mb-4">
+    <legend class="float-none w-auto px-2 h6 mb-3">Add files</legend>
+    <label for="artifact-file" class="visually-hidden">Choose files or drag them here</label>
+    <InputFile id="artifact-file" class="form-control mb-3" multiple accept="@Accept" OnChange="OnFilesChosen" aria-describedby="artifact-file-help" title="@FileHelp" />
+    <div id="artifact-file-help" class="visually-hidden">@FileHelp</div>
 
         @if (_items.Count > 0)
         {
@@ -29,11 +26,13 @@
 
                         @if (item.IsImage && item.State != UploadState.Done)
                         {
-                            <input type="text" class="@(item.DescriptionInvalid ? "form-control form-control-sm mt-2 artifact-description is-invalid" : "form-control form-control-sm mt-2 artifact-description")"
-                                   maxlength="500" placeholder="Describe this image (alt text)"
-                                   aria-label="@($"Description for {item.Name}")" aria-required="true"
-                                   aria-invalid="@(item.DescriptionInvalid ? "true" : null)"
-                                   value="@item.Description" @oninput="e => item.Description = e.Value?.ToString() ?? string.Empty" />
+                            <div class="form-floating mt-2">
+                                <input id="@($"artifact-description-{item.Id}")" type="text" class="@(item.DescriptionInvalid ? "form-control artifact-description is-invalid" : "form-control artifact-description")"
+                                       maxlength="500" placeholder="Description" title="Required for images. Describe the image; it is used as alt text."
+                                       aria-required="true" aria-label="@($"Description for {item.Name}")"                                       aria-invalid="@(item.DescriptionInvalid ? "true" : null)"
+                                       value="@item.Description" @oninput="e => item.Description = e.Value?.ToString() ?? string.Empty" />
+                                <label for="@($"artifact-description-{item.Id}")">Description <span class="text-danger" aria-hidden="true">*</span></label>
+                            </div>
                         }
 
                         @if (item.State == UploadState.Uploading)
@@ -60,14 +59,14 @@
         }
 
         <button type="button" id="upload-artifacts" class="btn btn-primary" disabled="@(_busy || !_items.Any(i => i.CanUpload))" @onclick="UploadAsync">Upload</button>
-    </div>
-</section>
+</fieldset>
 
 @code {
     public const long MaxFileSize = 26_214_400;
 
     private const int MaxFilesPerSelection = 100;
     private const string Accept = ".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.txt,.md,.markdown";
+    private const string FileHelp = "JPEG, PNG, WebP, GIF, PDF, DOCX, TXT or Markdown, up to 25 MB each. Images need a description; it is used as alt text.";
 
     private enum UploadState
     {

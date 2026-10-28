@@ -147,8 +147,8 @@ public class SealedRecordEndpointsTests(PostgresFixture postgres)
         await using var factory = await ApiFactory.CreateAsync(postgres);
         var citizen = factory.CreateUserClient();
 
-        var create = await citizen.PostAsJsonAsync("/api/records", SealedTestData.Request(null));
-        var open = (await (await citizen.PostAsJsonAsync("/api/records", SealedTestData.Request(null, "Open", false, null))).Content.ReadFromJsonAsync<RecordDto>())!;
+        var create = await citizen.PostAsJsonAsync("/api/records", SealedTestData.Request(null) with { Incidents = null });
+        var open = (await (await citizen.PostAsJsonAsync("/api/records", SealedTestData.Request(null, "Open", false, null) with { Incidents = null })).Content.ReadFromJsonAsync<RecordDto>())!;
         var update = await citizen.PutAsJsonAsync($"/api/records/{open.Id}", SealedTestData.Update(open, true, SealedTestData.Code));
 
         Assert.Equal(HttpStatusCode.Forbidden, create.StatusCode);

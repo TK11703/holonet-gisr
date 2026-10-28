@@ -39,6 +39,8 @@ public class NotSearchableBadgeTests : BunitContext
 
         Assert.Equal("Not searchable", cut.Find(".artifact-search-badge").TextContent.Trim());
         Assert.Equal(reason, cut.Find(".artifact-search-reason").TextContent.Trim());
+        Assert.Equal(reason, cut.Find(".artifact-search-badge").GetAttribute("title"));
+        Assert.Contains("visually-hidden", cut.Find(".artifact-search-reason").ClassList);
     }
 
     [Fact]

@@ -40,6 +40,8 @@ public class LogPrivacyTests(PostgresFixture postgres, AzuriteFixture azurite)
             [new IncidentDto(null, new DateOnly(2020, 2, 2), $"{Marker}-incident", $"{Marker}-incident-detail")],
             [new AwardDto(null, $"{Marker}-award", new DateOnly(2020, 3, 3), $"{Marker}-issuer", null)],
             null, false, null);
+        Assert.Equal(HttpStatusCode.Created, (await officer.PostAsJsonAsync("/api/records", create with { Title = $"{Marker}-officer-title" })).StatusCode);
+        create = create with { Incidents = null };
         var created = await citizen.PostAsJsonAsync("/api/records", create);
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var record = (await created.Content.ReadFromJsonAsync<RecordDto>())!;

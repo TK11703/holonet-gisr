@@ -1,38 +1,48 @@
-<section class="mb-4" aria-labelledby="new-incident-heading">
-    <h3 id="new-incident-heading" class="h6">New incident</h3>
-    <div class="card card-body mb-3">
+@if (CanChange)
+{
+    <fieldset id="new-incident" class="border rounded px-3 pb-3 mb-4">
+        <legend class="float-none w-auto px-2 h6 mb-3">New incident</legend>
         <div class="row g-3">
-            <div class="col-md-3">
-                <label for="new-incident-date" class="form-label">Date <span class="text-danger" aria-hidden="true">*</span></label>
-                <input id="new-incident-date" type="date" class="@(_dateError is null ? "form-control" : "form-control is-invalid")"
-                       aria-required="true" aria-invalid="@(_dateError is null ? null : "true")" aria-describedby="@(_dateError is null ? null : "new-incident-date-error")"
-                       @bind="_draft.OccurredOn" @bind:format="yyyy-MM-dd" />
-                @if (_dateError is not null)
-                {
-                    <div id="new-incident-date-error" class="invalid-feedback d-block">@_dateError</div>
-                }
-            </div>
             <div class="col-md-9">
-                <label for="new-incident-title" class="form-label">Title <span class="text-danger" aria-hidden="true">*</span></label>
-                <input id="new-incident-title" type="text" class="@(_titleError is null ? "form-control" : "form-control is-invalid")" maxlength="200"
-                       aria-required="true" aria-invalid="@(_titleError is null ? null : "true")" aria-describedby="@(_titleError is null ? null : "new-incident-title-error")"
-                       @bind="_draft.Title" />
+                <div class="form-floating">
+                    <input id="new-incident-title" type="text" class="@(_titleError is null ? "form-control" : "form-control is-invalid")" maxlength="200" placeholder="Title"
+                           title="Required. A short name for the incident, up to 200 characters."
+                           aria-required="true" aria-invalid="@(_titleError is null ? null : "true")" aria-describedby="@(_titleError is null ? null : "new-incident-title-error")"
+                           @bind="_draft.Title" />
+                    <label for="new-incident-title">Title <span class="text-danger" aria-hidden="true">*</span></label>
+                </div>
                 @if (_titleError is not null)
                 {
                     <div id="new-incident-title-error" class="invalid-feedback d-block">@_titleError</div>
                 }
             </div>
+            <div class="col-md-3">
+                <div class="form-floating">
+                    <input id="new-incident-date" type="date" class="@(_dateError is null ? "form-control" : "form-control is-invalid")" placeholder="Date"
+                           title="Required. The date the incident occurred."
+                           aria-required="true" aria-invalid="@(_dateError is null ? null : "true")" aria-describedby="@(_dateError is null ? null : "new-incident-date-error")"
+                           @bind="_draft.OccurredOn" @bind:format="yyyy-MM-dd" />
+                    <label for="new-incident-date">Date <span class="text-danger" aria-hidden="true">*</span></label>
+                </div>
+                @if (_dateError is not null)
+                {
+                    <div id="new-incident-date-error" class="invalid-feedback d-block">@_dateError</div>
+                }
+            </div>
             <div class="col-12">
-                <label for="new-incident-description" class="form-label">Description</label>
-                <textarea id="new-incident-description" class="form-control" rows="3" maxlength="4000" @bind="_draft.Description"></textarea>
+                <div class="form-floating">
+                    <textarea id="new-incident-description" class="form-control" rows="3" maxlength="4000" placeholder="Description"
+                              title="Optional. What happened, up to 4000 characters." @bind="_draft.Description"></textarea>
+                    <label for="new-incident-description">Description</label>
+                </div>
             </div>
         </div>
         <div class="mt-3">
-            <button type="button" id="add-incident" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2"
+            <button type="button" id="add-incident" class="btn btn-primary d-inline-flex align-items-center gap-2"
                     disabled="@(Items.Count >= RecordFormModel.MaxItems)" @onclick="Add"><Icon Name="plus" /> Add incident</button>
         </div>
-    </div>
-</section>
+    </fieldset>
+}
 
 <section aria-labelledby="added-incidents-heading">
     <h3 id="added-incidents-heading" class="h6">Added incidents</h3>
@@ -43,56 +53,50 @@
 
     @if (Items.Count == 0)
     {
-        <p id="incidents-empty" class="text-secondary">No incidents added yet.</p>
-    }
-
-    @for (var i = 0; i < Items.Count; i++)
-    {
-        var index = i;
-        var item = Items[i];
-        var prefix = $"incident-{index}";
-        var date = RecordDisplay.ErrorText(Errors, $"incidents[{index}].occurredOn");
-        var title = RecordDisplay.ErrorText(Errors, $"incidents[{index}].title");
-        var description = RecordDisplay.ErrorText(Errors, $"incidents[{index}].description");
-
-        <div class="card mb-3" @key="item">
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label for="@($"{prefix}-date")" class="form-label">Date <span class="text-danger" aria-hidden="true">*</span></label>
-                        <input id="@($"{prefix}-date")" type="date" class="@(date is null ? "form-control" : "form-control is-invalid")"
-                               aria-required="true" aria-invalid="@(date is null ? null : "true")" aria-describedby="@(date is null ? null : $"{prefix}-date-error")"
-                               @bind="item.OccurredOn" @bind:format="yyyy-MM-dd" />
-                        @if (date is not null)
-                        {
-                            <div id="@($"{prefix}-date-error")" class="invalid-feedback d-block">@date</div>
-                        }
-                    </div>
-                    <div class="col-md-9">
-                        <label for="@($"{prefix}-title")" class="form-label">Title <span class="text-danger" aria-hidden="true">*</span></label>
-                        <input id="@($"{prefix}-title")" type="text" class="@(title is null ? "form-control" : "form-control is-invalid")" maxlength="200"
-                               aria-required="true" aria-invalid="@(title is null ? null : "true")" aria-describedby="@(title is null ? null : $"{prefix}-title-error")"
-                               @bind="item.Title" />
-                        @if (title is not null)
-                        {
-                            <div id="@($"{prefix}-title-error")" class="invalid-feedback d-block">@title</div>
-                        }
-                    </div>
-                    <div class="col-12">
-                        <label for="@($"{prefix}-description")" class="form-label">Description</label>
-                        <textarea id="@($"{prefix}-description")" class="@(description is null ? "form-control" : "form-control is-invalid")" rows="3" maxlength="4000"
-                                  aria-invalid="@(description is null ? null : "true")" aria-describedby="@(description is null ? null : $"{prefix}-description-error")"
-                                  @bind="item.Description"></textarea>
-                        @if (description is not null)
-                        {
-                            <div id="@($"{prefix}-description-error")" class="invalid-feedback d-block">@description</div>
-                        }
-                    </div>
-                </div>
-                <button type="button" class="btn btn-outline-danger btn-sm mt-3" aria-label="@($"Remove incident {index + 1}")"
-                        @onclick="@(() => Items.Remove(item))">Remove</button>
-            </div>
+        <div id="incidents-empty" class="alert alert-info d-flex align-items-start gap-2 mb-0" role="status">
+            <span class="flex-shrink-0"><Icon Name="info" /></span>
+            <span>No incidents added yet.</span>
         </div>
+    }
+    else
+    {
+        <ul id="incident-list" class="list-group">
+            @for (var i = 0; i < Items.Count; i++)
+            {
+                var index = i;
+                var item = Items[i];
+                var itemError = RecordDisplay.ErrorText(Errors, $"incidents[{index}].title")
+                    ?? RecordDisplay.ErrorText(Errors, $"incidents[{index}].occurredOn")
+                    ?? RecordDisplay.ErrorText(Errors, $"incidents[{index}].description");
+
+                <li class="list-group-item" id="@($"incident-{index}")" @key="item">
+                    <div class="d-flex w-100 justify-content-between align-items-start gap-3">
+                        <div class="min-w-0">
+                            <h4 class="h6 mb-1 text-break">@item.Title</h4>
+                            @if (!string.IsNullOrWhiteSpace(item.Description))
+                            {
+                                <p class="mb-1 pre-wrap text-break">@item.Description</p>
+                            }
+                            @if (itemError is not null)
+                            {
+                                <div class="invalid-feedback d-block">@itemError</div>
+                            }
+                        </div>
+                        <div class="d-flex flex-column align-items-end gap-2 flex-shrink-0">
+                            @if (item.OccurredOn is { } date)
+                            {
+                                <time class="small text-secondary text-nowrap" datetime="@RecordDisplay.Date(date)">@RecordDisplay.Date(date)</time>
+                            }
+                            @if (CanChange)
+                            {
+                                <button type="button" class="btn btn-outline-danger btn-sm d-inline-flex" title="Remove this incident"
+                                        aria-label="@($"Remove incident {index + 1}")" @onclick="@(() => Items.Remove(item))"><Icon Name="delete" /></button>
+                            }
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
     }
 </section>
 
@@ -106,6 +110,10 @@
 
     [Parameter]
     public IReadOnlyDictionary<string, string[]> Errors { get; set; } = new Dictionary<string, string[]>();
+
+    // Only Officers add or remove incidents; everyone else sees the permanent list.
+    [Parameter]
+    public bool CanChange { get; set; }
 
     private void Add()
     {

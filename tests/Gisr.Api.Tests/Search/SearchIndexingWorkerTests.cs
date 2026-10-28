@@ -67,7 +67,7 @@ public class SearchIndexingWorkerTests(PostgresFixture postgres, AzuriteFixture 
     public async Task ALongRecord_ProducesSeveralChunks_EmbeddedInBatches()
     {
         await using var factory = await CreateFactoryAsync();
-        var client = factory.CreateUserClient();
+        var client = factory.CreateUserClient(officer: true);
         var incidents = Enumerable.Range(0, 8)
             .Select(i => new IncidentDto(null, new DateOnly(2020, 1, 1), $"Incident {i}", string.Join(' ', Enumerable.Range(0, 300).Select(n => $"word{i}x{n}"))))
             .ToList();

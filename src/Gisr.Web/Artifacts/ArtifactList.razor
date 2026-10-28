@@ -15,83 +15,62 @@
     }
     else if (_items.Count == 0)
     {
-        <p class="text-secondary mb-0">No artifacts attached.</p>
+        <div id="artifacts-empty" class="alert alert-info d-flex align-items-start gap-2 mb-0" role="status">
+            <span class="flex-shrink-0"><Icon Name="info" /></span>
+            <span>No artifacts attached.</span>
+        </div>
     }
     else
     {
-        <ul class="list-unstyled mb-0">
+        <ul class="artifact-grid list-unstyled mb-0">
             @foreach (var artifact in _items)
             {
-                <li class="artifact-item d-flex gap-3 mb-3" @key="artifact.Id">
-                    <div class="artifact-preview flex-shrink-0">
-                        @if (artifact.IsImage)
-                        {
-                            <a class="artifact-open" href="@ArtifactDisplay.MediaUrl(artifact.Id, false, ViewingId)" target="_blank" rel="noopener">
-                                <img class="img-thumbnail" src="@ArtifactDisplay.MediaUrl(artifact.Id, true, ViewingId)" alt="@artifact.Description" loading="lazy" width="160" />
-                            </a>
-                        }
-                        else
-                        {
-                            <span class="d-inline-flex align-items-center justify-content-center border rounded p-3"><Icon Name="file" Size="32" /></span>
-                        }
-                    </div>
-                    <div class="flex-grow-1">
-                        <a class="artifact-download" href="@ArtifactDisplay.MediaUrl(artifact.Id, false, ViewingId)" download>@artifact.FileName</a>
-                        <div class="small text-secondary">
-                            @ArtifactDisplay.Size(artifact.SizeBytes) &middot; @artifact.UploadedByDisplayName &middot; @RecordDisplay.Instant(artifact.UploadedAt)
-                        </div>
-                        @if (artifact.IsImage && !string.IsNullOrWhiteSpace(artifact.Description) && _editingId != artifact.Id)
-                        {
-                            <div class="pre-wrap">@artifact.Description</div>
-                        }
-                        @if (ArtifactDisplay.SearchBadge(artifact) is { } badge)
-                        {
-                            <span class="badge text-bg-secondary artifact-search-badge">@badge</span>
-                        }
-                        @if (ArtifactDisplay.SearchReason(artifact) is { } reason)
-                        {
-                            <span class="small text-secondary artifact-search-reason">@reason</span>
-                        }
-
-                        @if (_editingId == artifact.Id)
-                        {
-                            <div class="mt-2">
-                                <label for="description-@artifact.Id" class="form-label small mb-1">Description (used as alt text)</label>
-                                <input id="description-@artifact.Id" type="text" class="form-control form-control-sm" maxlength="500" aria-required="true"
-                                       value="@_draft" @oninput="e => _draft = e.Value?.ToString() ?? string.Empty" />
-                                @if (_editError is not null)
-                                {
-                                    <div class="small text-danger mt-1" role="alert">@_editError</div>
-                                }
-                                <div class="mt-2 d-flex gap-2">
-                                    <button type="button" id="save-description-@artifact.Id" class="btn btn-sm btn-primary" @onclick="() => SaveDescriptionAsync(artifact)">Save</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
-                                </div>
-                            </div>
-                        }
-
-                        @if (CanChange)
-                        {
-                            @if (_confirmingId == artifact.Id)
+                <li class="artifact-item" @key="artifact.Id">
+                    <div class="artifact-tile">
+                        <div class="artifact-preview">
+                            @if (artifact.IsImage)
                             {
-                                <div class="artifact-confirm mt-2" role="group" aria-label="@($"Confirm removing {artifact.FileName}")">
-                                    <span>Remove @artifact.FileName?</span>
-                                    <button type="button" id="confirm-remove-@artifact.Id" class="btn btn-sm btn-danger ms-2" @onclick="() => RemoveAsync(artifact)">Remove</button>
-                                    <button type="button" id="cancel-remove-@artifact.Id" class="btn btn-sm btn-outline-secondary ms-1" @onclick="() => _confirmingId = null">Cancel</button>
-                                </div>
+                                <a class="artifact-open" href="@ArtifactDisplay.MediaUrl(artifact.Id, false, ViewingId)" target="_blank" rel="noopener" title="@artifact.Description">
+                                    <img class="artifact-thumb" src="@ArtifactDisplay.MediaUrl(artifact.Id, true, ViewingId)" alt="@artifact.Description" loading="lazy" />
+                                </a>
                             }
                             else
                             {
-                                <div class="mt-2 d-flex gap-2">
-                                    @if (artifact.IsImage && _editingId != artifact.Id)
-                                    {
-                                        <button type="button" id="edit-description-@artifact.Id" class="btn btn-sm btn-outline-secondary artifact-edit"
-                                                aria-label="@($"Edit description of {artifact.FileName}")" @onclick="() => BeginEdit(artifact)">Edit description</button>
-                                    }
-                                    <button type="button" id="remove-@artifact.Id" class="btn btn-sm btn-outline-danger artifact-remove"
-                                            aria-label="@($"Remove {artifact.FileName}")" @onclick="() => _confirmingId = artifact.Id">Remove</button>
-                                </div>
+                                <span class="artifact-icon"><Icon Name="file" Size="24" /></span>
                             }
+                        </div>
+                        <div class="d-flex align-items-start justify-content-between gap-2 min-w-0">
+                            <div class="min-w-0">
+                                <a class="artifact-download d-block text-truncate fw-semibold" href="@ArtifactDisplay.MediaUrl(artifact.Id, false, ViewingId)" download title="@($"{artifact.FileName} - uploaded by {artifact.UploadedByDisplayName} on {RecordDisplay.Instant(artifact.UploadedAt)}")">@artifact.FileName</a>
+                                <div class="small text-secondary">@ArtifactDisplay.Size(artifact.SizeBytes)</div>
+                                @{
+                                    var badge = ArtifactDisplay.SearchBadge(artifact);
+                                    var reason = ArtifactDisplay.SearchReason(artifact);
+                                }
+                                @if (badge is not null)
+                                {
+                                    <span class="badge text-bg-secondary artifact-search-badge" title="@reason">@badge</span>
+                                }
+                                @if (reason is not null)
+                                {
+                                    <span class="@(badge is null ? "small text-secondary artifact-search-reason" : "visually-hidden artifact-search-reason")">@reason</span>
+                                }
+                            </div>
+                            @if (CanChange && _confirmingId != artifact.Id)
+                            {
+                                <button type="button" id="remove-@artifact.Id" class="btn btn-sm btn-outline-danger d-inline-flex artifact-remove flex-shrink-0"
+                                        title="@($"Remove {artifact.FileName}")" aria-label="@($"Remove {artifact.FileName}")"
+                                        @onclick="() => _confirmingId = artifact.Id"><Icon Name="delete" /></button>
+                            }
+                        </div>
+
+                        @if (CanChange && _confirmingId == artifact.Id)
+                        {
+                            <div class="artifact-confirm" role="group" aria-label="@($"Confirm removing {artifact.FileName}")">
+                                <div class="small mb-2 text-break">Remove @artifact.FileName?</div>
+                                <button type="button" id="confirm-remove-@artifact.Id" class="btn btn-sm btn-danger" @onclick="() => RemoveAsync(artifact)">Remove</button>
+                                <button type="button" id="cancel-remove-@artifact.Id" class="btn btn-sm btn-outline-secondary ms-1" @onclick="() => _confirmingId = null">Cancel</button>
+                            </div>
                         }
                     </div>
                 </li>
@@ -106,9 +85,6 @@
     private bool _loadFailed;
     private string? _message;
     private Guid? _confirmingId;
-    private Guid? _editingId;
-    private string _draft = string.Empty;
-    private string? _editError;
 
     [Parameter, EditorRequired]
     public Guid RecordId { get; set; }
@@ -185,42 +161,5 @@
         _confirmingId = null;
         await LoadAsync();
         await OnChanged.InvokeAsync();
-    }
-
-    private void BeginEdit(ArtifactDto artifact)
-    {
-        _editingId = artifact.Id;
-        _draft = artifact.Description ?? string.Empty;
-        _editError = null;
-    }
-
-    private void CancelEdit() => _editingId = null;
-
-    private async Task SaveDescriptionAsync(ArtifactDto artifact)
-    {
-        if (string.IsNullOrWhiteSpace(_draft))
-        {
-            _editError = "A description is required.";
-            return;
-        }
-
-        try
-        {
-            var updated = await Api.PatchAsync<ArtifactDto>($"api/artifacts/{artifact.Id}", new UpdateArtifactRequest(_draft.Trim()));
-            if (updated is not null && _items is not null)
-            {
-                var index = _items.FindIndex(a => a.Id == artifact.Id);
-                if (index >= 0)
-                {
-                    _items[index] = updated;
-                }
-            }
-
-            _editingId = null;
-        }
-        catch (ApiException ex)
-        {
-            _editError = ex.Errors.Values.SelectMany(v => v).FirstOrDefault() ?? "The description could not be saved.";
-        }
     }
 }

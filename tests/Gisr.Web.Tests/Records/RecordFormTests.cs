@@ -16,7 +16,7 @@ public class RecordFormTests : BunitContext
     private Func<RecordFormModel, Task> _save = _ => Task.CompletedTask;
     private Func<Task>? _delete;
     private int _reloads;
-
+    private bool _allowIncidentChanges = true;
     public RecordFormTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -37,6 +37,7 @@ public class RecordFormTests : BunitContext
             .Add(c => c.OnSave, _save)
             .Add(c => c.OnDelete, _delete)
             .Add(c => c.CancelHref, "/records")
+            .Add(c => c.AllowIncidentChanges, _allowIncidentChanges)
             .Add(c => c.OnReload, EventCallback.Factory.Create(this, () => _reloads++)));
 
     [Fact]
@@ -425,7 +426,7 @@ public class RecordFormTests : BunitContext
         cut.WaitForAssertion(() =>
         {
             Assert.Contains("active", cut.Find("#pane-incidents").ClassList);
-            Assert.Equal("incident-0-title-error", cut.Find("#incident-0-title").GetAttribute("aria-describedby"));
+            Assert.Contains("must not be empty", cut.Find("#incident-0 .invalid-feedback").TextContent, StringComparison.Ordinal);
         });
     }
 
@@ -475,8 +476,9 @@ public class RecordFormTests : BunitContext
 
         Assert.Equal(["Geonosis", "Umbara"], _model.Incidents.Select(i => i.Title));
         var pane = cut.Find("#pane-incidents").InnerHtml;
-        Assert.True(pane.IndexOf("new-incident-title", StringComparison.Ordinal) < pane.IndexOf("incident-0-title", StringComparison.Ordinal));
-        Assert.Equal("Umbara", cut.Find("#incident-1-title").GetAttribute("value"));
+        Assert.True(pane.IndexOf("new-incident-title", StringComparison.Ordinal) < pane.IndexOf("id=\"incident-0\"", StringComparison.Ordinal));
+        Assert.True(pane.IndexOf("new-incident-title", StringComparison.Ordinal) < pane.IndexOf("new-incident-date", StringComparison.Ordinal));
+        Assert.Contains("Umbara", cut.Find("#incident-1").TextContent, StringComparison.Ordinal);
         Assert.Equal(string.Empty, cut.Find("#new-incident-title").GetAttribute("value") ?? string.Empty);
     }
 
@@ -505,8 +507,33 @@ public class RecordFormTests : BunitContext
         cut.Find("button[aria-label='Remove incident 1']").Click();
 
         Assert.Equal("Umbara", Assert.Single(_model.Incidents).Title);
-        Assert.Equal("Umbara", cut.Find("#incident-0-title").GetAttribute("value"));
-        Assert.Empty(cut.FindAll("#incident-1-title"));
+        Assert.Contains("Umbara", cut.Find("#incident-0").TextContent, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll("#incident-1"));
+    }
+
+    [Fact]
+    public void Incidents_ForANonOfficer_AreReadOnly_WithoutTheFormOrRemoveButtons()
+    {
+        _allowIncidentChanges = false;
+        _model = Saved();
+        var cut = RenderForm();
+        cut.Find("#tab-incidents").Click();
+
+        Assert.Empty(cut.FindAll("#new-incident, #add-incident"));
+        Assert.Empty(cut.FindAll("#pane-incidents button"));
+        Assert.Empty(cut.FindAll("#pane-incidents input, #pane-incidents textarea"));
+        Assert.Contains("Geonosis", cut.Find("#incident-0").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Incidents_WithNone_ShowTheEmptyMessage()
+    {
+        _model = Saved();
+        _model.Incidents.Clear();
+        var cut = RenderForm();
+        cut.Find("#tab-incidents").Click();
+
+        Assert.Contains("alert-info", cut.Find("#incidents-empty").ClassList);
     }
 
     [Fact]
@@ -524,7 +551,7 @@ public class RecordFormTests : BunitContext
         Assert.Equal(["Medal of Honor", "Star"], _model.Awards.Select(a => a.Name));
         Assert.Equal("Senate", _model.Awards[1].Issuer);
         var pane = cut.Find("#pane-awards").InnerHtml;
-        Assert.True(pane.IndexOf("new-award-name", StringComparison.Ordinal) < pane.IndexOf("award-0-name", StringComparison.Ordinal));
+        Assert.True(pane.IndexOf("new-award-name", StringComparison.Ordinal) < pane.IndexOf("id=\"award-0\"", StringComparison.Ordinal));
     }
 
     [Fact]

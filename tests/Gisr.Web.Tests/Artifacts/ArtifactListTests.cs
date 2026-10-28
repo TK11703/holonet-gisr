@@ -74,7 +74,7 @@ public class ArtifactListTests : BunitContext
         Assert.Equal($"/media/artifacts/{image.Id}/thumbnail", thumbnail.GetAttribute("src"));
         Assert.Equal("A star map", thumbnail.GetAttribute("alt"));
         Assert.Equal($"/media/artifacts/{image.Id}", cut.Find("li.artifact-item a.artifact-open").GetAttribute("href"));
-        Assert.Contains("A star map", cut.Find("li.artifact-item").TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("A star map", cut.Find("li.artifact-item").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -92,8 +92,8 @@ public class ArtifactListTests : BunitContext
         Assert.Empty(cut.FindAll("li.artifact-item img"));
         var text = cut.Find("li.artifact-item").TextContent;
         Assert.Contains("2.0 KB", text, StringComparison.Ordinal);
-        Assert.Contains("Obi-Wan", text, StringComparison.Ordinal);
-        Assert.Contains("2026-10-02", text, StringComparison.Ordinal);
+        Assert.Contains("Obi-Wan", link.GetAttribute("title"), StringComparison.Ordinal);
+        Assert.Contains("2026-10-02", link.GetAttribute("title"), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -184,7 +184,6 @@ public class ArtifactListTests : BunitContext
         var cut = RenderList(editable: false);
 
         Assert.Empty(cut.FindAll("button.artifact-remove"));
-        Assert.Empty(cut.FindAll("button.artifact-edit"));
     }
 
     [Fact]
@@ -258,37 +257,13 @@ public class ArtifactListTests : BunitContext
     }
 
     [Fact]
-    public void ADescription_CanBeEdited_ForImages()
+    public void TheArtifacts_HaveNoDescriptionEditing()
     {
-        var image = Image();
-        Serve(image);
-        _api.OnJson(HttpMethod.Patch, $"api/artifacts/{image.Id}", image with { Description = "A better map" });
+        Serve(Image());
+
         var cut = RenderList(editable: true);
 
-        cut.Find($"#edit-description-{image.Id}").Click();
-        Assert.Equal("A star map", cut.Find($"#description-{image.Id}").GetAttribute("value"));
-        cut.Find($"#description-{image.Id}").Input("A better map");
-        cut.Find($"#save-description-{image.Id}").Click();
-
-        cut.WaitForAssertion(() => Assert.Equal("A better map", cut.Find("li.artifact-item img").GetAttribute("alt")));
-        using var body = JsonDocument.Parse(_api.Calls.Single(c => c.Method == HttpMethod.Patch).Body!);
-        Assert.Equal("A better map", body.RootElement.GetProperty("description").GetString());
-        Assert.Empty(cut.FindAll($"#description-{image.Id}"));
-    }
-
-    [Fact]
-    public void ABlankDescription_IsRejectedLocally()
-    {
-        var image = Image();
-        Serve(image);
-        var cut = RenderList(editable: true);
-
-        cut.Find($"#edit-description-{image.Id}").Click();
-        cut.Find($"#description-{image.Id}").Input("   ");
-        cut.Find($"#save-description-{image.Id}").Click();
-
-        Assert.Contains("A description is required", cut.Find("li.artifact-item [role=alert]").TextContent, StringComparison.Ordinal);
-        Assert.DoesNotContain(_api.Calls, c => c.Method == HttpMethod.Patch);
+        Assert.Empty(cut.FindAll("[id^=edit-description-], [id^=save-description-]"));
     }
 
     [Fact]

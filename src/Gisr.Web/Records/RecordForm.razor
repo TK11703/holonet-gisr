@@ -201,7 +201,7 @@
             @if (Model.IsSaved)
             {
                 <div id="pane-incidents" class="@PaneClass("incidents")" role="tabpanel" aria-labelledby="tab-incidents" tabindex="0">
-                    <IncidentsEditor Items="Model.Incidents" Errors="_errors" />
+                    <IncidentsEditor Items="Model.Incidents" Errors="_errors" CanChange="AllowIncidentChanges" />
                 </div>
 
                 <div id="pane-awards" class="@PaneClass("awards")" role="tabpanel" aria-labelledby="tab-awards" tabindex="0">
@@ -340,6 +340,10 @@
 
     [Parameter]
     public bool AllowSealing { get; set; }
+
+    // Only Officers add or remove incidents.
+    [Parameter]
+    public bool AllowIncidentChanges { get; set; }
 
     private bool NoAffiliations => !AffiliationsFailed && _options.Count == 0;
 
