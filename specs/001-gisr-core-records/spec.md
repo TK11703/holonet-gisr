@@ -228,6 +228,7 @@ A user searches in natural language, by meaning rather than exact wording, acros
 - **FR-027**: Users MUST be able to search in natural language, matching by meaning rather than exact wording, across record content (title, engagement details, incidents, awards) and the text content of PDF, Word (.docx), and plain-text file artifacts. Scanned PDFs MUST be searchable too, subject to a monthly limit on how many scanned pages are processed. Other file types (such as images) are not searchable by content, and when a file is not searchable the user MUST be told so and why. Newly saved or uploaded content MUST become searchable within 2 minutes.
 - **FR-028**: Search MUST return only results the user is permitted to view and MUST NOT reveal the existence or count of restricted results.
 - **FR-029**: Search results MUST be paged and filterable by affiliation, and MUST show a clear message when nothing matches.
+	The search bar MUST be centered above a separate filter row, with the result count on the left and filters on the right at desktop widths; controls MUST stack without overflow on narrow screens. The filter row MUST contain the affiliation dropdown and, for Officers, a records dropdown offering "All records" (default) and "My Records". Changing either filter MUST reset pagination while preserving the other filter. Results MUST appear below the filters as unframed rows separated by borders. Non-Officers MUST remain restricted to their own records without an all-records control.
 
 **General**
 

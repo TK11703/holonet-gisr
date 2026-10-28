@@ -57,7 +57,7 @@ public class SearchResultsTests : BunitContext
 
         var cut = RenderSearch("temple guard");
 
-        Assert.Equal("Search", cut.Find("h1").TextContent.Trim());
+        Assert.Equal("Search and explore", cut.Find("h1").TextContent.Trim());
         Assert.NotNull(cut.Find("nav[aria-label=breadcrumb]"));
         Assert.Equal("temple guard", cut.Find("input#search-query").GetAttribute("value"));
         Assert.Equal("Search", cut.Find("label[for=search-query]").TextContent.Trim());
@@ -85,6 +85,22 @@ public class SearchResultsTests : BunitContext
         Assert.Contains("Jedi", items[1].TextContent, StringComparison.Ordinal);
         Assert.Contains("62%", items[1].QuerySelector(".search-score")!.TextContent, StringComparison.Ordinal);
         Assert.Contains("2 results", cut.Find("#search-summary").TextContent, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0, "results")]
+    [InlineData(1, "result")]
+    [InlineData(2, "results")]
+    public void Summary_ShowsFoundCountBadge_AndQuotedSearchTerm(int total, string resultLabel)
+    {
+        _api.OnJson(HttpMethod.Get, Path("clone"), Page(total));
+
+        var cut = RenderSearch("clone");
+
+        var summary = cut.Find("#search-summary");
+        Assert.Equal($"Found {total} {resultLabel} for \"clone\"", summary.TextContent.Trim());
+        Assert.Equal(total.ToString(), cut.Find("#search-summary .badge").TextContent.Trim());
+        Assert.Equal("status", summary.GetAttribute("role"));
     }
 
     [Fact]
@@ -133,6 +149,7 @@ public class SearchResultsTests : BunitContext
 
         Assert.Empty(cut.FindAll("#scope-all"));
         Assert.Empty(cut.FindAll("#scope-mine"));
+        Assert.Empty(cut.FindAll("#search-scope"));
         Assert.DoesNotContain(_api.Calls, c => c.PathAndQuery.Contains("scope=", StringComparison.Ordinal));
     }
 
@@ -145,15 +162,60 @@ public class SearchResultsTests : BunitContext
 
         var cut = RenderSearch("temple");
 
-        Assert.Equal("true", cut.Find("#scope-all").GetAttribute("aria-pressed"));
+        Assert.Equal("all", cut.Find("#search-scope").GetAttribute("value"));
+        Assert.Equal(["All records", "My Records"], cut.FindAll("#search-scope option").Select(option => option.TextContent.Trim()).ToArray());
         Assert.Equal("Everyone's", cut.Find("a.search-result-link").TextContent.Trim());
 
-        cut.Find("#scope-mine").Click();
+        cut.Find("#search-scope").Change("mine");
 
         cut.WaitForAssertion(() =>
         {
             Assert.Equal("Mine", cut.Find("a.search-result-link").TextContent.Trim());
-            Assert.Equal("true", cut.Find("#scope-mine").GetAttribute("aria-pressed"));
+            Assert.Equal("mine", cut.Find("#search-scope").GetAttribute("value"));
+        });
+
+        cut.Find("#search-scope").Change("all");
+
+        cut.WaitForAssertion(() => Assert.Equal("Everyone's", cut.Find("a.search-result-link").TextContent.Trim()));
+    }
+
+    [Fact]
+    public void SearchBar_PrecedesTheFilterRow_AndUnframedResults()
+    {
+        SetOfficer(true);
+        _api.OnJson(HttpMethod.Get, Path("temple", extra: "&scope=all"), Page(1, Hit()));
+
+        var cut = RenderSearch("temple");
+
+        Assert.Empty(cut.FindAll("form[role=search] select"));
+        Assert.NotNull(cut.Find("#search-filters #search-scope"));
+        Assert.NotNull(cut.Find("#search-filters #search-affiliation"));
+        Assert.NotNull(cut.Find("#search-filters #search-summary"));
+        var sections = cut.FindAll("form[role=search], #search-filters, ul.search-results");
+        Assert.Equal(["FORM", "DIV", "UL"], sections.Select(section => section.TagName).ToArray());
+        Assert.Empty(cut.FindAll(".search-result.card, .search-result .card-body"));
+    }
+
+    [Fact]
+    public void ChangingScope_PreservesAffiliation_AndStartsAtPageOne()
+    {
+        SetOfficer(true);
+        _api.OnJson(HttpMethod.Get, Path("temple", extra: "&scope=all"), Page(25, Hit()));
+        _api.OnJson(HttpMethod.Get, Path("temple", extra: "&affiliation=Jedi&scope=all"), Page(25, Hit("All Jedi")));
+        _api.OnJson(HttpMethod.Get, Path("temple", 2, "&affiliation=Jedi&scope=all"), new PagedResult<SearchResultDto>(2, 10, 25, [Hit("Page two")]));
+        _api.OnJson(HttpMethod.Get, Path("temple", extra: "&affiliation=Jedi"), Page(1, Hit("My Jedi")));
+        var cut = RenderSearch("temple");
+        cut.Find("#search-affiliation").Change("Jedi");
+        cut.Find("#next-page").Click();
+        cut.WaitForAssertion(() => Assert.Equal("Page two", cut.Find("a.search-result-link").TextContent.Trim()));
+
+        cut.Find("#search-scope").Change("mine");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("My Jedi", cut.Find("a.search-result-link").TextContent.Trim());
+            Assert.Equal("Jedi", cut.Find("#search-affiliation").GetAttribute("value"));
+            Assert.Empty(cut.FindAll("#next-page"));
         });
     }
 

@@ -3,36 +3,56 @@
 @inject CurrentUserState User
 @inject NavigationManager Navigation
 
-<PageHeader Title="Search" Crumbs="Crumbs" />
+<PageHeader Title="Search and explore" Crumbs="Crumbs" />
 
-<form role="search" class="d-flex flex-wrap gap-2 align-items-end mb-3" @onsubmit="SubmitAsync">
-    <div class="flex-grow-1">
-        <label for="search-query" class="form-label">Search</label>
-        <input id="search-query" type="search" class="form-control" maxlength="500" autocomplete="off"
-               placeholder="Search records and files by meaning..." @bind="_input" @bind:event="oninput" />
+<form role="search" class="row justify-content-center my-4 mb-5" @onsubmit="SubmitAsync" @onsubmit:preventDefault>
+    <div class="col-12 col-md-10 col-lg-8">
+        <label for="search-query" class="visually-hidden">Search</label>
+        <div class="input-group input-group-lg">
+            <span class="input-group-text rounded-start-pill bg-body text-secondary"><Icon Name="search" /></span>
+            <input id="search-query" type="search" class="form-control" maxlength="500" autocomplete="off"
+                   placeholder="Search records and files by meaning..." @bind="_input" @bind:event="oninput" />
+            <button type="submit" class="btn btn-primary rounded-end-pill">Search</button>
+        </div>
     </div>
-    <div>
-        <label for="search-affiliation" class="form-label">Affiliation</label>
-        <select id="search-affiliation" class="form-select" value="@_affiliation" @onchange="OnAffiliationChangedAsync">
-            <option value="">All affiliations</option>
-            @foreach (var affiliation in _affiliations)
-            {
-                <option value="@affiliation">@affiliation</option>
-            }
-        </select>
-    </div>
-    <button type="submit" class="btn btn-primary">Search</button>
 </form>
 
-@if (User.IsOfficer)
-{
-    <div class="btn-group mb-3" role="group" aria-label="Search scope">
-        <button type="button" id="scope-mine" class="@(_allScope ? "btn btn-outline-secondary" : "btn btn-secondary")"
-                aria-pressed="@(_allScope ? "false" : "true")" @onclick="() => SetScopeAsync(false)">My records</button>
-        <button type="button" id="scope-all" class="@(_allScope ? "btn btn-secondary" : "btn btn-outline-secondary")"
-                aria-pressed="@(_allScope ? "true" : "false")" @onclick="() => SetScopeAsync(true)">All records</button>
+<div id="search-filters" class="border-top border-bottom py-3 mb-3">
+    <div class="row g-3 align-items-center">
+        <div class="col-12 col-lg text-secondary">
+            @if (_state == SearchState.Results && _results is not null)
+            {
+                <p id="search-summary" class="mb-0" role="status">Found <span class="badge text-bg-primary">@_results.TotalCount</span> @(_results.TotalCount == 1 ? "result" : "results") for &quot;@_searched&quot;</p>
+            }
+        </div>
+        <div class="col-12 col-lg-auto">
+            <div class="row g-3 align-items-center">
+                <div class="col-12 col-sm-auto text-secondary small">Filter by:</div>
+                @if (User.IsOfficer)
+                {
+                    <div class="col-12 col-sm-auto">
+                        <label for="search-scope" class="visually-hidden">Records</label>
+                        <select id="search-scope" class="form-select" value="@(_allScope ? "all" : "mine")"
+                                @onchange="OnScopeChangedAsync">
+                            <option value="all">All records</option>
+                            <option value="mine">My Records</option>
+                        </select>
+                    </div>
+                }
+                <div class="col-12 col-sm-auto">
+                    <label for="search-affiliation" class="visually-hidden">Affiliation</label>
+                    <select id="search-affiliation" class="form-select" value="@_affiliation" @onchange="OnAffiliationChangedAsync">
+                        <option value="">All affiliations</option>
+                        @foreach (var affiliation in _affiliations)
+                        {
+                            <option value="@affiliation">@affiliation</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
     </div>
-}
+</div>
 
 @if (_state == SearchState.Prompt)
 {
@@ -61,14 +81,12 @@ else if (_results is not null)
     }
     else
     {
-        <p id="search-summary" class="text-secondary" role="status">@(_results.TotalCount == 1 ? "1 result" : $"{_results.TotalCount} results")</p>
-        <ul class="list-unstyled">
+        <ul class="search-results list-unstyled">
             @foreach (var hit in _results.Items)
             {
-                <li class="search-result card mb-3">
-                    <div class="card-body">
+                <li class="search-result border-bottom py-4">
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                            <h2 class="h6 mb-0"><a class="search-result-link" href="/records/@hit.RecordId">@hit.RecordTitle</a></h2>
+                            <h2 class="h5 mb-0"><a class="search-result-link" href="/records/@hit.RecordId">@hit.RecordTitle</a></h2>
                             <span class="badge text-bg-secondary">@hit.Affiliation</span>
                             @if (hit.IsSealed)
                             {
@@ -90,14 +108,13 @@ else if (_results is not null)
                                 }
                             }
                         </p>
-                    </div>
                 </li>
             }
         </ul>
 
         @if (PageCount > 1)
         {
-            <nav aria-label="Search pages" class="d-flex align-items-center gap-3">
+            <nav aria-label="Search pages" class="d-flex flex-wrap align-items-center gap-3">
                 <button type="button" id="previous-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber <= 1)" @onclick="PreviousAsync">Previous</button>
                 <span>Page @_pageNumber of @PageCount</span>
                 <button type="button" id="next-page" class="btn btn-outline-secondary btn-sm" disabled="@(_pageNumber >= PageCount)" @onclick="NextAsync">Next</button>
@@ -240,8 +257,9 @@ else if (_results is not null)
 
     private async Task RetryAsync() => await SearchAsync();
 
-    private async Task SetScopeAsync(bool all)
+    private async Task OnScopeChangedAsync(ChangeEventArgs e)
     {
+        var all = string.Equals(e.Value?.ToString(), "all", StringComparison.Ordinal);
         if (_allScope == all)
         {
             return;

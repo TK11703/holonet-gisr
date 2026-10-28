@@ -21,6 +21,10 @@ locked sealed record is redacted in the subject's list and withheld from every o
 code opens a single viewing (record and artifacts, held server-side and revoked when the page is left); sealed
 images never appear in the gallery. Details: [research.md](research.md).
 
+### Search Layout Refinement (2026-10-28)
+
+Keep the refinement inside `SearchResults.razor`, using Bootstrap grid utilities and an input group for a centered search bar, a separate responsive result-count/filter row, and border-separated results. Replace the Officer-only scope buttons with a dropdown defaulting to All records; retain existing API scope and affiliation parameters and server-side authorization. Extend the existing bUnit tests first to cover structure, default scope, switching in both directions, and pagination reset with the affiliation retained. Validate the focused tests, web regression suite, solution build, and desktop/mobile browser layout. No new dependencies, SQL, migrations, or API changes are needed.
+
 ## Technical Context
 
 **Language/Version**: C# 14, .NET 10 (nullable enabled, warnings as errors)
