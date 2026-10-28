@@ -34,7 +34,7 @@ all return to `/`. Feature requirements and validation are in
 Account settings holds Preferences, read-only Account Information (user name, Operating Number, and Officer credential), the optional Chain Code profile, and the affiliation cards.
 
 - **Operating Number** is read from the signed-in user's Entra `EmployeeId` on each sign-in. A failed directory lookup keeps the last known value, and it cannot be edited in GISR.
-- **Chain Code** is an optional fictional profile (identity, biometric traits, histories, and biography). Saving it derives a deterministic, made-up code from the normalized details, so unchanged details always produce the same code. The profile can be deleted at any time without affecting records. See [the Chain Code spec](specs/004-account-chain-code/spec.md).
+- **Chain Code** is an optional fictional profile (identity, biometric traits, histories, and biography). Saving it derives a deterministic, made-up code from the normalized details, so unchanged details always produce the same code. See [the Chain Code spec](specs/004-account-chain-code/spec.md).
 - **Affiliations** come from a fixed catalog of factions and organizations plus a free-text special unit. A record's affiliation is the display label of one of its subject's affiliations (for example `Primary › Secondary › Unit`), so a person must add an affiliation in account settings before a record can be filed for them.
 
 ## Help: About and FAQ

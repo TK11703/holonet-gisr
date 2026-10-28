@@ -118,21 +118,7 @@
         {
             <div class="d-flex flex-wrap gap-2">
                 <button type="submit" form="chain-code-form" class="btn btn-primary" disabled="@_busy">@(_saved is null ? "Save Chain Code" : "Update Chain Code")</button>
-                @if (_saved is not null)
-                {
-                    <button id="delete-chain-code" type="button" class="btn btn-outline-danger" disabled="@_busy" @onclick="() => _confirmDelete = true">Delete profile</button>
-                }
             </div>
-            @if (_confirmDelete)
-            {
-                <div class="border-top mt-3 pt-3" role="group" aria-labelledby="delete-chain-code-question">
-                    <p id="delete-chain-code-question">Delete your fictional profile and Chain Code?</p>
-                    <div class="d-flex flex-wrap gap-2">
-                        <button id="confirm-delete-chain-code" type="button" class="btn btn-danger" disabled="@_busy" @onclick="DeleteAsync">Delete permanently</button>
-                        <button id="cancel-delete-chain-code" type="button" class="btn btn-outline-secondary" disabled="@_busy" @onclick="() => _confirmDelete = false">Cancel</button>
-                    </div>
-                </div>
-            }
         }
         <div aria-live="polite" aria-atomic="true">
             @if (_status is not null)
@@ -181,7 +167,6 @@
     private bool _loading = true;
     private bool _loadFailed;
     private bool _busy;
-    private bool _confirmDelete;
     private string? _failure;
     private string? _status;
     private int _statusVersion;
@@ -209,7 +194,6 @@
         _busy = true;
         _failure = _status = null;
         _errors = [];
-        _confirmDelete = false;
         if (HeightError() is { } heightError)
         {
             _errors = new Dictionary<string, string[]>(StringComparer.Ordinal) { ["height"] = [heightError] };
@@ -240,31 +224,6 @@
         catch (Exception exception) when (exception is ApiException or HttpRequestException) { _failure = "Your Chain Code profile could not be saved. Please try again."; }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
         finally { _busy = false; }
-    }
-
-    private async Task DeleteAsync()
-    {
-        if (_busy) return;
-        _busy = true;
-        _failure = _status = null;
-        try
-        {
-            await Api.SendAsync(HttpMethod.Delete, Path, cancellationToken: _lifetime.Token);
-            Clear();
-        }
-        catch (ApiException exception) when (exception.Status == 404) { Clear(); }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException) { _failure = "Your profile could not be deleted. Please try again."; }
-        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
-        finally { _busy = false; }
-    }
-
-    private void Clear()
-    {
-        _saved = null;
-        SetValues(null);
-        _errors = [];
-        _confirmDelete = false;
-        ShowStatus("Chain Code profile deleted.");
     }
 
     private void ShowStatus(string message)

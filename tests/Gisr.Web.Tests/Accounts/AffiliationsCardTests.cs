@@ -40,6 +40,7 @@ public class AffiliationsCardTests : BunitContext
         Assert.Empty(cut.FindAll("section[aria-labelledby=affiliations-heading] .card-footer"));
         Assert.Equal("true", cut.Find("#affiliation-primary").GetAttribute("aria-required"));
         Assert.Empty(cut.FindAll("#affiliation-secondary[required],#affiliation-special-unit[required],#affiliation-prefix[required],#affiliation-number[required]"));
+        Assert.Equal("tk, bh, ti, sl, etc.", cut.Find("#affiliation-prefix").GetAttribute("placeholder"));
         Assert.Equal("affiliation-form", cut.Find(".card-footer button[type=submit]").GetAttribute("form"));
     }
 
@@ -160,6 +161,7 @@ public class AffiliationsCardTests : BunitContext
         var cut = Render<AffiliationsCard>();
         cut.Find("#associate-affiliation-toggle").Click();
         cut.Find("button[aria-label='Remove Galactic Empire']").Click();
+        cut.Find($"#confirm-remove-affiliation-{item.Id}").Click();
 
         cut.WaitForAssertion(() => Assert.Contains("removed", cut.Find("section[aria-labelledby=affiliations-heading] [role=status]").TextContent, StringComparison.Ordinal));
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("section[aria-labelledby=affiliations-heading] [role=status]")), TimeSpan.FromSeconds(7));
@@ -308,8 +310,30 @@ public class AffiliationsCardTests : BunitContext
         var cut = Render<AffiliationsCard>();
 
         cut.Find("button[aria-label='Remove Galactic Empire']").Click();
+        cut.Find($"#confirm-remove-affiliation-{item.Id}").Click();
 
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#affiliation-empty")));
         Assert.Single(_api.Calls, call => call.Method == HttpMethod.Delete);
+    }
+
+    [Fact]
+    public void Remove_AsksForConfirmation_AndCancelKeepsAffiliation()
+    {
+        var item = Item("Galactic Empire");
+        _api.OnJson(HttpMethod.Get, Path, new[] { item });
+        _api.On(HttpMethod.Delete, $"{Path}/{item.Id}", _ => new HttpResponseMessage(HttpStatusCode.NoContent));
+        var cut = Render<AffiliationsCard>();
+        Assert.Empty(cut.FindAll("[id^=confirm-remove-affiliation]"));
+
+        cut.Find("button[aria-label='Remove Galactic Empire']").Click();
+
+        Assert.Contains("Remove Galactic Empire?", cut.Find($"#remove-affiliation-{item.Id}").TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain(_api.Calls, call => call.Method == HttpMethod.Delete);
+
+        cut.Find($"#cancel-remove-affiliation-{item.Id}").Click();
+
+        Assert.Empty(cut.FindAll($"#remove-affiliation-{item.Id}"));
+        Assert.Empty(cut.FindAll("#affiliation-empty"));
+        Assert.DoesNotContain(_api.Calls, call => call.Method == HttpMethod.Delete);
     }
 }

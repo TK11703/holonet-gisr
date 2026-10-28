@@ -57,13 +57,14 @@
                         }
                     </datalist>
                     <div class="row g-2">
-                        <div class="col-5">
+                        <div class="col-6">
                             <label for="affiliation-prefix" class="form-label">Prefix</label>
                             <input id="affiliation-prefix" class="@FieldClass("prefix", "form-control text-uppercase")" maxlength="8" autocomplete="off"
+                                   placeholder="tk, bh, ti, sl, etc." title="Examples: tk, bh, ti, sl"
                                    @bind="_prefix" aria-invalid="@Invalid("prefix")" aria-describedby="@Described("prefix")" />
                             @ErrorFor("prefix")
                         </div>
-                        <div class="col-7">
+                        <div class="col-6">
                             <label for="affiliation-number" class="form-label">Operating Number</label>
                             <input id="affiliation-number" class="@FieldClass("operatingNumber", "form-control")" maxlength="16" autocomplete="off"
                                    @bind="_number" aria-invalid="@Invalid("operatingNumber")" aria-describedby="@Described("operatingNumber")" />
@@ -122,7 +123,7 @@
                     @foreach (var item in _items)
                     {
                         var removeLabel = $"Remove {item.Primary}";
-                        <li class="list-group-item d-flex align-items-start justify-content-between gap-2" @key="item.Id">
+                        <li class="list-group-item d-flex flex-wrap align-items-start justify-content-between gap-2" @key="item.Id">
                             <div class="text-break">
                                 <div class="fw-semibold">@item.Primary</div>
                                 @if (item.Secondary is not null || item.SpecialUnit is not null)
@@ -135,7 +136,16 @@
                                 }
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center flex-shrink-0" title="@removeLabel" aria-label="@removeLabel"
-                                    disabled="@_busy" @onclick="() => RemoveAsync(item)"><Icon Name="close" Size="12" /></button>
+                                    aria-expanded="@(_confirmingId == item.Id ? "true" : "false")"
+                                    disabled="@_busy" @onclick="() => { _removeFailure = null; _confirmingId = item.Id; }"><Icon Name="close" Size="12" /></button>
+                            @if (_confirmingId == item.Id)
+                            {
+                                <div id="@($"remove-affiliation-{item.Id}")" class="w-100 border-top pt-2" role="group" aria-label="@($"Confirm removing {item.Primary}")">
+                                    <div class="small mb-2 text-break">Remove @item.Primary?</div>
+                                    <button type="button" id="@($"confirm-remove-affiliation-{item.Id}")" class="btn btn-sm btn-danger" disabled="@_busy" @onclick="() => RemoveAsync(item)">Remove</button>
+                                    <button type="button" id="@($"cancel-remove-affiliation-{item.Id}")" class="btn btn-sm btn-outline-secondary ms-1" disabled="@_busy" @onclick="() => _confirmingId = null">Cancel</button>
+                                </div>
+                            }
                         </li>
                     }
                 </ul>
@@ -172,6 +182,7 @@
     private string? _status;
     private string? _removeFailure;
     private string? _removeStatus;
+    private Guid? _confirmingId;
     private int _statusVersion;
     private bool _expanded = true;
     private bool _loading = true;
@@ -275,7 +286,7 @@
             _removeFailure = "The affiliation could not be removed. Please try again.";
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
-        finally { _busy = false; }
+        finally { _busy = false; _confirmingId = null; }
     }
 
     private async Task HideStatusAsync(int version)

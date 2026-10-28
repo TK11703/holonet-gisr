@@ -63,7 +63,7 @@ public class AccountSettingsPageTests : BunitContext
     }
 
     [Fact]
-    public void ChainCode_SaveSendsOptionalFields_AndDeleteRequiresConfirmation()
+    public void ChainCode_SaveSendsOptionalFields_AndNoDeleteActionIsOffered()
     {
         var profile = new UpdateChainCodeRequest { FullName = "Leia Organa", Homeworld = "Alderaan", EyeColor = ProfileColor.Brown };
         var dto = new ChainCodeProfileDto(profile, "00001-00002-00003-00004-00005-00006-00007-00008", DateTimeOffset.UtcNow);
@@ -80,15 +80,8 @@ public class AccountSettingsPageTests : BunitContext
         Assert.Equal("Leia Organa", json.RootElement.GetProperty("fullName").GetString());
         Assert.Equal("Brown", Assert.Single(json.RootElement.GetProperty("eyeColors").EnumerateArray()).GetString());
         Assert.False(json.RootElement.TryGetProperty("operatingNumber", out _));
-        cut.Find("#delete-chain-code").Click();
+        Assert.Empty(cut.FindAll("#delete-chain-code"));
         Assert.DoesNotContain(_api.Calls, call => call.Method == HttpMethod.Delete);
-        cut.Find("#cancel-delete-chain-code").Click();
-        Assert.Empty(cut.FindAll("#confirm-delete-chain-code"));
-        cut.Find("#delete-chain-code").Click();
-        cut.Find("#confirm-delete-chain-code").Click();
-        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("#delete-chain-code")));
-        Assert.Single(_api.Calls, call => call.Method == HttpMethod.Delete);
-        Assert.True(string.IsNullOrEmpty(cut.Find("#chain-full-name").GetAttribute("value")));
     }
 
     [Fact]
@@ -139,21 +132,22 @@ public class AccountSettingsPageTests : BunitContext
     {
         var cut = Render<AccountSettings>();
 
-        Assert.Equal(new[] { "User Name", "Operating Number", "Officer credential" }, cut.FindAll("#identity dt").Select(term => term.TextContent.Trim()));
+        Assert.Equal(new[] { "User Name", "Operating Number", "Access level" }, cut.FindAll("#identity dt").Select(term => term.TextContent.Trim()));
         Assert.Equal("leia@alderaan.example", cut.Find("#identity dd").TextContent.Trim());
-        Assert.Equal("Held", cut.Find("#identity dd .badge.text-bg-success").TextContent.Trim());
+        Assert.Equal("Officer", cut.Find("#identity dd .badge.text-bg-success").TextContent.Trim());
+        Assert.Equal("true", cut.Find("#identity dd .badge svg").GetAttribute("aria-hidden"));
         Assert.Equal("Notification Account", cut.Find("label[for=contact-email]").TextContent.Trim());
         Assert.Equal("email", cut.Find("#contact-email").GetAttribute("type"));
         Assert.False(cut.Find("#contact-email").HasAttribute("required"));
     }
 
     [Fact]
-    public void OfficerCredential_AbsentUsesNeutralTextBadge()
+    public void AccessLevel_NonOfficerUsesNeutralTextBadge()
     {
         _api.OnJson(HttpMethod.Get, "api/me", _account with { IsOfficer = false });
         var cut = Render<AccountSettings>();
 
-        Assert.Equal("Not held", cut.Find("#identity .badge.text-bg-secondary").TextContent.Trim());
+        Assert.Equal("Citizen", cut.Find("#identity .badge.text-bg-secondary").TextContent.Trim());
     }
 
     [Fact]
@@ -166,14 +160,14 @@ public class AccountSettingsPageTests : BunitContext
     }
 
     [Fact]
-    public void ShowsReadOnlyIdentity_AndOfficerCredential()
+    public void ShowsReadOnlyIdentity_AndAccessLevel()
     {
         var cut = Render<AccountSettings>();
 
         var identity = cut.Find("#identity").TextContent;
         Assert.Contains("leia@alderaan.example", identity, StringComparison.Ordinal);
-        Assert.Contains("Officer credential", identity, StringComparison.Ordinal);
-        Assert.Contains("Held", identity, StringComparison.Ordinal);
+        Assert.Contains("Access level", identity, StringComparison.Ordinal);
+        Assert.Contains("Officer", identity, StringComparison.Ordinal);
         Assert.Empty(cut.FindAll("#identity input"));
     }
 

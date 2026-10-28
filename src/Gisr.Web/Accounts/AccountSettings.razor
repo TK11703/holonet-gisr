@@ -93,8 +93,8 @@ else
                         <dd>@(User.Account.SignInEmail ?? "Not provided")</dd>
                         <dt>Operating Number</dt>
                         <dd class="text-break">@(User.Account.OperatingNumber ?? "Not provided")</dd>
-                        <dt>Officer credential</dt>
-                        <dd><span class="badge @(User.Account.IsOfficer ? "text-bg-success" : "text-bg-secondary")">@(User.Account.IsOfficer ? "Held" : "Not held")</span></dd>
+                        <dt>Access level</dt>
+                        <dd><span class="badge d-inline-flex align-items-center gap-1 @(User.Account.IsOfficer ? "text-bg-success" : "text-bg-secondary")"><Icon Name="@(User.Account.IsOfficer ? "rank" : "user")" Size="14" />@(User.Account.IsOfficer ? "Officer" : "Citizen")</span></dd>
                     </dl>
                 </div>
             </section>

@@ -199,20 +199,12 @@ public class ChainCodeFormTests : BunitContext
     }
 
     [Fact]
-    public void DeleteFailure_PreservesProfileAndConfirmation_AndCanBeRetried()
+    public void SavedProfile_OffersNoDeleteAction()
     {
         _api.OnJson(HttpMethod.Get, Path, new ChainCodeProfileDto(new UpdateChainCodeRequest { FullName = "Rex" }, "12345", DateTimeOffset.UtcNow));
-        _api.On(HttpMethod.Delete, Path, _ => new HttpResponseMessage(HttpStatusCode.BadGateway));
         var cut = Render<ChainCodeForm>();
-        cut.Find("#delete-chain-code").Click();
-        Assert.NotNull(cut.Find(".card-footer #confirm-delete-chain-code"));
-        Assert.NotNull(cut.Find(".card-footer #cancel-delete-chain-code"));
-        cut.Find("#confirm-delete-chain-code").Click();
-        Assert.Equal("Rex", cut.Find("#chain-full-name").GetAttribute("value"));
-        Assert.Equal("12345", cut.Find("#chain-code-value").GetAttribute("value"));
-        Assert.Contains("could not be deleted", cut.Find("[role=alert]").TextContent, StringComparison.Ordinal);
-        _api.On(HttpMethod.Delete, Path, _ => new HttpResponseMessage(HttpStatusCode.NoContent));
-        cut.Find("#confirm-delete-chain-code").Click();
-        cut.WaitForAssertion(() => Assert.Equal("Not provided", cut.Find("#chain-code-value").GetAttribute("value")));
+        Assert.Empty(cut.FindAll("#delete-chain-code"));
+        Assert.DoesNotContain(cut.FindAll(".card-footer button"), button => button.TextContent.Contains("Delete", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("Update Chain Code", cut.Find(".card-footer button[type=submit]").TextContent.Trim());
     }
 }

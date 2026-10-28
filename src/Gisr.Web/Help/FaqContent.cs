@@ -97,7 +97,7 @@ public static class FaqContent
             new("What is my Operating Number?",
                 "A number your organization keeps as your EmployeeId. GISR reads it from the directory each time you sign in and shows it read-only on your account page. If the directory cannot be reached, the last known value is kept."),
             new("What is a Chain Code?",
-                "An optional, fictional profile (name, homeworld, species, physical traits, histories, and biography) from which GISR derives a made-up code. The same details always give the same code, and changing a meaningful detail changes it. It is for fun only: it is not a credential and never grants access. You can delete the profile at any time.",
+                "An optional, fictional profile (name, homeworld, species, physical traits, histories, and biography) from which GISR derives a made-up code. The same details always give the same code, and changing a meaningful detail changes it. It is for fun only: it is not a credential and never grants access.",
                 "/account", "Open account settings"),
             new("How do affiliations work?",
                 "Each account lists affiliations: a required primary one, an optional secondary one, an optional special unit, and an optional prefix and operating number. Records are filed under them, and lists and search can be filtered by them."),
