@@ -55,8 +55,28 @@ public class MainLayoutTests : BunitContext
     {
         var app = File.ReadAllText(RepoFile("src", "Gisr.Web", "Components", "App.razor"));
 
-        Assert.Contains("<html lang=\"en\" data-bs-theme=\"dark\">", app, StringComparison.Ordinal);
+        Assert.Contains("<html lang=\"en\" data-bs-theme=\"dark\" data-gisr-theme=\"@_theme\">", app, StringComparison.Ordinal);
         Assert.Contains("theme.css", app, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AppShell_FallsBackToTheDefaultTheme_WhenTheSavedOneIsUnknown()
+    {
+        var app = File.ReadAllText(RepoFile("src", "Gisr.Web", "Components", "App.razor"));
+
+        Assert.Contains("private string _theme = SiteThemes.Default;", app, StringComparison.Ordinal);
+        Assert.Contains("SiteThemes.IsKnown(account.Theme)", app, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ThemeCss_StylesEveryThemeOffered()
+    {
+        var css = File.ReadAllText(RepoFile("src", "Gisr.Web", "wwwroot", "theme.css"));
+
+        foreach (var theme in Gisr.Shared.Accounts.SiteThemes.All.Where(t => t.Id != Gisr.Shared.Accounts.SiteThemes.Default))
+        {
+            Assert.Contains($":root[data-gisr-theme=\"{theme.Id}\"]", css, StringComparison.Ordinal);
+        }
     }
 
     [Fact]
