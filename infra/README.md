@@ -190,6 +190,7 @@ Open the Web URL, sign in, and confirm the home page and a record list load. Bot
 | Role assignment fails with `AuthorizationFailed` | Deployer lacks User Access Administrator on the scope |
 | `configure-database.sh` cannot connect | Firewall rule missing, or the deployer is not an Entra admin on `accpsqlshared` (or Entra authentication is disabled on the server) |
 | `extension "vector" is not allow-listed` | Add `VECTOR` to the server parameter `azure.extensions`, then re-run the database step |
+| Api crashes at startup with `only members of "azure_pg_admin" are allowed to use CREATE EXTENSION vector`, and Web pages spin | Azure only lets administrators run `CREATE EXTENSION`, so `configure-database.sh` applies migration `0001` and records it in `schema_migration`. If the Api already created that table itself (an earlier version of the script), delete the empty database with `az postgres flexible-server db delete -g rg-platform -s accpsqlshared -d Gisr --yes` and re-run the Deploy workflow |
 | Api revision fails on startup with a PostgreSQL authentication error | `configure-database.sh` has not run, or `ConnectionStrings__Gisr` username does not equal the identity name (`id-gisr-api-prod`) |
 | Container app cannot pull the image | AcrPull assignment for the identity is missing or still propagating; re-run `platform.bicep` and retry |
 | Sign-in loop or redirect mismatch on Web | Web redirect URI in the app registration does not match the Web URL; re-run the bootstrap script |
