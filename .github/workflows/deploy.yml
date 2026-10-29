@@ -25,6 +25,8 @@ env:
   POSTGRES_SERVER: accpsqlshared
   DATABASE_NAME: Gisr
   API_IDENTITY_NAME: id-gisr-api-prod
+  API_APP_NAME: ca-gisr-api-prod
+  WEB_APP_NAME: ca-gisr-web-prod
   DEPLOYER_NAME: gisr-github-oidc
 
 jobs:
@@ -55,21 +57,38 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and push the images
-        id: images
+      - name: Choose the image tag
+        id: tag
+        run: echo "tag=$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Sign in to the container registry
+        id: registry
+        run: az acr login --name "$REGISTRY_NAME"
+
+      - name: Build and push the Api image
+        id: image-api
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          tag="$(date -u +%Y%m%d%H%M%S)"
-          az acr login --name "$REGISTRY_NAME"
-          for project in api web; do
-            dotnet publish "src/Gisr.${project^}/Gisr.${project^}.csproj" -c Release -t:PublishContainer \
-              -p:ContainerRuntimeIdentifier=linux-x64 \
-              -p:ContainerRegistry="$REGISTRY_NAME.azurecr.io" \
-              -p:ContainerRepository="gisr-$project" \
-              -p:ContainerImageTags="$tag"
-          done
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          dotnet publish src/Gisr.Api/Gisr.Api.csproj -c Release -t:PublishContainer \
+            -p:ContainerRuntimeIdentifier=linux-x64 \
+            -p:ContainerRegistry="$REGISTRY_NAME.azurecr.io" \
+            -p:ContainerRepository=gisr-api \
+            -p:ContainerImageTags="$TAG"
+
+      - name: Build and push the Web image
+        id: image-web
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          dotnet publish src/Gisr.Web/Gisr.Web.csproj -c Release -t:PublishContainer \
+            -p:ContainerRuntimeIdentifier=linux-x64 \
+            -p:ContainerRegistry="$REGISTRY_NAME.azurecr.io" \
+            -p:ContainerRepository=gisr-web \
+            -p:ContainerImageTags="$TAG"
 
       - name: Deploy storage, database, and role assignments (rg-platform)
+        id: platform
         run: |
           az deployment group create \
             --resource-group "$PLATFORM_RESOURCE_GROUP" \
@@ -78,6 +97,7 @@ jobs:
             --only-show-errors
 
       - name: Allow this runner through the PostgreSQL firewall
+        id: firewall
         run: |
           ip="$(curl -fsS https://api.ipify.org)"
           az postgres flexible-server firewall-rule create \
@@ -86,12 +106,14 @@ jobs:
             --start-ip-address "$ip" --end-ip-address "$ip" --only-show-errors
 
       - name: Configure the database role and extension
+        id: database
         run: |
           export API_IDENTITY_PRINCIPAL_ID="$(az identity show -g "$APPS_RESOURCE_GROUP" -n "$API_IDENTITY_NAME" --query principalId -o tsv)"
           export PG_SERVER="$POSTGRES_SERVER" PG_ADMIN_NAME="$DEPLOYER_NAME" PG_DATABASE="$DATABASE_NAME"
           bash infra/scripts/configure-database.sh
 
       - name: Remove the PostgreSQL firewall rule
+        id: firewall-remove
         if: always()
         run: |
           az postgres flexible-server firewall-rule delete \
@@ -106,14 +128,66 @@ jobs:
             --name "gisr-apps-$GITHUB_RUN_ID" \
             --template-file infra/apps.bicep \
             --parameters \
-              imageTag='${{ steps.images.outputs.tag }}' \
+              imageTag='${{ steps.tag.outputs.tag }}' \
               tenantId='${{ vars.AZURE_TENANT_ID }}' \
               apiClientId='${{ vars.GISR_API_CLIENT_ID }}' \
               webClientId='${{ vars.GISR_WEB_CLIENT_ID }}' \
             --query properties.outputs.webUrl.value -o tsv --only-show-errors)"
           echo "web-url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the deployment
+        id: verify
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          WEB_URL: ${{ steps.apps.outputs.web-url }}
+          SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          failed=0
+          for app in "$API_APP_NAME" "$WEB_APP_NAME"; do
+            base="https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$APPS_RESOURCE_GROUP/providers/Microsoft.App/containerApps/$app"
+            mapfile -t info < <(az rest --method get --url "$base?api-version=2024-03-01" \
+              --query "[properties.provisioningState, properties.template.containers[0].image, properties.latestRevisionName]" -o tsv)
+            echo "$app: provisioning=${info[0]} image=${info[1]} revision=${info[2]}"
+            [ "${info[0]}" = "Succeeded" ] || { echo "::error::$app provisioning state is ${info[0]}"; failed=1; }
+            [[ "${info[1]}" == *":$TAG" ]] || { echo "::error::$app is not running image tag $TAG"; failed=1; }
+            revision="$(az rest --method get --url "$base/revisions/${info[2]}?api-version=2024-03-01" \
+              --query "[properties.provisioningState, properties.healthState, properties.runningState]" -o tsv | paste -sd ' ')"
+            echo "$app revision: $revision"
+            case "$revision" in *Failed*|*Unhealthy*) echo "::error::$app revision is unhealthy"; failed=1 ;; esac
+          done
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$WEB_URL" || true)"
+            echo "Web attempt $attempt: HTTP $code"
+            case "$code" in 200|301|302|401) ok=1; break ;; esac
+            sleep 15
+          done
+          [ "$ok" = 1 ] || { echo "::error::The Web app did not respond at $WEB_URL"; failed=1; }
+          exit "$failed"
+
+      - name: Summarise the stages
+        if: always()
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          WEB_URL: ${{ steps.apps.outputs.web-url }}
+        run: |
           {
-            echo "### Deployed"
-            echo "- Image tag: \`${{ steps.images.outputs.tag }}\`"
-            echo "- Web: $url"
+            echo "### Deployment stages"
+            echo
+            echo "| Stage | Result |"
+            echo "| --- | --- |"
+            echo "| Choose image tag | ${{ steps.tag.outcome }} |"
+            echo "| Sign in to the registry | ${{ steps.registry.outcome }} |"
+            echo "| Build and push Api image | ${{ steps.image-api.outcome }} |"
+            echo "| Build and push Web image | ${{ steps.image-web.outcome }} |"
+            echo "| Deploy platform (rg-platform) | ${{ steps.platform.outcome }} |"
+            echo "| Open PostgreSQL firewall | ${{ steps.firewall.outcome }} |"
+            echo "| Configure database | ${{ steps.database.outcome }} |"
+            echo "| Close PostgreSQL firewall | ${{ steps.firewall-remove.outcome }} |"
+            echo "| Deploy container apps (rg-apps) | ${{ steps.apps.outcome }} |"
+            echo "| Verify deployment | ${{ steps.verify.outcome }} |"
+            echo
+            echo "- Image tag: \`${TAG:-none}\`"
+            echo "- Web: ${WEB_URL:-not deployed}"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -93,7 +93,7 @@ az account set --subscription $SubscriptionId
 $tenantId = az account show --query tenantId -o tsv
 $subscriptionScope = "/subscriptions/$SubscriptionId"
 
-Write-Host 'Managed identities'
+Write-Host '[1/7] Managed identities'
 $apiIdentityName = "id-gisr-api-$EnvironmentName"
 $webIdentityName = "id-gisr-web-$EnvironmentName"
 $apiIdentity = az identity create -g $AppsResourceGroup -n $apiIdentityName -l $Location --query '{clientId:clientId,principalId:principalId}' -o json | ConvertFrom-Json
@@ -102,9 +102,9 @@ $webIdentity = az identity create -g $AppsResourceGroup -n $webIdentityName -l $
 $domain = az resource show -g $AppsResourceGroup -n $ContainerAppsEnvironment --resource-type Microsoft.App/managedEnvironments --api-version 2024-03-01 --query properties.defaultDomain -o tsv
 if (-not $domain) { throw "Could not read the default domain of $ContainerAppsEnvironment." }
 $webUrl = "https://ca-gisr-web-$EnvironmentName.$domain"
-Write-Host "Web URL: $webUrl"
+Write-Host "  ok: $apiIdentityName, $webIdentityName; Web URL $webUrl"
 
-Write-Host 'Api app registration'
+Write-Host '[2/7] Api app registration'
 $existingApi = Find-Graph 'applications' "displayName eq 'HoloNet GISR API'"
 $scopeId = if ($existingApi) { ($existingApi.api.oauth2PermissionScopes | Where-Object value -eq $apiScopeName).id } else { $null }
 if (-not $scopeId) { $scopeId = [guid]::NewGuid().ToString() }
@@ -136,8 +136,9 @@ $api = Set-App 'HoloNet GISR API' @{
     requiredResourceAccess = @(@{ resourceAppId = $graphAppId; resourceAccess = @(@{ id = $userReadBasicAllScopeId; type = 'Scope' }) })
 }
 Invoke-Graph PATCH "/applications/$($api.id)" @{ identifierUris = @("api://$($api.appId)") } | Out-Null
+Write-Host "  ok: client ID $($api.appId)"
 
-Write-Host 'Web app registration'
+Write-Host '[3/7] Web app registration'
 $web = Set-App 'HoloNet GISR Web' @{
     web                    = @{
         redirectUris          = @("$webUrl/signin-oidc")
@@ -147,7 +148,9 @@ $web = Set-App 'HoloNet GISR Web' @{
     requiredResourceAccess = @(@{ resourceAppId = $api.appId; resourceAccess = @(@{ id = $scopeId; type = 'Scope' }) })
 }
 
-Write-Host 'Service principals, consent, federated credentials'
+Write-Host "  ok: client ID $($web.appId)"
+
+Write-Host '[4/7] Service principals, consent, federated credentials'
 $apiSp = Set-ServicePrincipal $api.appId
 $webSp = Set-ServicePrincipal $web.appId
 $graphSp = Find-Graph 'servicePrincipals' "appId eq '$graphAppId'"
@@ -158,7 +161,9 @@ $entraIssuer = "https://login.microsoftonline.com/$tenantId/v2.0"
 Set-FederatedCredential $api 'managed-identity' $entraIssuer $apiIdentity.principalId
 Set-FederatedCredential $web 'managed-identity' $entraIssuer $webIdentity.principalId
 
-Write-Host 'GitHub deployer identity'
+Write-Host '  ok: consent granted, managed identities trusted'
+
+Write-Host '[5/7] GitHub deployer identity'
 $deployer = Set-App $DeployerName @{}
 $deployerSp = Set-ServicePrincipal $deployer.appId
 $githubIssuer = 'https://token.actions.githubusercontent.com'
@@ -178,14 +183,18 @@ foreach ($assignment in $assignments) {
     }
 }
 
-Write-Host 'PostgreSQL Entra administrator'
+Write-Host "  ok: $DeployerName has Contributor, User Access Administrator, and AcrPush"
+
+Write-Host '[6/7] PostgreSQL Entra administrator'
 $admins = az postgres flexible-server microsoft-entra-admin list -g $PlatformResourceGroup -s $PostgresServer --query "[?objectId=='$($deployerSp.id)'].objectId" -o tsv
 if (-not $admins) {
     az postgres flexible-server microsoft-entra-admin create -g $PlatformResourceGroup -s $PostgresServer `
         --display-name $DeployerName --object-id $deployerSp.id --type ServicePrincipal | Out-Null
 }
 
-Write-Host "GitHub environment '$GitHubEnvironment'"
+Write-Host "  ok: $DeployerName is an administrator on $PostgresServer"
+
+Write-Host "[7/7] GitHub environment '$GitHubEnvironment'"
 gh api --method PUT "repos/$Repository/environments/$GitHubEnvironment" | Out-Null
 $variables = @{
     AZURE_CLIENT_ID       = $deployer.appId
@@ -197,6 +206,8 @@ $variables = @{
 foreach ($name in $variables.Keys) {
     gh variable set $name --env $GitHubEnvironment --repo $Repository --body $variables[$name]
 }
+
+Write-Host "  ok: $($variables.Count) variables set"
 
 Write-Host ''
 Write-Host 'Done. Remaining manual steps:'

@@ -82,7 +82,9 @@ Notes:
 1. Push to `main`, CI passes, and the Deploy workflow starts (or run it manually: Actions > Deploy > Run workflow, or `gh workflow run deploy.yml`).
 2. A reviewer approves the `production` environment.
 3. The workflow builds and pushes `gisr-api` and `gisr-web` to `acccrshared` tagged `yyyyMMddHHmmss`, deploys `platform.bicep`, opens a temporary PostgreSQL firewall rule for the runner, runs `configure-database.sh`, removes the rule (always), then deploys `apps.bicep`.
-4. The job summary and the environment URL show the Web URL and image tag.
+4. The workflow then verifies both apps (provisioning succeeded, running the new image tag, latest revision not failed or unhealthy) and that the Web URL responds. The job summary lists the outcome of every stage and shows the image tag and Web URL.
+
+Verification cannot reach the internal Api, so Api startup and migration problems can appear on the first request after the deployment rather than during the run. Check the Api logs if the Web app loads but data does not.
 
 ## Deploying without GitHub
 
