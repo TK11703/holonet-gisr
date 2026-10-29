@@ -1,0 +1,119 @@
+name: Deploy
+
+# Runs after CI passes on main, then waits for approval on the production environment.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  APPS_RESOURCE_GROUP: rg-apps
+  PLATFORM_RESOURCE_GROUP: rg-platform
+  REGISTRY_NAME: acccrshared
+  POSTGRES_SERVER: accpsqlshared
+  DATABASE_NAME: Gisr
+  API_IDENTITY_NAME: id-gisr-api-prod
+  DEPLOYER_NAME: gisr-github-oidc
+
+jobs:
+  deploy:
+    name: deploy
+    # Manual runs are allowed on any ref the environment permits; automatic runs need a green CI push run on main.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: ${{ steps.apps.outputs.web-url }}
+    steps:
+      - name: Check out the code that CI validated
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Sign in to Azure (OIDC)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push the images
+        id: images
+        run: |
+          tag="$(date -u +%Y%m%d%H%M%S)"
+          az acr login --name "$REGISTRY_NAME"
+          for project in api web; do
+            dotnet publish "src/Gisr.${project^}/Gisr.${project^}.csproj" -c Release -t:PublishContainer \
+              -p:ContainerRuntimeIdentifier=linux-x64 \
+              -p:ContainerRegistry="$REGISTRY_NAME.azurecr.io" \
+              -p:ContainerRepository="gisr-$project" \
+              -p:ContainerImageTags="$tag"
+          done
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy storage, database, and role assignments (rg-platform)
+        run: |
+          az deployment group create \
+            --resource-group "$PLATFORM_RESOURCE_GROUP" \
+            --name "gisr-platform-$GITHUB_RUN_ID" \
+            --template-file infra/platform.bicep \
+            --only-show-errors
+
+      - name: Allow this runner through the PostgreSQL firewall
+        run: |
+          ip="$(curl -fsS https://api.ipify.org)"
+          az postgres flexible-server firewall-rule create \
+            --resource-group "$PLATFORM_RESOURCE_GROUP" --name "$POSTGRES_SERVER" \
+            --rule-name "gisr-deploy-$GITHUB_RUN_ID" \
+            --start-ip-address "$ip" --end-ip-address "$ip" --only-show-errors
+
+      - name: Configure the database role and extension
+        run: |
+          export API_IDENTITY_PRINCIPAL_ID="$(az identity show -g "$APPS_RESOURCE_GROUP" -n "$API_IDENTITY_NAME" --query principalId -o tsv)"
+          export PG_SERVER="$POSTGRES_SERVER" PG_ADMIN_NAME="$DEPLOYER_NAME" PG_DATABASE="$DATABASE_NAME"
+          bash infra/scripts/configure-database.sh
+
+      - name: Remove the PostgreSQL firewall rule
+        if: always()
+        run: |
+          az postgres flexible-server firewall-rule delete \
+            --resource-group "$PLATFORM_RESOURCE_GROUP" --name "$POSTGRES_SERVER" \
+            --rule-name "gisr-deploy-$GITHUB_RUN_ID" --yes --only-show-errors || true
+
+      - name: Deploy the container apps (rg-apps)
+        id: apps
+        run: |
+          url="$(az deployment group create \
+            --resource-group "$APPS_RESOURCE_GROUP" \
+            --name "gisr-apps-$GITHUB_RUN_ID" \
+            --template-file infra/apps.bicep \
+            --parameters \
+              imageTag='${{ steps.images.outputs.tag }}' \
+              tenantId='${{ vars.AZURE_TENANT_ID }}' \
+              apiClientId='${{ vars.GISR_API_CLIENT_ID }}' \
+              webClientId='${{ vars.GISR_WEB_CLIENT_ID }}' \
+            --query properties.outputs.webUrl.value -o tsv --only-show-errors)"
+          echo "web-url=$url" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Deployed"
+            echo "- Image tag: \`${{ steps.images.outputs.tag }}\`"
+            echo "- Web: $url"
+          } >> "$GITHUB_STEP_SUMMARY"

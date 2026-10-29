@@ -1,4 +1,5 @@
 using System.Data;
+using Azure.Core;
 using Dapper;
 using Npgsql;
 using Pgvector.Dapper;
@@ -7,14 +8,25 @@ namespace Gisr.Database.Common;
 
 public static class GisrDataSource
 {
+    public const string EntraScope = "https://ossrdbms-aad.database.windows.net/.default";
+
     private static readonly object Gate = new();
     private static bool _registered;
 
-    public static NpgsqlDataSource Create(string connectionString)
+    /// <summary>Pass a credential to authenticate with Microsoft Entra tokens instead of a password in the connection string.</summary>
+    public static NpgsqlDataSource Create(string connectionString, TokenCredential? credential = null)
     {
         RegisterTypeHandlers();
         var builder = new NpgsqlDataSourceBuilder(connectionString);
         builder.UseVector();
+        if (credential is not null)
+        {
+            builder.UsePeriodicPasswordProvider(
+                async (_, ct) => (await credential.GetTokenAsync(new TokenRequestContext([EntraScope]), ct)).Token,
+                TimeSpan.FromMinutes(45),
+                TimeSpan.FromSeconds(10));
+        }
+
         return builder.Build();
     }
 

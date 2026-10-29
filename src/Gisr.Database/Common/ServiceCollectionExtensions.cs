@@ -1,3 +1,5 @@
+using Azure.Core;
+using Azure.Identity;
 using Gisr.Database.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -6,11 +8,13 @@ namespace Gisr.Database.Common;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddGisrDatabase(this IServiceCollection services, string connectionString)
+    public static IServiceCollection AddGisrDatabase(this IServiceCollection services, string connectionString, bool useEntraAuthentication = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
-        services.AddSingleton<NpgsqlDataSource>(_ => GisrDataSource.Create(connectionString));
+        // DefaultAzureCredential selects a user-assigned managed identity from AZURE_CLIENT_ID.
+        TokenCredential? credential = useEntraAuthentication ? new DefaultAzureCredential() : null;
+        services.AddSingleton<NpgsqlDataSource>(_ => GisrDataSource.Create(connectionString, credential));
         services.AddSingleton<ISqlScriptLoader, SqlScriptLoader>();
         services.AddSingleton<IMigrationSource, EmbeddedMigrationSource>();
         services.AddSingleton<MigrationRunner>();
