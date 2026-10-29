@@ -47,7 +47,7 @@ Parameters default to this deployment (subscription, `rg-apps`, `rg-platform`, `
 The script:
 
 1. Creates the two managed identities.
-2. Creates both app registrations: `access_as_user` scope and `Officer` app role on the Api, Graph `User.ReadBasic.All` (admin consented), Web redirect URI `https://ca-gisr-web-prod.<environment domain>/signin-oidc`, Web-to-Api consent, and a federated credential on each app that trusts its managed identity.
+2. Creates both app registrations: `access_as_user` scope and `Officer` app role on the Api, Graph `User.ReadBasic.All` and `User.Read` (admin consented), Web redirect URI `https://ca-gisr-web-prod.<environment domain>/signin-oidc`, Web-to-Api consent, and a federated credential on each app that trusts its managed identity.
 3. Creates `gisr-github-oidc` with federated credentials for `environment:production` and `refs/heads/main`, then assigns Contributor and User Access Administrator on the subscription (same as `trip-planner-github-oidc`) and AcrPush on `acccrshared`.
 4. Adds `gisr-github-oidc` as a Microsoft Entra administrator on `accpsqlshared`.
 5. Creates the GitHub `production` environment and sets its variables (below).
