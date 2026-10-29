@@ -18,6 +18,8 @@ public sealed class AccountRow
 
     public bool NotifyOnServiceRecord { get; set; }
 
+    public string Theme { get; set; } = "teal";
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset? LastSignInAt { get; set; }

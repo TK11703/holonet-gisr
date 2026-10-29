@@ -73,17 +73,27 @@ public sealed class AccountRepository(NpgsqlDataSource dataSource, ISqlScriptLoa
             cancellationToken: cancellationToken));
     }
 
+    public Task<AccountRow?> UpdateSettingsAsync(
+        Guid id,
+        string displayName,
+        string? contactEmail,
+        bool notifyOnServiceRecord,
+        CancellationToken cancellationToken) =>
+        UpdateSettingsAsync(id, displayName, contactEmail, notifyOnServiceRecord, null, cancellationToken);
+
+    // A null theme keeps the saved one.
     public async Task<AccountRow?> UpdateSettingsAsync(
         Guid id,
         string displayName,
         string? contactEmail,
         bool notifyOnServiceRecord,
+        string? theme,
         CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         return await connection.QuerySingleOrDefaultAsync<AccountRow>(new CommandDefinition(
             sql.Get("Accounts", "update-account-settings"),
-            new { Id = id, DisplayName = displayName, ContactEmail = contactEmail, NotifyOnServiceRecord = notifyOnServiceRecord },
+            new { Id = id, DisplayName = displayName, ContactEmail = contactEmail, NotifyOnServiceRecord = notifyOnServiceRecord, Theme = theme },
             cancellationToken: cancellationToken));
     }
 }

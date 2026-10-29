@@ -97,7 +97,7 @@ public sealed class AccountService(AccountRepository accounts, ITenantDirectory 
         var contactEmail = string.IsNullOrWhiteSpace(request.ContactEmail) ? null : request.ContactEmail.Trim();
 
         var updated = await accounts.UpdateSettingsAsync(
-            account.Id, request.DisplayName.Trim(), contactEmail, request.NotifyOnServiceRecord, cancellationToken);
+            account.Id, request.DisplayName.Trim(), contactEmail, request.NotifyOnServiceRecord, request.Theme, cancellationToken);
 
         return AccountMapper.ToDto(updated ?? throw new ProblemException(StatusCodes.Status404NotFound, "Not Found"), user.IsOfficer);
     }
