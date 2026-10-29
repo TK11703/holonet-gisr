@@ -23,7 +23,8 @@ builder.Services.AddGisrProblemDetails();
 builder.Services.AddGisrObservability(builder.Configuration, "Gisr.Api");
 builder.Services.AddGisrDatabase(
     builder.Configuration.GetConnectionString("Gisr")
-    ?? throw new InvalidOperationException("ConnectionStrings:Gisr is not configured."));
+    ?? throw new InvalidOperationException("ConnectionStrings:Gisr is not configured."),
+    builder.Configuration.GetValue<bool>("Database:UseEntraAuthentication"));
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddGisrArtifactStore(
     builder.Configuration.GetConnectionString("blobs"),
