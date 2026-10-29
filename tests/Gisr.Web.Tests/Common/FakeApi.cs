@@ -74,6 +74,7 @@ public sealed class FakeApi : HttpMessageHandler
         var client = CreateClient();
         services.AddSingleton(client);
         services.AddScoped<CurrentUserState>();
+        services.AddScoped<Gisr.Web.Layout.ThemeInterop>();
         services.AddSingleton<Gisr.Web.Records.ViewGrantStore>();
         services.AddSingleton<AntiforgeryStateProvider, FakeAntiforgery>();
         return services;

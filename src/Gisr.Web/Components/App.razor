@@ -1,5 +1,6 @@
-﻿<!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+﻿@inject CurrentUserState User
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark" data-gisr-theme="@_theme">
 
 <head>
     <meta charset="utf-8" />
@@ -20,3 +21,26 @@
 </body>
 
 </html>
+
+@code {
+    private string _theme = SiteThemes.Default;
+
+    // The same scoped state is reused by the prerendered page, so this adds no extra API call.
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await User.EnsureLoadedAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A theme must never stop the page rendering; the page reports its own load failure.
+            return;
+        }
+
+        if (User.Account is { } account && SiteThemes.IsKnown(account.Theme))
+        {
+            _theme = account.Theme;
+        }
+    }
+}
