@@ -477,6 +477,11 @@ h1[tabindex="-1"]:focus-visible {
     transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
 }
 
+/* Wide enough for the "Page Size" label, which the short option values would otherwise clip. */
+.page-size-field {
+    min-width: 8rem;
+}
+
 /* Artifact tiles flow as many per row as fit. */
 .artifact-grid {
     display: grid;

@@ -45,9 +45,11 @@
                 <fieldset disabled="@_busy">
                     <legend class="visually-hidden">Affiliation details</legend>
                     <div class="mb-3">
-                        <label for="affiliation-special-unit" class="form-label">Special Unit</label>
-                        <input id="affiliation-special-unit" class="@FieldClass("specialUnit", "form-control")" list="affiliation-names" maxlength="100"
-                               autocomplete="off" @bind="_specialUnit" aria-invalid="@Invalid("specialUnit")" aria-describedby="@Described("specialUnit")" />
+                        <div class="form-floating">
+                            <input id="affiliation-special-unit" class="@FieldClass("specialUnit", "form-control")" list="affiliation-names" maxlength="100" placeholder="Special Unit"
+                                   autocomplete="off" @bind="_specialUnit" aria-invalid="@Invalid("specialUnit")" aria-describedby="@Described("specialUnit")" />
+                            <label for="affiliation-special-unit">Special Unit</label>
+                        </div>
                         @ErrorFor("specialUnit")
                     </div>
                     <datalist id="affiliation-names">
@@ -58,16 +60,20 @@
                     </datalist>
                     <div class="row g-2">
                         <div class="col-6">
-                            <label for="affiliation-prefix" class="form-label">Prefix</label>
-                            <input id="affiliation-prefix" class="@FieldClass("prefix", "form-control text-uppercase")" maxlength="8" autocomplete="off"
-                                   placeholder="tk, bh, ti, sl, etc." title="Examples: tk, bh, ti, sl"
-                                   @bind="_prefix" aria-invalid="@Invalid("prefix")" aria-describedby="@Described("prefix")" />
+                            <div class="form-floating">
+                                <input id="affiliation-prefix" class="@FieldClass("prefix", "form-control text-uppercase")" maxlength="8" autocomplete="off"
+                                       placeholder="tk, bh, ti, sl, etc." title="Examples: tk, bh, ti, sl"
+                                       @bind="_prefix" aria-invalid="@Invalid("prefix")" aria-describedby="@Described("prefix")" />
+                                <label for="affiliation-prefix">Prefix</label>
+                            </div>
                             @ErrorFor("prefix")
                         </div>
                         <div class="col-6">
-                            <label for="affiliation-number" class="form-label">Operating Number</label>
-                            <input id="affiliation-number" class="@FieldClass("operatingNumber", "form-control")" maxlength="16" autocomplete="off"
-                                   @bind="_number" aria-invalid="@Invalid("operatingNumber")" aria-describedby="@Described("operatingNumber")" />
+                            <div class="form-floating">
+                                <input id="affiliation-number" class="@FieldClass("operatingNumber", "form-control")" maxlength="16" autocomplete="off" placeholder="Operating Number"
+                                       @bind="_number" aria-invalid="@Invalid("operatingNumber")" aria-describedby="@Described("operatingNumber")" />
+                                <label for="affiliation-number">Operating Number</label>
+                            </div>
                             @ErrorFor("operatingNumber")
                         </div>
                     </div>

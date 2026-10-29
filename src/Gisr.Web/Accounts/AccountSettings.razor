@@ -39,9 +39,11 @@ else
                     }
                     <EditForm id="account-settings-form" EditContext="_editContext" OnSubmit="SaveAsync" FormName="account-settings">
                         <div class="mb-3">
-                            <label for="display-name" class="form-label">Display name</label>
-                            <InputText id="display-name" class="@FieldClass("displayName")" @bind-Value="_model.DisplayName"
-                                       aria-describedby="@Described("displayName", "display-name-error")" />
+                            <div class="form-floating">
+                                <InputText id="display-name" class="@FieldClass("displayName")" placeholder="Display name" @bind-Value="_model.DisplayName"
+                                           aria-describedby="@Described("displayName", "display-name-error")" />
+                                <label for="display-name">Display name</label>
+                            </div>
                             @if (_errors.TryGetValue("displayName", out var nameErrors))
                             {
                                 <div id="display-name-error" class="invalid-feedback d-block">@string.Join(" ", nameErrors)</div>
@@ -49,9 +51,11 @@ else
                         </div>
 
                         <div class="mb-3">
-                            <label for="contact-email" class="form-label">Notification Account</label>
-                            <InputText id="contact-email" type="email" class="@FieldClass("contactEmail")" @bind-Value="_model.ContactEmail"
-                                       aria-describedby="@Described("contactEmail", "contact-email-error")" />
+                            <div class="form-floating">
+                                <InputText id="contact-email" type="email" class="@FieldClass("contactEmail")" placeholder="Notification Account" @bind-Value="_model.ContactEmail"
+                                           aria-describedby="@Described("contactEmail", "contact-email-error")" />
+                                <label for="contact-email">Notification Account</label>
+                            </div>
                             @if (_errors.TryGetValue("contactEmail", out var emailErrors))
                             {
                                 <div id="contact-email-error" class="invalid-feedback d-block">@string.Join(" ", emailErrors)</div>
@@ -64,15 +68,17 @@ else
                         </div>
 
                         <div class="mb-3">
-                            <label for="site-theme" class="form-label">Site theme</label>
-                            <InputSelect id="site-theme" class="@SelectClass("theme")" @bind-Value="_model.Theme"
-                                         aria-describedby="@Described("theme", "site-theme-error")"
-                                         aria-invalid="@(_errors.ContainsKey("theme") ? "true" : null)">
-                                @foreach (var option in SiteThemes.All)
-                                {
-                                    <option value="@option.Id">@option.Name</option>
-                                }
-                            </InputSelect>
+                            <div class="form-floating">
+                                <InputSelect id="site-theme" class="@SelectClass("theme")" @bind-Value="_model.Theme"
+                                             aria-describedby="@Described("theme", "site-theme-error")"
+                                             aria-invalid="@(_errors.ContainsKey("theme") ? "true" : null)">
+                                    @foreach (var option in SiteThemes.All)
+                                    {
+                                        <option value="@option.Id">@option.Name</option>
+                                    }
+                                </InputSelect>
+                                <label for="site-theme">Site theme</label>
+                            </div>
                             @if (_errors.TryGetValue("theme", out var themeErrors))
                             {
                                 <div id="site-theme-error" class="invalid-feedback d-block">@string.Join(" ", themeErrors)</div>
