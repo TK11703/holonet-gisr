@@ -375,6 +375,7 @@ paths:
         - { $ref: "#/components/parameters/Scope" }
         - { $ref: "#/components/parameters/Page" }
         - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 12 } }
+        - { name: sort, in: query, schema: { type: string, enum: [updatedDesc, titleAsc, titleDesc], default: updatedDesc } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PagedGalleryGroups" } } } }
         "400": { $ref: "#/components/responses/ValidationProblem" }
