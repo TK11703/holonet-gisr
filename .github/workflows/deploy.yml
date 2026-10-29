@@ -101,8 +101,8 @@ jobs:
         run: |
           ip="$(curl -fsS https://api.ipify.org)"
           az postgres flexible-server firewall-rule create \
-            --resource-group "$PLATFORM_RESOURCE_GROUP" --name "$POSTGRES_SERVER" \
-            --rule-name "gisr-deploy-$GITHUB_RUN_ID" \
+            --resource-group "$PLATFORM_RESOURCE_GROUP" --server-name "$POSTGRES_SERVER" \
+            --name "gisr-deploy-$GITHUB_RUN_ID" \
             --start-ip-address "$ip" --end-ip-address "$ip" --only-show-errors
 
       - name: Configure the database role and extension
@@ -117,8 +117,8 @@ jobs:
         if: always()
         run: |
           az postgres flexible-server firewall-rule delete \
-            --resource-group "$PLATFORM_RESOURCE_GROUP" --name "$POSTGRES_SERVER" \
-            --rule-name "gisr-deploy-$GITHUB_RUN_ID" --yes --only-show-errors || true
+            --resource-group "$PLATFORM_RESOURCE_GROUP" --server-name "$POSTGRES_SERVER" \
+            --name "gisr-deploy-$GITHUB_RUN_ID" --yes --only-show-errors || true
 
       - name: Deploy the container apps (rg-apps)
         id: apps

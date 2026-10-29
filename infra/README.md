@@ -124,8 +124,8 @@ az deployment group create -g rg-platform -n gisr-platform-manual -f infra/platf
 
 # 3. Database role and extension (temporary firewall rule for this machine)
 $ip = (Invoke-RestMethod https://api.ipify.org)
-az postgres flexible-server firewall-rule create -g rg-platform --name accpsqlshared `
-    --rule-name gisr-deploy-manual --start-ip-address $ip --end-ip-address $ip
+az postgres flexible-server firewall-rule create -g rg-platform --server-name accpsqlshared `
+    --name gisr-deploy-manual --start-ip-address $ip --end-ip-address $ip
 ```
 
 Then run the database script in Git Bash or WSL (it needs `psql` and an `az` session):
@@ -143,7 +143,7 @@ Back in PowerShell:
 
 ```powershell
 # Remove the firewall rule
-az postgres flexible-server firewall-rule delete -g rg-platform --name accpsqlshared --rule-name gisr-deploy-manual --yes
+az postgres flexible-server firewall-rule delete -g rg-platform --server-name accpsqlshared --name gisr-deploy-manual --yes
 
 # 4. Container apps
 az deployment group create -g rg-apps -n gisr-apps-manual -f infra/apps.bicep `
