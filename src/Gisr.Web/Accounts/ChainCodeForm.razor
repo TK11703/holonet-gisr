@@ -19,10 +19,12 @@
         {
             <div class="row mb-3">
                 <div class="col-12 col-lg-6">
-                    <label for="chain-code-value" class="form-label">Your Chain Code</label>
-                    <div class="input-group input-group-sm">
+                    <div class="input-group">
                         <span class="input-group-text"><Icon Name="link" /></span>
-                        <input id="chain-code-value" class="form-control form-control-sm font-monospace p-1" readonly value="@(_saved?.ChainCode ?? "Not provided")" />
+                        <div class="form-floating">
+                            <input id="chain-code-value" class="form-control font-monospace" placeholder="Your Chain Code" readonly value="@(_saved?.ChainCode ?? "Not provided")" />
+                            <label for="chain-code-value">Your Chain Code</label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -43,18 +45,20 @@
                                         @foreach (var field in group)
                                         {
                                             <div class="@(group.Key == "Biometric Data" ? "col-12 col-sm-6" : "col-12")">
-                                                <label for="@field.Id" class="form-label">@field.Label</label>
                                                 @if (field.Color)
                                                 {
-                                                    <select @key="_colors[field.Key].Count" id="@field.Id" class="@FieldClass(field, "form-select")" value=""
-                                                            @onchange="eventArgs => AddColor(field.Key, eventArgs.Value?.ToString())"
-                                                            aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)">
-                                                        <option value="">Add color</option>
-                                                        @foreach (var color in Enum.GetValues<ProfileColor>().Where(color => !_colors[field.Key].Contains(color)))
-                                                        {
-                                                            <option value="@color">@color</option>
-                                                        }
-                                                    </select>
+                                                    <div class="form-floating">
+                                                        <select @key="_colors[field.Key].Count" id="@field.Id" class="@FieldClass(field, "form-select")" value=""
+                                                                @onchange="eventArgs => AddColor(field.Key, eventArgs.Value?.ToString())"
+                                                                aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)">
+                                                            <option value="">Add color</option>
+                                                            @foreach (var color in Enum.GetValues<ProfileColor>().Where(color => !_colors[field.Key].Contains(color)))
+                                                            {
+                                                                <option value="@color">@color</option>
+                                                            }
+                                                        </select>
+                                                        <label for="@field.Id">@field.Label</label>
+                                                    </div>
                                                     <div class="d-flex flex-wrap gap-2 mt-2" role="group" aria-label="Selected @field.Label.ToLowerInvariant()">
                                                         @foreach (var color in _colors[field.Key].Order())
                                                         {
@@ -70,23 +74,32 @@
                                                 else if (field.Key == "height")
                                                 {
                                                     <div class="input-group">
-                                                        <input id="@field.Id" class="@FieldClass(field, "form-control")" inputmode="decimal" maxlength="5" autocomplete="off"
-                                                               value="@_heightNumber" @onchange="eventArgs => { _heightNumber = eventArgs.Value?.ToString(); _status = null; }"
-                                                               aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)" />
-                                                        <select id="chain-height-unit" class="form-select" aria-label="Height unit" value="@_heightUnit"
-                                                                @onchange="eventArgs => { _heightUnit = eventArgs.Value?.ToString() ?? HeightUnits[0]; _status = null; }">
-                                                            @foreach (var unit in HeightUnits)
-                                                            {
-                                                                <option value="@unit">@unit</option>
-                                                            }
-                                                        </select>
+                                                        <div class="form-floating">
+                                                            <input id="@field.Id" class="@FieldClass(field, "form-control")" inputmode="decimal" maxlength="5" autocomplete="off" placeholder="@field.Label"
+                                                                   value="@_heightNumber" @onchange="eventArgs => { _heightNumber = eventArgs.Value?.ToString(); _status = null; }"
+                                                                   aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)" />
+                                                            <label for="@field.Id">@field.Label</label>
+                                                        </div>
+                                                        <div class="form-floating flex-grow-0 w-auto">
+                                                            <select id="chain-height-unit" class="form-select" aria-label="Height unit" value="@_heightUnit"
+                                                                    @onchange="eventArgs => { _heightUnit = eventArgs.Value?.ToString() ?? HeightUnits[0]; _status = null; }">
+                                                                @foreach (var unit in HeightUnits)
+                                                                {
+                                                                    <option value="@unit">@unit</option>
+                                                                }
+                                                            </select>
+                                                            <label for="chain-height-unit">Unit</label>
+                                                        </div>
                                                     </div>
                                                 }
                                                 else
                                                 {
-                                                    <input id="@field.Id" class="@FieldClass(field, "form-control")" maxlength="@field.MaxLength"
-                                                           value="@_values[field.Key]" @onchange="eventArgs => Change(field.Key, eventArgs.Value?.ToString())"
-                                                           aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)" />
+                                                    <div class="form-floating">
+                                                        <input id="@field.Id" class="@FieldClass(field, "form-control")" maxlength="@field.MaxLength" placeholder="@field.Label"
+                                                               value="@_values[field.Key]" @onchange="eventArgs => Change(field.Key, eventArgs.Value?.ToString())"
+                                                               aria-invalid="@Invalid(field.Key)" aria-describedby="@Described(field)" />
+                                                        <label for="@field.Id">@field.Label</label>
+                                                    </div>
                                                 }
                                                 @if (_errors.TryGetValue(field.Key, out var messages))
                                                 {

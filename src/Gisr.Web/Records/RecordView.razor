@@ -19,13 +19,15 @@ else if (_record is null && _locked)
 {
     <div class="alert alert-danger" role="alert">Access denied. This record is sealed.</div>
     <form id="override-form" class="card card-body mb-4" @onsubmit="UnlockAsync" novalidate>
-        <label for="override-code" class="form-label">Override code</label>
-        <div class="d-flex flex-wrap gap-2">
-            <input id="override-code" type="password" autocomplete="off" maxlength="64"
-                   class="@(_overrideError is null ? "form-control w-auto" : "form-control w-auto is-invalid")"
-                   aria-invalid="@(_overrideError is null ? null : "true")"
-                   aria-describedby="@(_overrideError is null ? null : "override-error")"
-                   disabled="@_lockedOut" value="@_code" @oninput="OnCodeInput" />
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="form-floating">
+                <input id="override-code" type="password" autocomplete="off" maxlength="64" placeholder="Override code"
+                       class="@(_overrideError is null ? "form-control" : "form-control is-invalid")"
+                       aria-invalid="@(_overrideError is null ? null : "true")"
+                       aria-describedby="@(_overrideError is null ? null : "override-error")"
+                       disabled="@_lockedOut" value="@_code" @oninput="OnCodeInput" />
+                <label for="override-code">Override code</label>
+            </div>
             <button type="submit" class="btn btn-primary" disabled="@(_lockedOut || _submitting)">Unlock</button>
         </div>
         @if (_overrideError is not null)

@@ -9,17 +9,16 @@
     <div class="d-flex flex-wrap gap-3 align-items-end mb-3">
         @if (User.IsOfficer)
         {
-            <div>
-                <label for="filter-scope" class="form-label">Records</label>
+            <div class="form-floating">
                 <select id="filter-scope" class="form-select" value="@(_allScope ? "all" : "mine")"
                         @onchange="OnScopeChanged">
                     <option value="mine">My records</option>
                     <option value="all">All records</option>
                 </select>
+                <label for="filter-scope">Records</label>
             </div>
         }
-        <div>
-            <label for="filter-primary-affiliation" class="form-label">Primary Affiliation</label>
+        <div class="form-floating">
             <select id="filter-primary-affiliation" class="form-select" value="@_primary" @onchange="OnPrimaryChanged">
                 <option value="">All Affiliations</option>
                 @foreach (var affiliation in _primaries)
@@ -27,9 +26,9 @@
                     <option value="@affiliation">@affiliation</option>
                 }
             </select>
+            <label for="filter-primary-affiliation">Primary Affiliation</label>
         </div>
-        <div>
-            <label for="filter-secondary-affiliation" class="form-label">Secondary Affiliation</label>
+        <div class="form-floating">
             <select id="filter-secondary-affiliation" class="form-select" value="@_secondary" @onchange="OnSecondaryChanged">
                 <option value="">All Affiliations</option>
                 @foreach (var affiliation in _secondaries)
@@ -37,24 +36,25 @@
                     <option value="@affiliation">@affiliation</option>
                 }
             </select>
+            <label for="filter-secondary-affiliation">Secondary Affiliation</label>
         </div>
-        <div>
-            <label for="sort" class="form-label">Sort by</label>
+        <div class="form-floating">
             <select id="sort" class="form-select" value="@_sort" @onchange="OnSortChanged">
                 @foreach (var (value, label) in SortOptions)
                 {
                     <option value="@value">@label</option>
                 }
             </select>
+            <label for="sort">Sort by</label>
         </div>
-        <div>
-            <label for="page-size" class="form-label">Page Size</label>
+        <div class="form-floating page-size-field">
             <select id="page-size" class="form-select" value="@_pageSize" @onchange="OnPageSizeChanged">
                 @foreach (var size in PageSizes)
                 {
                     <option value="@size">@size</option>
                 }
             </select>
+            <label for="page-size">Page Size</label>
         </div>
         <a class="btn btn-primary ms-auto" href="/records/new">New record</a>
     </div>

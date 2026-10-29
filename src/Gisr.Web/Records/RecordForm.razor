@@ -64,28 +64,32 @@
 
                     <div class="row g-3 mb-3">
                         <div class="col-lg-8">
-                            <label for="record-title" class="form-label">Title <span class="text-danger" aria-hidden="true">*</span></label>
-                            <input id="record-title" type="text" class="@(TitleError is null ? "form-control" : "form-control is-invalid")" maxlength="200"
-                                   aria-required="true" aria-invalid="@(TitleError is null ? null : "true")" aria-describedby="@(TitleError is null ? null : "record-title-error")"
-                                   @bind="Model.Title" />
+                            <div class="form-floating">
+                                <input id="record-title" type="text" class="@(TitleError is null ? "form-control" : "form-control is-invalid")" maxlength="200" placeholder="Title"
+                                       aria-required="true" aria-invalid="@(TitleError is null ? null : "true")" aria-describedby="@(TitleError is null ? null : "record-title-error")"
+                                       @bind="Model.Title" />
+                                <label for="record-title">Title <span class="text-danger" aria-hidden="true">*</span></label>
+                            </div>
                             @if (TitleError is not null)
                             {
                                 <div id="record-title-error" class="invalid-feedback d-block">@TitleError</div>
                             }
                         </div>
                         <div class="col-lg-4">
-                            <label for="record-affiliation" class="form-label">Affiliation <span class="text-danger" aria-hidden="true">*</span></label>
-                            <select id="record-affiliation" class="@(AffiliationError is null ? "form-select" : "form-select is-invalid")"
-                                    aria-required="true" aria-invalid="@(AffiliationError is null ? null : "true")"
-                                    aria-describedby="@(AffiliationError is null ? (NoAffiliations ? "record-affiliation-help" : null) : "record-affiliation-error")"
-                                    disabled="@AffiliationsLoading"
-                                    @bind="Model.Affiliation">
-                                <option value="">Select an affiliation</option>
-                                @foreach (var option in _options)
-                                {
-                                    <option value="@option">@option</option>
-                                }
-                            </select>
+                            <div class="form-floating">
+                                <select id="record-affiliation" class="@(AffiliationError is null ? "form-select" : "form-select is-invalid")"
+                                        aria-required="true" aria-invalid="@(AffiliationError is null ? null : "true")"
+                                        aria-describedby="@(AffiliationError is null ? (NoAffiliations ? "record-affiliation-help" : null) : "record-affiliation-error")"
+                                        disabled="@AffiliationsLoading"
+                                        @bind="Model.Affiliation">
+                                    <option value="">Select an affiliation</option>
+                                    @foreach (var option in _options)
+                                    {
+                                        <option value="@option">@option</option>
+                                    }
+                                </select>
+                                <label for="record-affiliation">Affiliation <span class="text-danger" aria-hidden="true">*</span></label>
+                            </div>
                             @if (AffiliationError is not null)
                             {
                                 <div id="record-affiliation-error" class="invalid-feedback d-block">@AffiliationError</div>
@@ -116,25 +120,31 @@
                             }
                         </div>
                         <div class="col-md-6">
-                            <label for="engagement-start" class="form-label">Engagement start</label>
-                            <input id="engagement-start" type="date" class="form-control" @bind="Model.EngagementStart" @bind:format="yyyy-MM-dd" @bind:after="OnStartChanged" />
+                            <div class="form-floating">
+                                <input id="engagement-start" type="date" class="form-control" placeholder="Engagement start" @bind="Model.EngagementStart" @bind:format="yyyy-MM-dd" @bind:after="OnStartChanged" />
+                                <label for="engagement-start">Engagement start</label>
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <label for="engagement-end" class="form-label">Engagement end</label>
-                            <input id="engagement-end" type="date" class="@(EndError is null ? "form-control" : "form-control is-invalid")"
-                                   min="@(Model.EngagementStart is { } startDate ? RecordDisplay.Date(startDate) : null)"
-                                   aria-invalid="@(EndError is null ? null : "true")" aria-describedby="@(EndError is null ? null : "engagement-end-error")"
-                                   @bind="Model.EngagementEnd" @bind:format="yyyy-MM-dd" />
+                            <div class="form-floating">
+                                <input id="engagement-end" type="date" class="@(EndError is null ? "form-control" : "form-control is-invalid")" placeholder="Engagement end"
+                                       min="@(Model.EngagementStart is { } startDate ? RecordDisplay.Date(startDate) : null)"
+                                       aria-invalid="@(EndError is null ? null : "true")" aria-describedby="@(EndError is null ? null : "engagement-end-error")"
+                                       @bind="Model.EngagementEnd" @bind:format="yyyy-MM-dd" />
+                                <label for="engagement-end">Engagement end</label>
+                            </div>
                             @if (EndError is not null)
                             {
                                 <div id="engagement-end-error" class="invalid-feedback d-block">@EndError</div>
                             }
                         </div>
                         <div class="col-12">
-                            <label for="detail-summary" class="form-label">Summary <span class="text-danger" aria-hidden="true">*</span></label>
-                            <textarea id="detail-summary" class="@(SummaryError is null ? "form-control" : "form-control is-invalid")" rows="5" maxlength="@EngagementSummary.MaxLength"
-                                      aria-required="true" aria-invalid="@(SummaryError is null ? null : "true")" aria-describedby="@(SummaryError is null ? null : "detail-summary-error")"
-                                      value="@Model.Summary" @onchange="@(e => Model.Summary = e.Value?.ToString() ?? string.Empty)"></textarea>
+                            <div class="form-floating">
+                                <textarea id="detail-summary" class="@(SummaryError is null ? "form-control" : "form-control is-invalid")" rows="5" maxlength="@EngagementSummary.MaxLength" placeholder="Summary"
+                                          aria-required="true" aria-invalid="@(SummaryError is null ? null : "true")" aria-describedby="@(SummaryError is null ? null : "detail-summary-error")"
+                                          value="@Model.Summary" @onchange="@(e => Model.Summary = e.Value?.ToString() ?? string.Empty)"></textarea>
+                                <label for="detail-summary">Summary <span class="text-danger" aria-hidden="true">*</span></label>
+                            </div>
                             @if (SummaryError is not null)
                             {
                                 <div id="detail-summary-error" class="invalid-feedback d-block">@SummaryError</div>

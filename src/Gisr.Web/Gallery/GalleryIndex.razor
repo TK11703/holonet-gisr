@@ -9,32 +9,32 @@
     <div class="d-flex flex-wrap gap-3 align-items-end mb-3">
         @if (User.IsOfficer)
         {
-            <div>
-                <label for="filter-scope" class="form-label">Gallery Owner</label>
+            <div class="form-floating">
                 <select id="filter-scope" class="form-select" value="@(_allScope ? "all" : "mine")"
                         @onchange="OnScopeChanged">
                     <option value="mine">My records</option>
                     <option value="all">All records</option>
                 </select>
+                <label for="filter-scope">Gallery Owner</label>
             </div>
         }
-        <div>
-            <label for="sort" class="form-label">Sort by</label>
+        <div class="form-floating">
             <select id="sort" class="form-select" value="@_sort" @onchange="OnSortChanged">
                 @foreach (var (value, label) in SortOptions)
                 {
                     <option value="@value">@label</option>
                 }
             </select>
+            <label for="sort">Sort by</label>
         </div>
-        <div>
-            <label for="page-size" class="form-label">Page Size</label>
+        <div class="form-floating page-size-field">
             <select id="page-size" class="form-select" value="@_pageSize" @onchange="OnPageSizeChanged">
                 @foreach (var size in PageSizes)
                 {
                     <option value="@size">@size</option>
                 }
             </select>
+            <label for="page-size">Page Size</label>
         </div>
     </div>
 }
