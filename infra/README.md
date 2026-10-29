@@ -73,7 +73,7 @@ Repository `TK11703/holonet-gisr`.
 Notes:
 
 - These are variables, not secrets. There are no repository or environment secrets; the workflow signs in with OIDC (`id-token: write`).
-- The Entra federated credential subject is `repo:TK11703/holonet-gisr:environment:production`. The job must reference environment `production` (it does), and the repository name must match exactly.
+- The Entra federated credential subject must match the subject GitHub presents. This repository uses immutable subjects, so it is `repo:TK11703@<ownerId>/holonet-gisr@<repoId>:environment:production`, not `repo:TK11703/holonet-gisr:environment:production`. The bootstrap script reads the right prefix from `gh api repos/TK11703/holonet-gisr/actions/oidc/customization/sub`. The job must reference environment `production` (it does).
 - `.github/workflows/deploy.yml` triggers via `workflow_run` of the `CI` workflow, which only runs from the default branch. Merge the deployment work to `main` before expecting an automatic deployment.
 - To see the variables the script set: `gh variable list --env production --repo TK11703/holonet-gisr`.
 
