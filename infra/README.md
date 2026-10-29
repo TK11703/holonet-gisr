@@ -84,7 +84,7 @@ Notes:
 3. The workflow builds and pushes `gisr-api` and `gisr-web` to `acccrshared` tagged `yyyyMMddHHmmss`, deploys `platform.bicep`, opens a temporary PostgreSQL firewall rule for the runner, runs `configure-database.sh`, removes the rule (always), then deploys `apps.bicep`.
 4. The workflow then verifies both apps (provisioning succeeded, running the new image tag, latest revision not failed or unhealthy) and that the Web URL responds. The job summary lists the outcome of every stage and shows the image tag and Web URL.
 
-Verification cannot reach the internal Api, so Api startup and migration problems can appear on the first request after the deployment rather than during the run. Check the Api logs if the Web app loads but data does not.
+The workflow then starts the Api (which normally scales to zero) by raising its minimum replicas to 1, waits until its container has stayed running for about 40 seconds without restarting, and prints the Api logs if it crashes. It always sets the minimum back to 0 afterwards. This catches startup and migration failures during the run; check the Api logs if the Web app loads but data does not.
 
 ## Deploying without GitHub
 

@@ -166,6 +166,42 @@ jobs:
           [ "$ok" = 1 ] || { echo "::error::The Web app did not respond at $WEB_URL"; failed=1; }
           exit "$failed"
 
+      # The Api scales to zero and is internal, so start one replica to surface startup and migration failures.
+      - name: Check that the Api starts
+        id: api-start
+        env:
+          AZURE_EXTENSION_USE_DYNAMIC_INSTALL: yes_without_prompt
+          AZURE_EXTENSION_DYNAMIC_INSTALL_ALLOW_PREVIEW: 'true'
+        run: |
+          set -uo pipefail
+          trap 'az containerapp update -g "$APPS_RESOURCE_GROUP" -n "$API_APP_NAME" --min-replicas 0 --only-show-errors -o none || true' EXIT
+          az containerapp update -g "$APPS_RESOURCE_GROUP" -n "$API_APP_NAME" --min-replicas 1 --only-show-errors -o none \
+            || { echo "::error::Could not start the Api"; exit 1; }
+          stable=0
+          for attempt in $(seq 1 30); do
+            containers="$(az containerapp replica list -g "$APPS_RESOURCE_GROUP" -n "$API_APP_NAME" \
+              --query "[].properties.containers[].{state:runningState,restarts:restartCount}" -o json --only-show-errors || echo '[]')"
+            echo "Api attempt $attempt: $containers"
+            if [ "$(jq '[.[] | select(.restarts > 0 or .state == "Terminated")] | length' <<< "$containers")" -gt 0 ]; then
+              echo "::error::The Api is crashing or restarting"
+              az containerapp logs show -g "$APPS_RESOURCE_GROUP" -n "$API_APP_NAME" --tail 60 --format text --only-show-errors || true
+              exit 1
+            fi
+            if [ "$(jq 'length > 0 and all(.[]; .state == "Running")' <<< "$containers")" = true ]; then
+              stable=$((stable + 1))
+            else
+              stable=0
+            fi
+            if [ "$stable" -ge 4 ]; then
+              echo "The Api has stayed running without restarts."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::The Api did not reach a stable running state"
+          az containerapp logs show -g "$APPS_RESOURCE_GROUP" -n "$API_APP_NAME" --tail 60 --format text --only-show-errors || true
+          exit 1
+
       - name: Summarise the stages
         if: always()
         env:
@@ -187,6 +223,7 @@ jobs:
             echo "| Close PostgreSQL firewall | ${{ steps.firewall-remove.outcome }} |"
             echo "| Deploy container apps (rg-apps) | ${{ steps.apps.outcome }} |"
             echo "| Verify deployment | ${{ steps.verify.outcome }} |"
+            echo "| Check that the Api starts | ${{ steps.api-start.outcome }} |"
             echo
             echo "- Image tag: \`${TAG:-none}\`"
             echo "- Web: ${WEB_URL:-not deployed}"
