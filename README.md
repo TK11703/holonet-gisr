@@ -11,7 +11,7 @@ Citizens and Officers keep records with incidents, awards, revision history, fil
 | Service and sealed records | Officers write records about any tenant member (found through a Microsoft Graph directory search) and may seal them behind an 8-64 character override code. A sealed record is listed for its subject without details, unlocks for a single viewing, and is excluded from the gallery and from the subject's search. Failed codes are logged and lock out after 5 attempts in 15 minutes. |
 | Artifacts and gallery | JPEG, PNG, WebP, GIF, PDF, DOCX, TXT, and Markdown files up to 25 MB each and 50 per record, verified against their real contents. Images need a description for alt text and are grouped by record in the gallery. |
 | Search | Semantic search over record content and the text of PDF, DOCX, TXT, and Markdown files, with OCR for scanned PDFs up to a monthly page budget. Filter by affiliation; Officers can search all records or only their own. |
-| Account | Preferences, a read-only Operating Number synced from the Entra `EmployeeId`, a primary and secondary affiliation list, and an optional fictional Chain Code profile. Operating Number and Chain Code are never authorization credentials. |
+| Account | Preferences (including a site theme (Green / Teal, GISR Hub, Dark Navy, or Dark Grey), applied as soon as you sign in), a read-only Operating Number synced from the Entra `EmployeeId`, a primary and secondary affiliation list, and an optional fictional Chain Code profile. Operating Number and Chain Code are never authorization credentials. |
 | Notifications | A bell in the top bar reports service records written about you. Notifications about sealed records reveal nothing about their content. |
 | Help | An About page and a searchable FAQ, described below. |
 
@@ -31,7 +31,7 @@ all return to `/`. Feature requirements and validation are in
 
 ## Account and affiliations
 
-Account settings holds Preferences, read-only Account Information (user name, Operating Number, and Officer credential), the optional Chain Code profile, and the affiliation cards.
+Account settings holds Preferences (display name, notification account, notification switch, and site theme), read-only Account Information (user name, Operating Number, and Officer credential), the optional Chain Code profile, and the affiliation cards.
 
 - **Operating Number** is read from the signed-in user's Entra `EmployeeId` on each sign-in. A failed directory lookup keeps the last known value, and it cannot be edited in GISR.
 - **Chain Code** is an optional fictional profile (identity, biometric traits, histories, and biography). Saving it derives a deterministic, made-up code from the normalized details, so unchanged details always produce the same code. See [the Chain Code spec](specs/004-account-chain-code/spec.md).

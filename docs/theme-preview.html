@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GISR theme options</title>
+<style>
+  /* Preview-only font load; falls back to system-ui when offline. */
+  @import url(https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&display=swap);
+
+  /* Teal tokens mirror --gisr-* in src/Gisr.Web/wwwroot/theme.css. */
+  .theme-teal {
+    --base: #06201f;
+    --page: radial-gradient(900px 400px at 20% -10%, #0d3a36 0%, #06201f 60%);
+    --topbar: #0a2a28; --topbar-border: 1px solid #1d5650;
+    --side-bg: transparent; --side-border: 0 solid transparent;
+    --side-link: #d8ece8; --side-hover-bg: #11403c; --side-hover: #fff;
+    --side-current-bg: #11403c; --side-current: #2dd4bf; --side-dot: none;
+    --surface: #0d3330; --surface-2: #11403c; --border: #1d5650;
+    --field-bg: #0a2a28; --menu-bg: #0a2a28;
+    --text: #d8ece8; --muted: #9bbab5; --emphasis: #f1faf8;
+    --accent: #2dd4bf; --accent-strong: #14b8a6; --link-hover: #7ff0e0; --focus: #5eead4;
+    --on-accent: #031a18; --btn-hover-bg: #2dd4bf; --btn-hover-text: #031a18;
+    --disabled: #0f6d63; --disabled-text: #9bbab5; --disabled-opacity: 1;
+    --field-focus-border: #2dd4bf; --field-ring: rgba(45, 212, 191, .4);
+    --radius: .75rem; --radius-ctl: .375rem;
+    --font: system-ui, sans-serif; --weight: 400; --tracking: normal;
+    --card-border: 1px solid #1d5650; --corner: none; --frame: none;
+    --stripe: rgba(45, 212, 191, .06); --row-hover: rgba(45, 212, 191, .14); --row-selected: rgba(45, 212, 191, .22);
+    --acc-open: #11403c;
+    --sb-thumb: #2a6e66; --sb-track: #0a2a28; --card-bar: rgba(0, 0, 0, .18);
+    --badge-ok: #198754; --badge-ok-text: #4cc38a;
+    --danger: #dc3545; --danger-hover: #bb2d3b; --danger-text: #ea868f; --danger-subtle: rgba(220, 53, 69, .14);
+  }
+  /* Dark Navy: teal layout with a navy palette and sky-blue accent (:root[data-gisr-theme="navy"] in theme.css). */
+  .theme-navy {
+    --base: #0b1630;
+    --page: radial-gradient(900px 400px at 20% -10%, #14285a 0%, #0b1630 60%);
+    --topbar: #101d3d; --topbar-border: 1px solid #27407a;
+    --side-bg: transparent; --side-border: 0 solid transparent;
+    --side-link: #dbe6f7; --side-hover-bg: #1a2e5c; --side-hover: #fff;
+    --side-current-bg: #1a2e5c; --side-current: #4da3ff; --side-dot: none;
+    --surface: #14244a; --surface-2: #1a2e5c; --border: #27407a;
+    --field-bg: #101d3d; --menu-bg: #14244a;
+    --text: #dbe6f7; --muted: #9fb2d1; --emphasis: #f1f6ff;
+    --accent: #4da3ff; --accent-strong: #2f81e0; --link-hover: #8fc4ff; --focus: #7cc0ff;
+    --on-accent: #04122b; --btn-hover-bg: #4da3ff; --btn-hover-text: #04122b;
+    --disabled: #1f4a85; --disabled-text: #9fb2d1; --disabled-opacity: 1;
+    --field-focus-border: #4da3ff; --field-ring: rgba(77, 163, 255, .4);
+    --radius: .75rem; --radius-ctl: .375rem;
+    --font: system-ui, sans-serif; --weight: 400; --tracking: normal;
+    --card-border: 1px solid #27407a; --corner: none; --frame: none;
+    --stripe: rgba(77, 163, 255, .06); --row-hover: rgba(77, 163, 255, .14); --row-selected: rgba(77, 163, 255, .22);
+    --acc-open: #1a2e5c;
+    --sb-thumb: #2f4f8f; --sb-track: #101d3d; --card-bar: rgba(0, 0, 0, .18);
+    --badge-ok: #198754; --badge-ok-text: #4cc38a;
+    --danger: #dc3545; --danger-hover: #bb2d3b; --danger-text: #ea868f; --danger-subtle: rgba(220, 53, 69, .14);
+  }
+  /* Dark Grey: teal layout with a charcoal palette and violet accent (:root[data-gisr-theme="grey"] in theme.css). */
+  .theme-grey {
+    --base: #16181c;
+    --page: radial-gradient(900px 400px at 20% -10%, #2a2d34 0%, #16181c 60%);
+    --topbar: #1d2025; --topbar-border: 1px solid #3a3f48;
+    --side-bg: transparent; --side-border: 0 solid transparent;
+    --side-link: #e2e4e8; --side-hover-bg: #2c3038; --side-hover: #fff;
+    --side-current-bg: #2c3038; --side-current: #b8a4fb; --side-dot: none;
+    --surface: #23262c; --surface-2: #2c3038; --border: #3a3f48;
+    --field-bg: #1d2025; --menu-bg: #23262c;
+    --text: #e2e4e8; --muted: #a0a5ae; --emphasis: #f5f6f8;
+    --accent: #b8a4fb; --accent-strong: #9d7bf5; --link-hover: #d3c6fd; --focus: #d3c6fd;
+    --on-accent: #150f26; --btn-hover-bg: #b8a4fb; --btn-hover-text: #150f26;
+    --disabled: #4a3f73; --disabled-text: #a0a5ae; --disabled-opacity: 1;
+    --field-focus-border: #b8a4fb; --field-ring: rgba(184, 164, 251, .4);
+    --radius: .75rem; --radius-ctl: .375rem;
+    --font: system-ui, sans-serif; --weight: 400; --tracking: normal;
+    --card-border: 1px solid #3a3f48; --corner: none; --frame: none;
+    --stripe: rgba(184, 164, 251, .06); --row-hover: rgba(184, 164, 251, .14); --row-selected: rgba(184, 164, 251, .22);
+    --acc-open: #2c3038;
+    --sb-thumb: #4a505b; --sb-track: #1d2025; --card-bar: rgba(0, 0, 0, .18);
+    --badge-ok: #198754; --badge-ok-text: #4cc38a;
+    --danger: #dc3545; --danger-hover: #bb2d3b; --danger-text: #ea868f; --danger-subtle: rgba(220, 53, 69, .14);
+  }
+  /* Dark HUD blue: values taken from the HUD template (app.min.css, [data-bs-theme=dark]). */
+  .theme-hud {
+    --base: #1d2835;
+    /* Background photo (src/Gisr.Web/wwwroot/img/hub-bg.jpg) under a dark overlay so content stays readable. */
+    --page:
+      linear-gradient(rgba(255, 255, 255, .03) 1px, transparent 1px) 0 0 / 75px 75px,
+      linear-gradient(90deg, rgba(255, 255, 255, .03) 1px, transparent 1px) 0 0 / 75px 75px,
+      linear-gradient(rgba(255, 255, 255, .015) 1px, transparent 1px) 0 0 / 15px 15px,
+      linear-gradient(90deg, rgba(255, 255, 255, .015) 1px, transparent 1px) 0 0 / 15px 15px,
+      linear-gradient(rgba(13, 16, 27, .88), rgba(13, 16, 27, .88)),
+      radial-gradient(ellipse 55% 60% at 78% 70%, transparent 25%, #0d101b 100%),
+      url(../src/Gisr.Web/wwwroot/img/hub-bg.jpg) 100% 100% / auto 70% no-repeat,
+      #0d101b;
+    --topbar: rgba(29, 40, 53, .95); --topbar-border: 0 solid transparent;
+    --side-bg: transparent; --side-border: 0 solid transparent;
+    --side-link: rgba(255, 255, 255, .5); --side-hover-bg: transparent; --side-hover: #fff;
+    --side-current-bg: transparent; --side-current: #fff; --side-dot: inline-block;
+    --surface: rgba(29, 40, 53, .75); --surface-2: rgba(255, 255, 255, .15); --border: rgba(255, 255, 255, .25);
+    --field-bg: transparent; --menu-bg: #1d2835;
+    --text: rgba(255, 255, 255, .75); --muted: rgba(255, 255, 255, .5); --emphasis: #fff;
+    --accent: #4e9cff; --accent-strong: #0271ff; --link-hover: #9ac6ff; --focus: #4e9cff;
+    --on-accent: #fff; --btn-hover-bg: #0255bf; --btn-hover-text: #fff;
+    --disabled: #4195ff; --disabled-text: #fff; --disabled-opacity: .65;
+    --field-focus-border: rgba(255, 255, 255, .5); --field-ring: rgba(255, 255, 255, .25);
+    --radius: .25rem; --radius-ctl: .25rem;
+    --font: "Chakra Petch", system-ui, sans-serif; --weight: 300; --tracking: .047rem;
+    --card-border: 0 solid transparent; --corner: rgba(255, 255, 255, .75); --frame: rgba(255, 255, 255, .3);
+    --stripe: rgba(255, 255, 255, .1); --row-hover: rgba(255, 255, 255, .15); --row-selected: rgba(2, 113, 255, .3);
+    --acc-open: rgba(78, 156, 255, .15);
+    --sb-thumb: rgba(255, 255, 255, .3); --sb-track: rgba(13, 16, 27, .6); --card-bar: rgba(255, 255, 255, .05);
+    --badge-ok: #ff9f0c; --badge-ok-text: #ff9f0c;
+    --danger: #e00000; --danger-hover: #b30000; --danger-text: #ff6060; --danger-subtle: rgba(255, 96, 96, .14);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 2rem; background: #111; color: #ddd; font-family: system-ui, sans-serif; font-size: 14px; }
+  h1 { font-size: 1.2rem; margin: 0 0 .25rem; }
+  .lead { color: #999; margin: 0 0 1.5rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(34rem, 1fr)); gap: 1.5rem; align-items: start; }
+  .label { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: #aaa; margin: 0 0 .5rem; }
+  .label b { color: #fff; }
+
+  /* Mock app shell */
+  /* max-height + overflow so the themed scrollbar is visible in the preview. */
+  .app { border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; max-height: 42rem; color: var(--text);
+         scrollbar-color: var(--sb-thumb) var(--sb-track); scrollbar-width: thin;
+         background: var(--page); font-family: var(--font); font-weight: var(--weight); letter-spacing: var(--tracking); }
+  .topbar { display: flex; align-items: center; gap: 1rem; height: 3rem; padding: 0 1rem; background: var(--topbar); border-bottom: var(--topbar-border); }
+  .brand { font-weight: 600; color: #fff; letter-spacing: .02em; display: flex; align-items: center; gap: .5rem; }
+  .brand i { width: 1.1rem; height: 1.1rem; border-radius: 50%; border: 2px solid var(--accent); display: inline-block; }
+  .search { flex: 1; max-width: 18rem; margin: 0 auto; height: 2rem; border-radius: 999px; border: 1px solid var(--border);
+            background: var(--field-bg); color: var(--muted); padding: 0 1rem; display: flex; align-items: center; justify-content: space-between; font-size: .8rem; }
+  .avatar { width: 1.9rem; height: 1.9rem; border-radius: 50%; background: var(--accent-strong); color: var(--on-accent); font-weight: 700; display: grid; place-items: center; font-size: .75rem; }
+  .shell { display: flex; min-height: 33rem; }
+  .sidenav { width: 11rem; flex-shrink: 0; padding: .75rem .5rem; background: var(--side-bg); border-right: var(--side-border); }
+  .sidenav h4 { margin: .25rem .75rem; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  .sidenav a { display: flex; align-items: center; gap: .5rem; padding: .45rem .75rem; margin: 0 0 2px .5rem; border-radius: var(--radius-ctl); color: var(--side-link); text-decoration: none; margin-bottom: 2px; }
+  .sidenav a.hover { background: var(--side-hover-bg); color: var(--side-hover); }
+  .sidenav a.current { background: var(--side-current-bg); color: var(--side-current); font-weight: 600; }
+  .sidenav a.current::before { content: ""; display: var(--side-dot); width: .4rem; height: .4rem; border-radius: 50%; background: var(--accent); }
+  .content { flex: 1; padding: 1rem 1.25rem; min-width: 0; }
+  .title { font-size: 1.1rem; font-weight: 600; margin: 0 0 .75rem; color: var(--emphasis); }
+
+  .card { position: relative; background: var(--surface); border: var(--card-border); border-radius: var(--radius); padding: .85rem 1rem; margin-bottom: .75rem; }
+  .card.accent { border-left: 4px solid var(--accent-strong); }
+  .theme-hud .card.accent { border-left: 0; --frame: rgba(78, 156, 255, .5); --corner: #4e9cff; }
+  .card > :not(.ca) { position: relative; z-index: 1; }
+  .card h5 { margin: 0 0 .5rem; font-size: .95rem; color: var(--emphasis); }
+  /* HUD frame: two crossing 1px line pairs inset 15px, plus L-shaped corner brackets. */
+  .theme-hud .card::before { content: ""; position: absolute; inset: 0 15px; border-top: 1px solid var(--frame); border-bottom: 1px solid var(--frame); }
+  .theme-hud .card::after  { content: ""; position: absolute; inset: 15px 0; border-left: 1px solid var(--frame); border-right: 1px solid var(--frame); }
+  .ca { display: none; position: absolute; width: 10px; height: 10px; }
+  .theme-hud .ca { display: block; }
+  .ca.tl { top: 0; left: 0; border-top: 2px solid var(--corner); border-left: 2px solid var(--corner); }
+  .ca.tr { top: 0; right: 0; border-top: 2px solid var(--corner); border-right: 2px solid var(--corner); }
+  .ca.bl { bottom: 0; left: 0; border-bottom: 2px solid var(--corner); border-left: 2px solid var(--corner); }
+  .ca.br { bottom: 0; right: 0; border-bottom: 2px solid var(--corner); border-right: 2px solid var(--corner); }
+
+  /* Header/footer bleed to the card edges via negative margins. */
+  .card-header, .card-footer { margin: 0 -1rem; padding: .6rem 1rem; background: var(--card-bar); display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .card-header { margin-top: -.85rem; margin-bottom: .75rem; border-bottom: 1px solid var(--border); border-radius: var(--radius) var(--radius) 0 0; font-weight: 600; color: var(--emphasis); }
+  .card-footer { margin-bottom: -.85rem; margin-top: .75rem; border-top: 1px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); }
+  .card-footer .row { margin: 0; }
+
+  .muted { color: var(--muted); }
+  a.link { color: var(--accent); }
+  a.link:hover, a.link.hover { color: var(--link-hover); }
+
+  .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .5rem; }
+  .btn { font: inherit; letter-spacing: inherit; padding: .375rem .85rem; border-radius: var(--radius-ctl); border: 1px solid transparent; cursor: pointer; }
+  .btn-primary { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--on-accent); font-weight: 600; }
+  .btn-primary.hover { background: var(--btn-hover-bg); border-color: var(--btn-hover-bg); color: var(--btn-hover-text); }
+  .btn-primary.disabled { background: var(--disabled); border-color: var(--disabled); color: var(--disabled-text); opacity: var(--disabled-opacity); }
+  .btn-outline { background: var(--field-bg); border-color: var(--border); color: var(--text); }
+  .btn-outline.hover { background: var(--surface-2); border-color: var(--accent-strong); color: #fff; }
+  .btn-outline.active { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--on-accent); font-weight: 600; }
+  .focus { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+  .btn-danger.hover { background: var(--danger-hover); border-color: var(--danger-hover); }
+  .btn-danger.disabled { opacity: .65; }
+  .field.invalid { border-color: var(--danger-text); }
+  .field.invalid.focused { box-shadow: 0 0 0 .25rem var(--danger-subtle); }
+  .invalid-msg { margin-top: .25rem; font-size: .8rem; color: var(--danger-text); }
+  a.link.danger { color: var(--danger-text); }
+  .alert.danger { border-left-color: var(--danger); background: var(--danger-subtle); color: var(--danger-text); }
+
+  .field { display: block; width: 100%; padding: .375rem .75rem; border-radius: var(--radius-ctl); border: 1px solid var(--border); background: var(--field-bg); color: var(--text); font: inherit; letter-spacing: inherit; }
+  .field.focused { border-color: var(--field-focus-border); box-shadow: 0 0 0 .25rem var(--field-ring); }
+  /* Themed dropdown popup; browsers without base-select fall back to a dark native list. */
+  select.field { color-scheme: dark; }
+  @supports (appearance: base-select) {
+    select.field, select.field::picker(select) { appearance: base-select; }
+    select.field { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+    select.field::picker-icon { color: var(--muted); flex-shrink: 0; }
+    select.field::picker(select) { background: var(--menu-bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-ctl); padding: .25rem; margin-block: .25rem; box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .35); }
+    select.field option { padding: .5rem .75rem; border-radius: calc(var(--radius-ctl) - 2px); }
+    select.field option:checked { background: var(--surface-2); color: var(--accent); }
+    select.field option:hover, select.field option:focus-visible { background: var(--accent-strong); color: var(--on-accent); outline: none; }
+  }
+  .form-label { display: block; margin-bottom: .25rem; font-size: .8rem; color: var(--muted); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+
+  .switch { display: inline-flex; align-items: center; gap: .6rem; }
+  .switch .track { width: 2.2rem; height: 1.2rem; border-radius: 999px; background: var(--accent-strong); border: 1px solid var(--accent-strong); position: relative; }
+  .switch .track::after { content: ""; position: absolute; top: 2px; right: 2px; width: .9rem; height: .9rem; border-radius: 50%; background: var(--on-accent); }
+
+  .badge { display: inline-block; padding: .3em .6em; border-radius: var(--radius-ctl); font-size: .72rem; font-weight: 700; color: var(--text); background: transparent; border: 1px solid currentColor; }
+  .badge.ok { color: var(--badge-ok-text); }
+  .badge.danger { color: var(--danger-text); }
+  .badge.sec { color: var(--muted); }
+  .badge.accent { color: var(--accent); }
+
+  /* Accordion: items stand alone as separate rounded blocks, like the app's .accordion. */
+  .acc { display: flex; flex-direction: column; gap: .75rem; margin-bottom: .75rem; }
+  .acc details { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+  .acc summary { list-style: none; cursor: pointer; padding: .7rem 1rem; display: flex; justify-content: space-between; align-items: center; color: var(--text); }
+  .acc summary::-webkit-details-marker { display: none; }
+  .acc summary::after { content: ""; width: .55rem; height: .55rem; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(45deg); margin-top: -.25rem; transition: transform .15s; }
+  .acc summary:hover { background: var(--surface-2); }
+  .acc summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+  .acc details[open] summary { background: var(--acc-open); color: var(--emphasis); box-shadow: inset 0 -1px 0 var(--border); }
+  .acc details[open] summary::after { transform: rotate(-135deg); margin-top: .25rem; }
+  .acc .body { padding: .75rem 1rem; }
+
+  .table-wrap { overflow-x: auto; scrollbar-color: var(--sb-thumb) var(--sb-track); scrollbar-width: thin; }
+  table.t { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  table.t th, table.t td { padding: .5rem .75rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.t thead th { color: var(--emphasis); font-weight: 600; border-bottom-width: 2px; }
+  table.t thead th .sort { color: var(--accent); margin-left: .25rem; }
+  table.t tbody tr:nth-child(even) { background: var(--stripe); }
+  table.t tbody tr.hover { background: var(--row-hover); }
+  table.t tbody tr.selected { background: var(--row-selected); }
+  table.t tbody tr:last-child td { border-bottom: 0; }
+  table.t td.num, table.t th.num { text-align: right; }
+
+  .list { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .list div { padding: .5rem .85rem; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+  .list div:last-child { border-bottom: 0; }
+  .list div.hover { background: var(--surface-2); }
+  .alert { border: 1px solid var(--border); border-left: 4px solid var(--accent); background: var(--surface); border-radius: var(--radius-ctl); padding: .6rem .85rem; margin-top: .5rem; }
+
+  .tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--border); margin-bottom: .5rem; }
+  .tabs span { padding: .4rem .85rem; border: 1px solid transparent; border-radius: var(--radius-ctl) var(--radius-ctl) 0 0; color: var(--muted); }
+  .tabs span.on { border-color: var(--border); border-bottom-color: transparent; color: var(--accent); font-weight: 600; margin-bottom: -1px; }
+  /* HUD tabs: plain text, 3px bright underline bar on active/hover. */
+  .theme-hud .tabs { gap: .5rem; border-bottom-color: rgba(255, 255, 255, .3); }
+  .theme-hud .tabs span { position: relative; border: 0; border-radius: 0; color: var(--emphasis); }
+  .theme-hud .tabs span.on { color: var(--emphasis); font-weight: inherit; margin-bottom: 0; }
+  .theme-hud .tabs span.on::after, .theme-hud .tabs span:hover::after {
+    content: ""; position: absolute; left: .5rem; right: .5rem; bottom: -2px; height: 3px; background: #1fb0ff; }
+
+  /* Swatches */
+  .swatches { margin-top: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .5rem; }
+  .sw { border-radius: .5rem; border: 1px solid #333; overflow: hidden; background: #1a1a1a; font-size: .72rem; }
+  .sw .chip { height: 2.2rem; border-bottom: 1px solid #333; }
+  .sw .meta { padding: .35rem .5rem; color: #ccc; line-height: 1.35; }
+  .sw .meta code { color: #fff; }
+  .contrast { margin-top: 1rem; font-size: .8rem; color: #bbb; }
+  .contrast table { border-collapse: collapse; width: 100%; }
+  .contrast th, .contrast td { text-align: left; padding: .25rem .5rem; border-bottom: 1px solid #2a2a2a; }
+  .pass { color: #5ddc8f; } .fail { color: #ff8585; }
+  .notes { margin-top: 2rem; max-width: 60rem; color: #bbb; line-height: 1.6; }
+  .notes h2 { font-size: .9rem; color: #fff; margin: 0 0 .5rem; }
+</style>
+</head>
+<body>
+<h1>GISR theme options</h1>
+<p class="lead">Four site themes selectable from account preferences. Green / Teal is the default; Dark Navy and Dark Grey reuse its layout with a different palette, and GISR Hub is derived from the HUD template. Same content in each; only tokens and effects differ.</p>
+
+<div class="grid"></div>
+
+<div class="notes">
+  <h2>HUD traits reproduced in the GISR Hub theme</h2>
+  <ul>
+    <li>Page background <code>#1d2835</code> with a vertical gradient from <code>rgba(50,70,80,.9)</code> to <code>#0d101b</code>.</li>
+    <li>Left nav and main content have no background and the nav has no right border; nav links are 50% white, turning white on hover and current.</li>
+    <li>Top bar <code>rgba(29,40,53,.95)</code> with no bottom border.</li>
+    <li>Cards are transparent with a thin crossing-line frame (inset 15px, 30% white) and L-shaped corner brackets (75% white). The highlighted card uses the blue accent.</li>
+    <li>Primary button <code>#0271ff</code>, hover <code>#0255bf</code>, disabled <code>#4195ff</code> at 65% opacity; links <code>#4e9cff</code>, link hover <code>#9ac6ff</code>.</li>
+    <li>Transparent form fields with a 25% white border; focus is a 50% white border plus a 25% white ring.</li>
+    <li>4px corner radius, Chakra Petch at weight 300 with 0.75px letter spacing (loaded from Google Fonts in this preview only).</li>
+  </ul>
+</div>
+
+<template id="panel">
+  <section>
+    <p class="label"><b class="name"></b><span class="sub-wrap"> &middot; <span class="sub"></span></span></p>
+    <div class="app">
+      <div class="topbar">
+        <span class="brand"><i></i>GISR</span>
+        <span class="search"><span>Search records</span><span>Ctrl+K</span></span>
+        <span class="avatar">AC</span>
+      </div>
+      <div class="shell">
+        <nav class="sidenav" aria-label="Preview navigation">
+          <h4>Records</h4>
+          <a class="current">My records</a>
+          <a class="hover">Gallery</a>
+          <a>Search</a>
+          <h4>Account</h4>
+          <a>Settings</a>
+          <a>Help</a>
+        </nav>
+        <div class="content">
+          <h2 class="title">Account settings</h2>
+
+          <div class="card accent">
+            <span class="ca tl"></span><span class="ca tr"></span><span class="ca bl"></span><span class="ca br"></span>
+            <h5>Preferences</h5>
+            <div class="switch"><span class="track"></span><span>Email me about new notifications</span></div>
+            <div style="margin-top:.75rem">
+              <label class="form-label">Site theme</label>
+              <select class="field focused" style="max-width:14rem" aria-label="Site theme"></select>
+            </div>
+            <div class="row">
+              <button class="btn btn-primary">Save changes</button>
+              <button class="btn btn-primary hover">Hover</button>
+              <button class="btn btn-primary disabled" disabled>Disabled</button>
+              <button class="btn btn-outline">Cancel</button>
+              <button class="btn btn-outline hover">Hover</button>
+            </div>
+            <div class="row">
+              <span class="muted">Segmented:</span>
+              <button class="btn btn-outline active">Mine</button>
+              <button class="btn btn-outline">All</button>
+              <button class="btn btn-outline focus">Keyboard focus</button>
+            </div>
+            <div class="row">
+              <button class="btn btn-danger">Delete record</button>
+              <button class="btn btn-danger hover">Hover</button>
+              <button class="btn btn-danger disabled" disabled>Disabled</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <span class="ca tl"></span><span class="ca tr"></span><span class="ca bl"></span><span class="ca br"></span>
+            <div class="tabs"><span class="on">Details</span><span>Incidents</span><span>Awards</span></div>
+            <div class="cols">
+              <div><label class="form-label">Name</label><input class="field" value="Anakin Skywalker" aria-label="Name"></div>
+              <div><label class="form-label">Rank (focused)</label><input class="field focused" value="General" aria-label="Rank"></div>
+            </div>
+            <div style="margin-top:.75rem">
+              <label class="form-label">Email (invalid)</label>
+              <input class="field invalid" value="not-an-email" aria-label="Email" aria-invalid="true">
+              <div class="invalid-msg">Enter a valid email address.</div>
+            </div>
+            <p class="muted" style="margin:.75rem 0 0">Secondary text. <a class="link" href="#preview">Normal link</a> &middot; <a class="link hover" href="#preview">Hover link</a></p>
+            <div class="row">
+              <span class="badge ok">Officer</span>
+              <span class="badge sec">Citizen</span>
+              <span class="badge accent">Jedi Order</span>
+              <span class="badge danger">Sealed</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <span class="ca tl"></span><span class="ca tr"></span><span class="ca bl"></span><span class="ca br"></span>
+            <h5>Records</h5>
+            <div class="table-wrap">
+              <table class="t">
+                <thead>
+                  <tr><th>Subject<span class="sort">&#9650;</span></th><th>Affiliation</th><th>Status</th><th class="num">Artifacts</th><th></th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Anakin Skywalker</td><td>Republic &rsaquo; Jedi Order</td><td><span class="badge ok">Officer</span></td><td class="num">12</td><td><a class="link" href="#preview">Edit</a></td></tr>
+                  <tr class="hover"><td>Padm&eacute; Amidala</td><td>Naboo &rsaquo; Senate</td><td><span class="badge sec">Citizen</span></td><td class="num">4</td><td><a class="link hover" href="#preview">Edit</a></td></tr>
+                  <tr class="selected"><td>Obi-Wan Kenobi</td><td>Republic &rsaquo; Jedi Order</td><td><span class="badge ok">Officer</span></td><td class="num">9</td><td><a class="link" href="#preview">Edit</a></td></tr>
+                  <tr><td>Cad Bane</td><td>Independent</td><td><span class="badge sec">Citizen</span></td><td class="num">0</td><td><a class="link" href="#preview">Edit</a> &middot; <a class="link danger" href="#preview">Delete</a></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="muted" style="margin:.5rem 0 0;font-size:.75rem">Row 2 shows hover, row 3 shows selected.</p>
+          </div>
+
+          <div class="card">
+            <span class="ca tl"></span><span class="ca tr"></span><span class="ca bl"></span><span class="ca br"></span>
+            <div class="card-header"><span>Record summary</span><span class="badge accent">Draft</span></div>
+            <p style="margin:0 0 .5rem">Anakin Skywalker &middot; Republic &rsaquo; Jedi Order</p>
+            <p class="muted" style="margin:0">Last updated by Obi-Wan Kenobi. <a class="link" href="#preview">View history</a></p>
+            <div class="card-footer">
+              <span class="muted" style="font-size:.75rem">Updated 2 days ago</span>
+              <div class="row"><button class="btn btn-outline">Cancel</button><button class="btn btn-primary">Save changes</button></div>
+            </div>
+          </div>
+
+          <div class="acc">
+            <details open>
+              <summary>Engagement details</summary>
+              <div class="body">Open item with the active header fill. <a class="link" href="#preview">Link inside</a></div>
+            </details>
+            <details>
+              <summary>Incidents</summary>
+              <div class="body">Collapsed items show the hover fill on the header; click to expand.</div>
+            </details>
+            <details>
+              <summary>Awards</summary>
+              <div class="body">Third item.</div>
+            </details>
+          </div>
+
+          <div class="list">
+            <div><span>Battle of Geonosis</span><span class="muted">19 BBY</span></div>
+            <div class="hover"><span>Hovered row</span><span class="muted">20 BBY</span></div>
+            <div><span>Order of the Republic</span><span class="muted">Award</span></div>
+          </div>
+          <div class="alert">Informational message using the accent edge.</div>
+          <div class="alert danger">Error message: this record could not be deleted.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="swatches"></div>
+    <div class="contrast"></div>
+  </section>
+</template>
+
+<script>
+  const themes = [
+    { cls: 'theme-teal', name: 'Green / Teal', sub: 'current default', option: 'Green / Teal' },
+    { cls: 'theme-hud', name: 'GISR Hub', option: 'GISR Hub' },
+    { cls: 'theme-navy', name: 'Dark Navy', sub: 'new', option: 'Dark Navy' },
+    { cls: 'theme-grey', name: 'Dark Grey', sub: 'new', option: 'Dark Grey' },
+  ];
+  const tokens = ['base', 'surface', 'surface-2', 'border', 'text', 'muted', 'accent', 'accent-strong', 'on-accent'];
+
+  // Parses #rrggbb or rgba(); alpha is composited over the given opaque background.
+  const parse = (c, over = [0, 0, 0]) => {
+    c = c.trim();
+    if (c === 'transparent') return over;
+    if (c[0] === '#') return [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+    const m = c.match(/rgba?\(([^)]+)\)/).slice(1)[0].split(',').map(Number);
+    const a = m.length > 3 ? m[3] : 1;
+    return [0, 1, 2].map(i => Math.round(m[i] * a + over[i] * (1 - a)));
+  };
+  const lum = rgb => {
+    const [r, g, b] = rgb.map(v => v / 255).map(c => c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4));
+    return .2126 * r + .7152 * g + .0722 * b;
+  };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + .05) / (y + .05); };
+
+  const pairs = [
+    ['Body text on page', 'text', 'base', 4.5],
+    ['Muted text on page', 'muted', 'base', 4.5],
+    ['Link / accent on page', 'accent', 'base', 4.5],
+    ['Primary button text', 'on-accent', 'accent-strong', 4.5],
+    ['Border vs page (non-text)', 'border', 'base', 1.5],
+  ];
+
+  const tpl = document.getElementById('panel');
+  const grid = document.querySelector('.grid');
+
+  for (const t of themes) {
+    const node = tpl.content.cloneNode(true);
+    const section = node.querySelector('section');
+    section.classList.add(t.cls);
+    node.querySelector('.name').textContent = t.name;
+    if (t.sub) node.querySelector('.sub').textContent = t.sub;
+    else node.querySelector('.sub-wrap').remove();
+    const select = node.querySelector('select');
+    for (const o of themes) select.add(new Option(o.option, o.cls, false, o === t));
+    grid.appendChild(node);
+
+    const raw = Object.fromEntries(tokens.map(k => [k, getComputedStyle(section).getPropertyValue('--' + k).trim()]));
+    const base = parse(raw.base);
+    const flat = k => parse(raw[k], base);
+
+    section.querySelector('.swatches').innerHTML = tokens.map(k =>
+      `<div class="sw"><div class="chip" style="background:linear-gradient(${raw[k]},${raw[k]}),${raw.base}"></div><div class="meta"><code>--${k}</code><br>${raw[k]}</div></div>`).join('');
+
+    section.querySelector('.contrast').innerHTML = '<table><tr><th>Pair</th><th>Ratio</th><th>Target</th></tr>' +
+      pairs.map(([label, fg, bg, min]) => {
+        const r = ratio(flat(fg), flat(bg));
+        return `<tr><td>${label}</td><td>${r.toFixed(2)}:1</td><td class="${r >= min ? 'pass' : 'fail'}">${r >= min ? 'Pass' : 'Below'} (${min}:1)</td></tr>`;
+      }).join('') + '</table>';
+  }
+</script>
+</body>
+</html>
