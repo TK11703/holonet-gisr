@@ -73,7 +73,7 @@ Repository `TK11703/holonet-gisr`.
 Notes:
 
 - These are variables, not secrets. There are no repository or environment secrets; the workflow signs in with OIDC (`id-token: write`).
-- The Entra federated credential subject is `repo:TK11703/holonet-gisr:environment:production`. The job must reference environment `production` (it does), and the repository name must match exactly.
+- The Entra federated credential subject must match the subject GitHub presents. This repository uses immutable subjects, so it is `repo:TK11703@<ownerId>/holonet-gisr@<repoId>:environment:production`, not `repo:TK11703/holonet-gisr:environment:production`. The bootstrap script reads the right prefix from `gh api repos/TK11703/holonet-gisr/actions/oidc/customization/sub`. The job must reference environment `production` (it does).
 - `.github/workflows/deploy.yml` triggers via `workflow_run` of the `CI` workflow, which only runs from the default branch. Merge the deployment work to `main` before expecting an automatic deployment.
 - To see the variables the script set: `gh variable list --env production --repo TK11703/holonet-gisr`.
 
@@ -124,8 +124,8 @@ az deployment group create -g rg-platform -n gisr-platform-manual -f infra/platf
 
 # 3. Database role and extension (temporary firewall rule for this machine)
 $ip = (Invoke-RestMethod https://api.ipify.org)
-az postgres flexible-server firewall-rule create -g rg-platform --name accpsqlshared `
-    --rule-name gisr-deploy-manual --start-ip-address $ip --end-ip-address $ip
+az postgres flexible-server firewall-rule create -g rg-platform --server-name accpsqlshared `
+    --name gisr-deploy-manual --start-ip-address $ip --end-ip-address $ip
 ```
 
 Then run the database script in Git Bash or WSL (it needs `psql` and an `az` session):
@@ -143,7 +143,7 @@ Back in PowerShell:
 
 ```powershell
 # Remove the firewall rule
-az postgres flexible-server firewall-rule delete -g rg-platform --name accpsqlshared --rule-name gisr-deploy-manual --yes
+az postgres flexible-server firewall-rule delete -g rg-platform --server-name accpsqlshared --name gisr-deploy-manual --yes
 
 # 4. Container apps
 az deployment group create -g rg-apps -n gisr-apps-manual -f infra/apps.bicep `

@@ -69,11 +69,12 @@ function Set-ServicePrincipal([string]$AppId) {
 
 function Set-FederatedCredential($App, [string]$Name, [string]$Issuer, [string]$Subject) {
     $existing = (Invoke-Graph GET "/applications/$($App.id)/federatedIdentityCredentials").value | Where-Object name -eq $Name
-    $body = @{ name = $Name; issuer = $Issuer; subject = $Subject; audiences = @('api://AzureADTokenExchange') }
+    $body = @{ issuer = $Issuer; subject = $Subject; audiences = @('api://AzureADTokenExchange') }
     if ($existing) {
         Invoke-Graph PATCH "/applications/$($App.id)/federatedIdentityCredentials/$($existing.id)" $body | Out-Null
     }
     else {
+        $body.name = $Name
         Invoke-Graph POST "/applications/$($App.id)/federatedIdentityCredentials" $body | Out-Null
     }
 }
@@ -167,8 +168,11 @@ Write-Host '[5/7] GitHub deployer identity'
 $deployer = Set-App $DeployerName @{}
 $deployerSp = Set-ServicePrincipal $deployer.appId
 $githubIssuer = 'https://token.actions.githubusercontent.com'
-Set-FederatedCredential $deployer "gh-env-$GitHubEnvironment" $githubIssuer "repo:${Repository}:environment:$GitHubEnvironment"
-Set-FederatedCredential $deployer 'gh-main-branch' $githubIssuer "repo:${Repository}:ref:refs/heads/main"
+# Repos with immutable subjects present repo:OWNER@ownerId/REPO@repoId, not repo:OWNER/REPO.
+$subjectPrefix = (gh api "repos/$Repository/actions/oidc/customization/sub" | ConvertFrom-Json).sub_claim_prefix
+if (-not $subjectPrefix) { $subjectPrefix = "repo:$Repository" }
+Set-FederatedCredential $deployer "gh-env-$GitHubEnvironment" $githubIssuer "${subjectPrefix}:environment:$GitHubEnvironment"
+Set-FederatedCredential $deployer 'gh-main-branch' $githubIssuer "${subjectPrefix}:ref:refs/heads/main"
 
 $registryId = az acr show -n $RegistryName -g $PlatformResourceGroup --query id -o tsv
 $assignments = @(
