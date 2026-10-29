@@ -30,6 +30,7 @@ $PSNativeCommandUseErrorActionPreference = $true
 
 $graphAppId = '00000003-0000-0000-c000-000000000000'
 $userReadBasicAllScopeId = 'b340eb25-3456-403f-be2f-af7a0d370277'
+$userReadScopeId = 'e1fe6dd8-ba31-4d61-89e7-88639da4683d'
 $apiScopeName = 'access_as_user'
 
 function Invoke-Graph {
@@ -134,7 +135,7 @@ $api = Set-App 'HoloNet GISR API' @{
             value              = 'Officer'
             isEnabled          = $true
         })
-    requiredResourceAccess = @(@{ resourceAppId = $graphAppId; resourceAccess = @(@{ id = $userReadBasicAllScopeId; type = 'Scope' }) })
+    requiredResourceAccess = @(@{ resourceAppId = $graphAppId; resourceAccess = @(@{ id = $userReadBasicAllScopeId; type = 'Scope' }, @{ id = $userReadScopeId; type = 'Scope' }) })
 }
 Invoke-Graph PATCH "/applications/$($api.id)" @{ identifierUris = @("api://$($api.appId)") } | Out-Null
 Write-Host "  ok: client ID $($api.appId)"
@@ -155,7 +156,7 @@ Write-Host '[4/7] Service principals, consent, federated credentials'
 $apiSp = Set-ServicePrincipal $api.appId
 $webSp = Set-ServicePrincipal $web.appId
 $graphSp = Find-Graph 'servicePrincipals' "appId eq '$graphAppId'"
-Grant-AdminConsent $apiSp.id $graphSp.id 'User.ReadBasic.All'
+Grant-AdminConsent $apiSp.id $graphSp.id 'User.ReadBasic.All User.Read'
 Grant-AdminConsent $webSp.id $apiSp.id $apiScopeName
 
 $entraIssuer = "https://login.microsoftonline.com/$tenantId/v2.0"
