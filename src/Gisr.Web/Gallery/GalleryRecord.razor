@@ -54,7 +54,7 @@ else
         <div id="gallery-images" class="mb-4">
             <div id="gallery-images-summary" class="input-group seal-control mb-3">
                 <span class="input-group-text">
-                    Items in this gallery <span id="gallery-item-count" class="badge rounded-pill text-bg-secondary ms-2">@_page.TotalCount</span>
+                    Items in this gallery <span id="gallery-item-count" class="badge text-bg-secondary ms-2">@_page.TotalCount</span>
                 </span>
                 <span id="gallery-total-size" class="input-group-text flex-grow-1 justify-content-end">
                     Total memory used <span class="fw-semibold ms-1">@(_totalBytes is { } bytes ? ArtifactDisplay.Size(bytes) : "unavailable")</span>

@@ -129,7 +129,7 @@ else
     </fieldset>
     @if (record.CanEdit && !viewing)
     {
-        <div class="card-side-action position-absolute bottom-0 end-0 d-flex align-items-center border-start px-2">
+        <div class="card-side-action position-absolute bottom-0 end-0 d-flex align-items-center px-2">
             <RecordActionsMenu RecordId="record.Id" OnDelete="() => { _deleteFailed = false; _confirmingDelete = true; }" />
         </div>
     }

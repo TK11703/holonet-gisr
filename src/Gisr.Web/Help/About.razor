@@ -66,27 +66,29 @@
             Everyone who signs in is a citizen. Officers hold a credential from the organization's identity provider
             that widens what they may see and do.
         </p>
+        <div class="card">
         <div class="table-responsive">
-            <table class="table align-middle mb-0">
+            <table class="table table-hover align-middle mb-0">
                 <caption class="visually-hidden">What citizens and Officers can do</caption>
                 <thead>
                     <tr>
-                        <th scope="col">Capability</th>
+                        <th scope="col" class="w-50 ps-4">Capability</th>
                         <th scope="col" class="text-center">Citizen</th>
-                        <th scope="col" class="text-center">Officer</th>
+                        <th scope="col" class="text-center pe-4">Officer</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var (capability, citizen, officer) in Capabilities)
                     {
                         <tr>
-                            <th scope="row" class="fw-normal">@capability</th>
-                            <td class="text-center">@citizen</td>
-                            <td class="text-center">@officer</td>
+                            <th scope="row" class="fw-normal ps-4">@capability</th>
+                            <td class="text-center @(citizen == "No" ? "text-secondary" : null)">@citizen</td>
+                            <td class="text-center pe-4 @(officer == "No" ? "text-secondary" : null)">@officer</td>
                         </tr>
                     }
                 </tbody>
             </table>
+        </div>
         </div>
     </section>
 
