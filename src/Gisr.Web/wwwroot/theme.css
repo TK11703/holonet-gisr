@@ -1,4 +1,6 @@
-/* Dark-only theme: deep teal-green surfaces with a teal accent. No light variant exists. */
+/* Dark-only themes. The default is deep teal-green with a teal accent. Other themes (navy, grey, hub; end of file) override the tokens
+   under :root[data-gisr-theme="id"]; hub also restyles cards and tabs.
+   App.razor sets data-gisr-theme from the signed-in account's saved theme. */
 :root,
 [data-bs-theme="dark"] {
     color-scheme: dark;
@@ -11,8 +13,36 @@
     --gisr-muted: #9bbab5;
     --gisr-accent: #2dd4bf;
     --gisr-accent-strong: #14b8a6;
+    --gisr-on-accent: #031a18;
+    --gisr-focus: #5eead4;
+    --gisr-accent-active: #5eead4;
+    --gisr-btn-hover-bg: var(--gisr-accent);
+    --gisr-btn-disabled-bg: #0f6d63;
+    --gisr-btn-disabled-color: #9bbab5;
+    --gisr-field-bg: var(--gisr-bg-2);
+    --gisr-field-focus-border: var(--gisr-accent);
+    --gisr-menu-bg: var(--gisr-surface);
+    --gisr-picker-bg: var(--gisr-bg-2);
+    --gisr-drawer-bg: var(--gisr-bg-2);
+    --gisr-topbar-bg: var(--gisr-bg-2);
+    --gisr-topbar-border: 1px solid var(--gisr-border);
+    --gisr-side-link: var(--gisr-text);
+    --gisr-side-hover-bg: var(--gisr-surface-2);
+    --gisr-side-hover: #fff;
+    --gisr-side-current-bg: var(--gisr-surface-2);
+    --gisr-side-current: var(--gisr-accent);
+    --gisr-radius: 0.75rem;
+    --gisr-badge-success: #4cc38a;
+    --gisr-badge-warning: #ffda6a;
+    --gisr-page-bg: radial-gradient(1200px 600px at 20% -10%, #0d3a36 0%, var(--gisr-bg) 60%);
+    --gisr-sb-thumb: #2a6e66;
+    --gisr-sb-track: #0a2a28;
+    --gisr-switch-focus-knob: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%235eead4'/%3e%3c/svg%3e");
+    --gisr-switch-checked-knob: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23031a18'/%3e%3c/svg%3e");
+    --gisr-chevron: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%232dd4bf'><path fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>");
     --gisr-topbar-height: 3rem;
     --gisr-sidenav-width: 14.5rem;
+    scrollbar-color: var(--gisr-sb-thumb) var(--gisr-sb-track);
 
     --bs-body-bg: var(--gisr-bg);
     --bs-body-color: var(--gisr-text);
@@ -31,28 +61,29 @@
 }
 
 body {
-    background: radial-gradient(1200px 600px at 20% -10%, #0d3a36 0%, var(--gisr-bg) 60%) fixed;
+    background: var(--gisr-page-bg);
+    background-attachment: fixed;
     min-height: 100vh;
 }
 
 :focus-visible {
-    outline: 2px solid #5eead4;
+    outline: 2px solid var(--gisr-focus);
     outline-offset: 2px;
 }
 
 .btn-primary {
-    --bs-btn-color: #031a18;
+    --bs-btn-color: var(--gisr-on-accent);
     --bs-btn-bg: var(--gisr-accent-strong);
     --bs-btn-border-color: var(--gisr-accent-strong);
-    --bs-btn-hover-color: #031a18;
-    --bs-btn-hover-bg: var(--gisr-accent);
-    --bs-btn-hover-border-color: var(--gisr-accent);
-    --bs-btn-active-color: #031a18;
-    --bs-btn-active-bg: #5eead4;
-    --bs-btn-active-border-color: #5eead4;
-    --bs-btn-disabled-bg: #0f6d63;
-    --bs-btn-disabled-border-color: #0f6d63;
-    --bs-btn-disabled-color: #9bbab5;
+    --bs-btn-hover-color: var(--gisr-on-accent);
+    --bs-btn-hover-bg: var(--gisr-btn-hover-bg);
+    --bs-btn-hover-border-color: var(--gisr-btn-hover-bg);
+    --bs-btn-active-color: var(--gisr-on-accent);
+    --bs-btn-active-bg: var(--gisr-accent-active);
+    --bs-btn-active-border-color: var(--gisr-accent-active);
+    --bs-btn-disabled-bg: var(--gisr-btn-disabled-bg);
+    --bs-btn-disabled-border-color: var(--gisr-btn-disabled-bg);
+    --bs-btn-disabled-color: var(--gisr-btn-disabled-color);
 }
 
 .btn-icon {
@@ -69,12 +100,12 @@ body {
 /* Radio buttons shown as a segmented toggle: field-colored when idle, the primary-button teal when chosen. */
 .segmented-choice .btn {
     --bs-btn-color: var(--gisr-text);
-    --bs-btn-bg: var(--gisr-bg-2);
+    --bs-btn-bg: var(--gisr-field-bg);
     --bs-btn-border-color: var(--gisr-border);
     --bs-btn-hover-color: #fff;
     --bs-btn-hover-bg: var(--gisr-surface-2);
     --bs-btn-hover-border-color: var(--gisr-accent-strong);
-    --bs-btn-active-color: #031a18;
+    --bs-btn-active-color: var(--gisr-on-accent);
     --bs-btn-active-bg: var(--gisr-accent-strong);
     --bs-btn-active-border-color: var(--gisr-accent-strong);
 }
@@ -85,14 +116,14 @@ body {
 }
 
 .segmented-choice .btn-check:focus-visible + .btn {
-    outline: 2px solid #5eead4;
+    outline: 2px solid var(--gisr-focus);
     outline-offset: 2px;
 }
 
 /* Frame in the page background color, matching the list-group items on account settings. */
 .seal-control {
     border: 0.5rem solid var(--gisr-bg);
-    border-radius: 0.75rem;
+    border-radius: var(--gisr-radius);
 }
 
 .card,
@@ -101,22 +132,22 @@ body {
 .modal-content {
     --bs-card-bg: var(--gisr-surface);
     --bs-card-border-color: var(--gisr-border);
-    --bs-dropdown-bg: var(--gisr-surface);
+    --bs-dropdown-bg: var(--gisr-menu-bg);
     --bs-dropdown-border-color: var(--gisr-border);
     --bs-dropdown-link-hover-bg: var(--gisr-surface-2);
-    border-radius: 0.75rem;
+    border-radius: var(--gisr-radius);
 }
 
 .form-control,
 .form-select {
-    background-color: var(--gisr-bg-2);
+    background-color: var(--gisr-field-bg);
     border-color: var(--gisr-border);
 }
 
 .form-control:focus,
 .form-select:focus {
-    background-color: var(--gisr-bg-2);
-    border-color: var(--gisr-accent);
+    background-color: var(--gisr-field-bg);
+    border-color: var(--gisr-field-focus-border);
     box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
 }
 
@@ -126,7 +157,7 @@ body {
 
 /* Bootstrap compiles the checked color in as blue, so switches, checkboxes, and radios are re-colored here. */
 .form-check-input {
-    background-color: var(--gisr-bg-2);
+    background-color: var(--gisr-field-bg);
     border-color: var(--gisr-border);
 }
 
@@ -137,16 +168,16 @@ body {
 }
 
 .form-check-input:focus {
-    border-color: var(--gisr-accent);
+    border-color: var(--gisr-field-focus-border);
     box-shadow: 0 0 0 0.2rem var(--bs-focus-ring-color);
 }
 
 .form-switch .form-check-input:focus:not(:checked) {
-    --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%235eead4'/%3e%3c/svg%3e");
+    --bs-form-switch-bg: var(--gisr-switch-focus-knob);
 }
 
 .form-switch .form-check-input:checked {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23031a18'/%3e%3c/svg%3e");
+    background-image: var(--gisr-switch-checked-knob);
 }
 
 @supports (appearance: base-select) {
@@ -160,7 +191,7 @@ body {
     }
 
     .form-select::picker(select) {
-        background-color: var(--gisr-bg-2);
+        background-color: var(--gisr-picker-bg);
         color: var(--gisr-text);
         border: 1px solid var(--gisr-border);
         border-radius: 0.375rem;
@@ -182,7 +213,7 @@ body {
     .form-select option:hover,
     .form-select option:focus-visible {
         background-color: var(--gisr-accent-strong);
-        color: #031a18;
+        color: var(--gisr-on-accent);
         outline: none;
     }
 }
@@ -193,7 +224,7 @@ body {
     left: 0.5rem;
     z-index: 2000;
     background: var(--gisr-accent-strong);
-    color: #031a18;
+    color: var(--gisr-on-accent);
     padding: 0.5rem 1rem;
     border-radius: 0.375rem;
 }
@@ -212,8 +243,8 @@ body {
     align-items: center;
     gap: 1rem;
     padding: 0 1rem;
-    background: var(--gisr-bg-2);
-    border-bottom: 1px solid var(--gisr-border);
+    background: var(--gisr-topbar-bg);
+    border-bottom: var(--gisr-topbar-border);
 }
 
 .topbar-start {
@@ -292,8 +323,6 @@ body {
     width: var(--gisr-sidenav-width);
     overflow-y: auto;
     padding: 1rem 0.75rem;
-    background: var(--gisr-bg-2);
-    border-right: 1px solid var(--gisr-border);
     z-index: 1020;
 }
 
@@ -306,8 +335,11 @@ body {
 }
 
 .sidenav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
     list-style: none;
-    margin: 0 0 0.75rem;
+    margin: 0 0 0.75rem 0.5rem;
     padding: 0;
 }
 
@@ -317,18 +349,18 @@ body {
     gap: 0.6rem;
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
-    color: var(--gisr-text);
+    color: var(--gisr-side-link);
     text-decoration: none;
 }
 
 .sidenav-link:hover {
-    background: var(--gisr-surface-2);
-    color: #fff;
+    background: var(--gisr-side-hover-bg);
+    color: var(--gisr-side-hover);
 }
 
 .sidenav-link[aria-current="page"] {
-    background: var(--gisr-surface-2);
-    color: var(--gisr-accent);
+    background: var(--gisr-side-current-bg);
+    color: var(--gisr-side-current);
     font-weight: 600;
 }
 
@@ -394,8 +426,8 @@ h1[tabindex="-1"]:focus-visible {
     --bs-accordion-bg: var(--gisr-surface);
     --bs-accordion-color: var(--gisr-text);
     --bs-accordion-border-color: var(--gisr-border);
-    --bs-accordion-border-radius: 0.75rem;
-    --bs-accordion-inner-border-radius: calc(0.75rem - 1px);
+    --bs-accordion-border-radius: var(--gisr-radius);
+    --bs-accordion-inner-border-radius: calc(var(--gisr-radius) - 1px);
     --bs-accordion-btn-color: var(--gisr-text);
     --bs-accordion-btn-bg: var(--gisr-surface);
     --bs-accordion-active-color: var(--gisr-text);
@@ -406,9 +438,9 @@ h1[tabindex="-1"]:focus-visible {
     gap: 0.75rem;
 }
 
-/* Teal chevron in place of Bootstrap's dark-theme blue. */
+/* Accent-colored chevron in place of Bootstrap's dark-theme blue. */
 [data-bs-theme="dark"] .accordion-button::after {
-    --bs-accordion-btn-icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%232dd4bf'><path fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>");
+    --bs-accordion-btn-icon: var(--gisr-chevron);
     --bs-accordion-btn-active-icon: var(--bs-accordion-btn-icon);
 }
 
@@ -433,7 +465,7 @@ h1[tabindex="-1"]:focus-visible {
 
 .form-floating > textarea:focus ~ label::after,
 .form-floating > textarea:not(:placeholder-shown) ~ label::after {
-    background-color: var(--gisr-bg-2);
+    background-color: var(--gisr-field-bg);
 }
 
 .form-floating > input[type="date"].form-control {
@@ -461,7 +493,7 @@ h1[tabindex="-1"]:focus-visible {
     padding: 0.5rem;
     background: var(--gisr-surface);
     border: 1px solid var(--gisr-border);
-    border-radius: 0.75rem;
+    border-radius: var(--gisr-radius);
 }
 
 .artifact-preview {
@@ -507,6 +539,20 @@ h1[tabindex="-1"]:focus-visible {
     overflow: hidden;
 }
 
+/* overflow-x: auto turns a 1px vertical overflow into a stray vertical scrollbar. */
+.table-responsive {
+    overflow-y: hidden;
+}
+
+/* In a card the table takes the card's surface and is clipped to its rounded corners. */
+.card > .table-responsive {
+    border-radius: calc(var(--gisr-radius) - 1px);
+}
+
+.card .table {
+    --bs-table-bg: transparent;
+}
+
 .home-eyebrow {
     color: var(--gisr-accent);
     font-size: 0.72rem;
@@ -546,7 +592,7 @@ h1[tabindex="-1"]:focus-visible {
     display: inline-flex;
     padding: 0.75rem;
     border: 1px solid var(--gisr-border);
-    border-radius: 0.75rem;
+    border-radius: var(--gisr-radius);
     background: var(--gisr-bg-2);
     color: var(--gisr-accent);
 }
@@ -647,7 +693,7 @@ h1[tabindex="-1"]:focus-visible {
     align-items: center;
     justify-content: center;
     background: var(--gisr-accent-strong);
-    color: #031a18;
+    color: var(--gisr-on-accent);
     font-weight: 600;
     font-size: 0.8rem;
 }
@@ -660,7 +706,7 @@ h1[tabindex="-1"]:focus-visible {
     height: 10rem;
     overflow: hidden;
     background: var(--gisr-surface-2);
-    border-radius: calc(0.75rem - 1px) calc(0.75rem - 1px) 0 0;
+    border-radius: calc(var(--gisr-radius) - 1px) calc(var(--gisr-radius) - 1px) 0 0;
 }
 
 /* scale-down shrinks a large image to fit and centers a small one without enlarging it. */
@@ -758,6 +804,8 @@ h1[tabindex="-1"]:focus-visible {
     .sidenav {
         transform: translateX(-100%);
         transition: transform 0.2s ease;
+        background: var(--gisr-drawer-bg);
+        border-right: 1px solid var(--gisr-border);
         box-shadow: 0 0 2rem rgba(0, 0, 0, 0.5);
     }
 
@@ -802,4 +850,314 @@ h1[tabindex="-1"]:focus-visible {
 
 .collapse-toggle[aria-expanded="true"] .icon {
     transform: rotate(180deg);
+}
+
+/* Badges are outlined; the color comes from the theme's text-bg-* meaning. The notification count stays solid. */
+.badge.text-bg-success,
+.badge.text-bg-secondary,
+.badge.text-bg-primary,
+.badge.text-bg-warning {
+    background-color: transparent !important;
+    border: 1px solid currentcolor;
+}
+
+.badge.text-bg-success {
+    color: var(--gisr-badge-success) !important;
+}
+
+.badge.text-bg-secondary {
+    color: var(--gisr-muted) !important;
+}
+
+.badge.text-bg-primary {
+    color: var(--gisr-accent) !important;
+}
+
+.badge.text-bg-warning {
+    color: var(--gisr-badge-warning) !important;
+}
+
+/* Dark Navy theme: the default layout with a deep navy palette and a sky-blue accent. */
+:root[data-gisr-theme="navy"] {
+    --gisr-bg: #0b1630;
+    --gisr-bg-2: #101d3d;
+    --gisr-surface: #14244a;
+    --gisr-surface-2: #1a2e5c;
+    --gisr-border: #27407a;
+    --gisr-text: #dbe6f7;
+    --gisr-muted: #9fb2d1;
+    --gisr-accent: #4da3ff;
+    --gisr-accent-strong: #2f81e0;
+    --gisr-on-accent: #04122b;
+    --gisr-focus: #7cc0ff;
+    --gisr-accent-active: #7cc0ff;
+    --gisr-btn-disabled-bg: #1f4a85;
+    --gisr-btn-disabled-color: #9fb2d1;
+    --gisr-page-bg: radial-gradient(1200px 600px at 20% -10%, #14285a 0%, var(--gisr-bg) 60%);
+    --gisr-sb-thumb: #2f4f8f;
+    --gisr-sb-track: #101d3d;
+    --gisr-switch-focus-knob: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%237cc0ff'/%3e%3c/svg%3e");
+    --gisr-switch-checked-knob: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%2304122b'/%3e%3c/svg%3e");
+    --gisr-chevron: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%234da3ff'><path fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>");
+
+    --bs-emphasis-color: #f1f6ff;
+    --bs-link-color-rgb: 77, 163, 255;
+    --bs-link-hover-color: #8fc4ff;
+    --bs-link-hover-color-rgb: 143, 196, 255;
+    --bs-primary-rgb: 47, 129, 224;
+    --bs-focus-ring-color: rgba(77, 163, 255, 0.4);
+    --bs-info-text-emphasis: #8fc4ff;
+    --bs-info-bg-subtle: rgba(77, 163, 255, 0.14);
+    --bs-info-border-subtle: rgba(77, 163, 255, 0.4);
+}
+
+/* Dark Grey theme: the default layout with a charcoal palette and a violet accent. */
+:root[data-gisr-theme="grey"] {
+    --gisr-bg: #16181c;
+    --gisr-bg-2: #1d2025;
+    --gisr-surface: #23262c;
+    --gisr-surface-2: #2c3038;
+    --gisr-border: #3a3f48;
+    --gisr-text: #e2e4e8;
+    --gisr-muted: #a0a5ae;
+    --gisr-accent: #b8a4fb;
+    --gisr-accent-strong: #9d7bf5;
+    --gisr-on-accent: #150f26;
+    --gisr-focus: #d3c6fd;
+    --gisr-accent-active: #d3c6fd;
+    --gisr-btn-disabled-bg: #4a3f73;
+    --gisr-btn-disabled-color: #a0a5ae;
+    --gisr-page-bg: radial-gradient(1200px 600px at 20% -10%, #2a2d34 0%, var(--gisr-bg) 60%);
+    --gisr-sb-thumb: #4a505b;
+    --gisr-sb-track: #1d2025;
+    --gisr-switch-focus-knob: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23d3c6fd'/%3e%3c/svg%3e");
+    --gisr-switch-checked-knob: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23150f26'/%3e%3c/svg%3e");
+    --gisr-chevron: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23b8a4fb'><path fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>");
+
+    --bs-emphasis-color: #f5f6f8;
+    --bs-link-color-rgb: 184, 164, 251;
+    --bs-link-hover-color: #d3c6fd;
+    --bs-link-hover-color-rgb: 211, 198, 253;
+    --bs-primary-rgb: 157, 123, 245;
+    --bs-focus-ring-color: rgba(184, 164, 251, 0.4);
+    --bs-info-text-emphasis: #d3c6fd;
+    --bs-info-bg-subtle: rgba(184, 164, 251, 0.14);
+    --bs-info-border-subtle: rgba(184, 164, 251, 0.4);
+}
+
+/* GISR Hub theme: dark HUD-style blue with translucent, framed cards. Selected on the account settings page. */
+:root[data-gisr-theme="hub"] {
+    --gisr-bg: #1d2835;
+    --gisr-bg-2: #18222d;
+    --gisr-surface: rgba(29, 40, 53, 0.75);
+    --gisr-surface-2: rgba(255, 255, 255, 0.12);
+    --gisr-border: rgba(255, 255, 255, 0.25);
+    --gisr-text: rgba(255, 255, 255, 0.75);
+    --gisr-muted: rgba(255, 255, 255, 0.6);
+    --gisr-accent: #4e9cff;
+    --gisr-accent-strong: #0260d9;
+    --gisr-on-accent: #fff;
+    --gisr-focus: #4e9cff;
+    --gisr-accent-active: #024a9e;
+    --gisr-btn-hover-bg: #0255bf;
+    --gisr-btn-disabled-bg: #4195ff;
+    --gisr-btn-disabled-color: #fff;
+    --gisr-field-bg: transparent;
+    --gisr-field-focus-border: rgba(255, 255, 255, 0.5);
+    --gisr-menu-bg: #1d2835;
+    --gisr-picker-bg: #1d2835;
+    --gisr-drawer-bg: #1d2835;
+    --gisr-topbar-bg: rgba(29, 40, 53, 0.95);
+    --gisr-topbar-border: 0 solid transparent;
+    --gisr-side-link: rgba(255, 255, 255, 0.5);
+    --gisr-side-hover-bg: transparent;
+    --gisr-side-current-bg: transparent;
+    --gisr-side-current: #fff;
+    --gisr-radius: 0.25rem;
+    --gisr-badge-success: #ff9f0c;
+    --gisr-page-bg:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px) 0 0 / 75px 75px,
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px) 0 0 / 75px 75px,
+        linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px) 0 0 / 15px 15px,
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px) 0 0 / 15px 15px,
+        linear-gradient(rgba(13, 16, 27, 0.88), rgba(13, 16, 27, 0.88)),
+        radial-gradient(ellipse 55% 60% at 78% 70%, transparent 25%, #0d101b 100%),
+        url("img/hub-bg.jpg") 100% 100% / auto 70% no-repeat,
+        #0d101b;
+    --gisr-sb-thumb: rgba(255, 255, 255, 0.3);
+    --gisr-sb-track: rgba(13, 16, 27, 0.6);
+    --gisr-frame: rgba(255, 255, 255, 0.3);
+    --gisr-corner: rgba(255, 255, 255, 0.75);
+    --gisr-switch-focus-knob: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%234e9cff'/%3e%3c/svg%3e");
+    --gisr-switch-checked-knob: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23ffffff'/%3e%3c/svg%3e");
+    --gisr-chevron: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%234e9cff'><path fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>");
+
+    --bs-emphasis-color: #fff;
+    --bs-link-color-rgb: 78, 156, 255;
+    --bs-link-hover-color: #9ac6ff;
+    --bs-link-hover-color-rgb: 154, 198, 255;
+    --bs-primary-rgb: 2, 96, 217;
+    --bs-focus-ring-color: rgba(255, 255, 255, 0.25);
+    --bs-border-radius: 0.25rem;
+    --bs-border-radius-sm: 0.2rem;
+    --bs-border-radius-lg: 0.3rem;
+    --bs-danger: #e00000;
+    --bs-danger-rgb: 224, 0, 0;
+    --bs-danger-text-emphasis: #ff6060;
+    --bs-danger-bg-subtle: rgba(255, 96, 96, 0.14);
+    --bs-form-invalid-color: #ff6060;
+    --bs-form-invalid-border-color: #e00000;
+    --bs-info-text-emphasis: #9ac6ff;
+    --bs-info-bg-subtle: rgba(78, 156, 255, 0.14);
+    --bs-info-border-subtle: rgba(78, 156, 255, 0.4);
+}
+
+:root[data-gisr-theme="hub"] .btn-danger {
+    --bs-btn-bg: #e00000;
+    --bs-btn-border-color: #e00000;
+    --bs-btn-hover-bg: #b30000;
+    --bs-btn-hover-border-color: #b30000;
+    --bs-btn-active-bg: #a80000;
+    --bs-btn-active-border-color: #a80000;
+    --bs-btn-disabled-bg: #e00000;
+    --bs-btn-disabled-border-color: #e00000;
+}
+
+:root[data-gisr-theme="hub"] .btn-outline-danger {
+    --bs-btn-color: #ff6060;
+    --bs-btn-border-color: #e00000;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #e00000;
+    --bs-btn-hover-border-color: #e00000;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #b30000;
+    --bs-btn-active-border-color: #b30000;
+    --bs-btn-disabled-color: #ff6060;
+    --bs-btn-disabled-border-color: #e00000;
+}
+
+/* Cards: a faint frame of crossing lines inset 15px, plus L-shaped brackets in each corner. */
+:root[data-gisr-theme="hub"] .card {
+    --bs-card-border-color: transparent;
+    background-image:
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner));
+    background-repeat: no-repeat;
+    background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%;
+    background-size: 10px 2px, 2px 10px, 10px 2px, 2px 10px, 10px 2px, 2px 10px, 10px 2px, 2px 10px;
+}
+
+/* The hero keeps its soft top-right gradient, tinted blue, under the corner brackets. */
+:root[data-gisr-theme="hub"] .home-hero {
+    background-image:
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        linear-gradient(var(--gisr-corner), var(--gisr-corner)),
+        radial-gradient(ellipse at top right, rgba(78, 156, 255, 0.28), rgba(29, 40, 53, 0.75) 70%);
+    background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%, 0 0;
+    background-size: 10px 2px, 2px 10px, 10px 2px, 2px 10px, 10px 2px, 2px 10px, 10px 2px, 2px 10px, auto;
+}
+
+:root[data-gisr-theme="hub"] .card::before,
+:root[data-gisr-theme="hub"] .card::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+}
+
+:root[data-gisr-theme="hub"] .card::before {
+    inset: 0 15px;
+    border-top: 1px solid var(--gisr-frame);
+    border-bottom: 1px solid var(--gisr-frame);
+}
+
+:root[data-gisr-theme="hub"] .card::after {
+    inset: 15px 0;
+    border-left: 1px solid var(--gisr-frame);
+    border-right: 1px solid var(--gisr-frame);
+}
+
+:root[data-gisr-theme="hub"] .card-accent {
+    --gisr-frame: rgba(78, 156, 255, 0.5);
+    --gisr-corner: #4e9cff;
+    border-left: 0;
+}
+
+:root[data-gisr-theme="hub"] .card-header,
+:root[data-gisr-theme="hub"] .card-footer {
+    --bs-card-cap-bg: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-gisr-theme="hub"] .card-header {
+    border-bottom-color: var(--gisr-border);
+}
+
+:root[data-gisr-theme="hub"] .card-footer {
+    border-top-color: var(--gisr-border);
+}
+
+:root[data-gisr-theme="hub"] .list-group {
+    --bs-list-group-bg: transparent;
+    --bs-list-group-border-color: var(--gisr-border);
+}
+
+/* A fieldset card's legend normally straddles the top edge, which cuts through the frame; keep it inside the card. */
+:root[data-gisr-theme="hub"] fieldset.card > legend {
+    float: left !important;
+    margin-top: 0.75rem;
+    margin-bottom: 0.25rem !important;
+}
+
+:root[data-gisr-theme="hub"] fieldset.card > legend + * {
+    clear: left;
+}
+
+:root[data-gisr-theme="hub"] .table {
+    --bs-table-bg: transparent;
+}
+
+/* Current page gets a dot instead of a fill. */
+:root[data-gisr-theme="hub"] .sidenav-link[aria-current="page"]::before {
+    content: "";
+    flex-shrink: 0;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--gisr-accent);
+}
+
+/* Tabs: plain text with a bar under the active or hovered tab. */
+:root[data-gisr-theme="hub"] .nav-tabs {
+    --bs-nav-tabs-border-color: rgba(255, 255, 255, 0.3);
+    --bs-nav-tabs-link-hover-border-color: transparent;
+    --bs-nav-tabs-link-active-bg: transparent;
+    --bs-nav-tabs-link-active-border-color: transparent;
+    gap: 0.5rem;
+}
+
+:root[data-gisr-theme="hub"] .nav-tabs .nav-link {
+    position: relative;
+    border: 0;
+    border-radius: 0;
+    color: #fff;
+}
+
+:root[data-gisr-theme="hub"] .nav-tabs .nav-link.active::after,
+:root[data-gisr-theme="hub"] .nav-tabs .nav-link:hover::after {
+    content: "";
+    position: absolute;
+    inset: auto 0.5rem -1px;
+    height: 3px;
+    background: #1fb0ff;
 }

@@ -206,6 +206,79 @@ public class AccountSettingsPageTests : BunitContext
     }
 
     [Fact]
+    public void ThemeDropdown_OffersBothThemes_WithTheSavedOneSelected_InsidePreferences()
+    {
+        _api.OnJson(HttpMethod.Get, "api/me", _account with { Theme = "hub" });
+        var cut = Render<AccountSettings>();
+
+        Assert.Equal("Site theme", cut.Find("label[for=site-theme]").TextContent.Trim());
+        var select = cut.Find("#account-settings-form select#site-theme");
+        Assert.Equal(new[] { "teal", "hub", "navy", "grey" }, select.QuerySelectorAll("option").Select(o => o.GetAttribute("value")));
+        Assert.Equal(new[] { "Green / Teal", "GISR Hub", "Dark Navy", "Dark Grey" }, select.QuerySelectorAll("option").Select(o => o.TextContent.Trim()));
+        Assert.Equal("hub", select.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void ThemeDropdown_DefaultsToTeal()
+    {
+        var cut = Render<AccountSettings>();
+
+        Assert.Equal("teal", cut.Find("select#site-theme").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Save_SendsTheTheme_AndAppliesItToThePageImmediately()
+    {
+        var module = JSInterop.SetupModule("./js/theme.js");
+        module.SetupVoid("apply", _ => true).SetVoidResult();
+        _api.OnJson(HttpMethod.Put, "api/me/settings", _account with { Theme = "hub" });
+        var cut = Render<AccountSettings>();
+
+        cut.Find("select#site-theme").Change("hub");
+        cut.Find("form").Submit();
+
+        var put = _api.Calls.Single(c => c.Method == HttpMethod.Put);
+        using var body = JsonDocument.Parse(put.Body!);
+        Assert.Equal("hub", body.RootElement.GetProperty("theme").GetString());
+        cut.WaitForAssertion(() => Assert.Equal("hub", Assert.Single(module.Invocations["apply"]).Arguments[0]));
+        Assert.Equal("hub", Services.GetRequiredService<CurrentUserState>().Account?.Theme);
+    }
+
+    [Fact]
+    public void FailedSave_DoesNotChangeThePageTheme()
+    {
+        var module = JSInterop.SetupModule("./js/theme.js");
+        module.SetupVoid("apply", _ => true).SetVoidResult();
+        _api.On(HttpMethod.Put, "api/me/settings", _ => new HttpResponseMessage(HttpStatusCode.BadGateway));
+        var cut = Render<AccountSettings>();
+
+        cut.Find("select#site-theme").Change("hub");
+        cut.Find("form").Submit();
+
+        Assert.Empty(module.Invocations["apply"]);
+    }
+
+    [Fact]
+    public void ThemeValidationError_IsShownNextToTheDropdown()
+    {
+        _api.On(HttpMethod.Put, "api/me/settings", _ => FakeApi.Problem(HttpStatusCode.BadRequest, new
+        {
+            status = 400,
+            errors = new Dictionary<string, string[]> { ["theme"] = ["Choose one of the available themes."] },
+        }));
+        var cut = Render<AccountSettings>();
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("true", cut.Find("select#site-theme").GetAttribute("aria-invalid"));
+            Assert.Equal("site-theme-error", cut.Find("select#site-theme").GetAttribute("aria-describedby"));
+            Assert.Contains("Choose one", cut.Find("#site-theme-error").TextContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public void FailedSave_ClearsPreviousPreferencesSuccess()
     {
         _api.OnJson(HttpMethod.Put, "api/me/settings", _account);

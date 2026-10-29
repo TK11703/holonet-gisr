@@ -126,7 +126,39 @@ public class AccountRepositoryTests(PostgresFixture postgres)
         Assert.True(account.NotifyOnServiceRecord);
         Assert.Null(account.ContactEmail);
         Assert.Equal("Han Solo", account.DisplayName);
+        Assert.Equal("teal", account.Theme);
         Assert.Equal(TimeSpan.Zero, account.CreatedAt.Offset);
+    }
+
+    [Fact]
+    public async Task Theme_PersistsAcrossAllAccountProjections_AndNullLeavesItUnchanged()
+    {
+        await using var db = await postgres.CreateMigratedDatabaseAsync();
+        var repository = Repository(db);
+        var tenant = Guid.NewGuid();
+        var oid = Guid.NewGuid();
+        var account = await repository.UpsertAsync(tenant, oid, "Citizen", null, CancellationToken.None);
+
+        Assert.Equal("hub", (await repository.UpdateSettingsAsync(account.Id, "Citizen", null, true, "hub", CancellationToken.None))?.Theme);
+        Assert.Equal("hub", (await repository.GetAsync(account.Id, CancellationToken.None))?.Theme);
+        Assert.Equal("hub", (await repository.FindByObjectAsync(tenant, oid, CancellationToken.None))?.Theme);
+        Assert.Equal("hub", (await repository.UpsertAsync(tenant, oid, "Citizen", null, CancellationToken.None)).Theme);
+        Assert.Equal("hub", (await repository.EnsurePlaceholderAsync(tenant, oid, "Citizen", null, CancellationToken.None)).Theme);
+        Assert.Equal("hub", (await repository.UpdateOperatingNumberAsync(account.Id, "CT-1", CancellationToken.None))?.Theme);
+        Assert.Equal("hub", (await repository.SearchByOperatingNumberAsync(tenant, "CT-1", 10, CancellationToken.None)).Single().Theme);
+        Assert.Equal("hub", (await repository.UpdateSettingsAsync(account.Id, "Renamed", null, true, CancellationToken.None))?.Theme);
+        Assert.Equal("hub", (await repository.UpdateSettingsAsync(account.Id, "Renamed", null, true, null, CancellationToken.None))?.Theme);
+    }
+
+    [Fact]
+    public async Task Theme_Over32Characters_IsRejectedByDatabase()
+    {
+        await using var db = await postgres.CreateMigratedDatabaseAsync();
+        var repository = Repository(db);
+        var account = await repository.UpsertAsync(Guid.NewGuid(), Guid.NewGuid(), "Ok", null, CancellationToken.None);
+
+        await Assert.ThrowsAsync<PostgresException>(() =>
+            repository.UpdateSettingsAsync(account.Id, "Ok", null, true, new string('x', 33), CancellationToken.None));
     }
 
     [Fact]

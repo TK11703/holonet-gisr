@@ -17,5 +17,11 @@ public sealed class UpdateAccountSettingsRequestValidator : AbstractValidator<Up
             .MaximumLength(ContactEmailMaxLength)
             .When(r => r.ContactEmail is not null)
             .OverridePropertyName(nameof(UpdateAccountSettingsRequest.ContactEmail));
+
+        RuleFor(r => r.Theme!)
+            .Must(SiteThemes.IsKnown)
+            .WithMessage("Choose one of the available themes.")
+            .When(r => r.Theme is not null)
+            .OverridePropertyName(nameof(UpdateAccountSettingsRequest.Theme));
     }
 }

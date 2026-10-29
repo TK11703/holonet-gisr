@@ -8,7 +8,8 @@ public sealed record AccountDto(
     bool NotifyOnServiceRecord,
     bool IsOfficer,
     DateTimeOffset CreatedAt,
-    string? OperatingNumber = null);
+    string? OperatingNumber = null,
+    string Theme = SiteThemes.Default);
 
 // What an Officer needs to know about a citizen they are about to write a record for.
 public sealed record CitizenDto(Guid? AccountId, string? OperatingNumber);

@@ -60,4 +60,21 @@ public class UpdateAccountSettingsRequestValidatorTests
 
         _validator.TestValidate(Request(email: email)).ShouldHaveValidationErrorFor(r => r.ContactEmail);
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("teal")]
+    [InlineData("hub")]
+    [InlineData("navy")]
+    [InlineData("grey")]
+    public void Theme_NullOrKnownIsValid(string? theme) =>
+        _validator.TestValidate(Request() with { Theme = theme }).ShouldNotHaveValidationErrorFor(r => r.Theme);
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Hub")]
+    [InlineData("purple")]
+    [InlineData("hub; drop table account")]
+    public void Theme_UnknownIsInvalid(string theme) =>
+        _validator.TestValidate(Request() with { Theme = theme }).ShouldHaveValidationErrorFor(r => r.Theme);
 }

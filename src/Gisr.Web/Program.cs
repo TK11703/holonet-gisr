@@ -34,6 +34,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddScoped<IAccessTokenProvider, EntraAccessTokenProvider>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ShellInterop>();
+builder.Services.AddScoped<ThemeInterop>();
 builder.Services.AddScoped<CurrentUserState>();
 builder.Services.AddSingleton<Gisr.Web.Records.ViewGrantStore>();
 builder.Services.AddHttpClient<ApiClient>((_, client) =>

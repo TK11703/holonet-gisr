@@ -113,6 +113,49 @@ public class AccountEndpointsTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task GetMe_NewAccount_HasTheDefaultTheme()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+
+        var account = await (await factory.CreateUserClient().GetAsync("/api/me")).Content.ReadFromJsonAsync<AccountDto>();
+
+        Assert.Equal("teal", account?.Theme);
+    }
+
+    [Fact]
+    public async Task PutSettings_Theme_IsSavedAndKeptWhenOmitted()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+        var client = factory.CreateUserClient();
+        await client.GetAsync("/api/me");
+
+        var chosen = await (await client.PutAsJsonAsync("/api/me/settings",
+            new UpdateAccountSettingsRequest("Cody", null, true, "hub"))).Content.ReadFromJsonAsync<AccountDto>();
+        await client.PutAsJsonAsync("/api/me/settings", new UpdateAccountSettingsRequest("Cody", null, true));
+        var reloaded = await (await client.GetAsync("/api/me")).Content.ReadFromJsonAsync<AccountDto>();
+
+        Assert.Equal("hub", chosen?.Theme);
+        Assert.Equal("hub", reloaded?.Theme);
+    }
+
+    [Fact]
+    public async Task PutSettings_UnknownTheme_Returns400AndKeepsTheSavedTheme()
+    {
+        await using var factory = await ApiFactory.CreateAsync(postgres);
+        var client = factory.CreateUserClient();
+        await client.GetAsync("/api/me");
+
+        var response = await client.PutAsJsonAsync("/api/me/settings",
+            new UpdateAccountSettingsRequest("Cody", null, true, "purple"));
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        var reloaded = await (await client.GetAsync("/api/me")).Content.ReadFromJsonAsync<AccountDto>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("theme", problem!.Errors.Keys);
+        Assert.Equal("teal", reloaded?.Theme);
+    }
+
+    [Fact]
     public async Task PutSettings_ChangesOnlyTheCallersOwnAccount()
     {
         await using var factory = await ApiFactory.CreateAsync(postgres);

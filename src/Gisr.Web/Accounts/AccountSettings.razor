@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject ApiClient Api
 @inject CurrentUserState User
+@inject ThemeInterop Theme
 
 <PageHeader Title="Account settings" Crumbs="@Crumbs" />
 
@@ -62,6 +63,22 @@ else
                             <label for="notify" class="form-check-label">Notify me when a service record is created for me</label>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="site-theme" class="form-label">Site theme</label>
+                            <InputSelect id="site-theme" class="@SelectClass("theme")" @bind-Value="_model.Theme"
+                                         aria-describedby="@Described("theme", "site-theme-error")"
+                                         aria-invalid="@(_errors.ContainsKey("theme") ? "true" : null)">
+                                @foreach (var option in SiteThemes.All)
+                                {
+                                    <option value="@option.Id">@option.Name</option>
+                                }
+                            </InputSelect>
+                            @if (_errors.TryGetValue("theme", out var themeErrors))
+                            {
+                                <div id="site-theme-error" class="invalid-feedback d-block">@string.Join(" ", themeErrors)</div>
+                            }
+                        </div>
+
                     </EditForm>
                 </div>
                 <footer class="card-footer">
@@ -116,6 +133,8 @@ else
         public string? ContactEmail { get; set; }
 
         public bool NotifyOnServiceRecord { get; set; }
+
+        public string Theme { get; set; } = SiteThemes.Default;
     }
 
     private static readonly Crumb[] Crumbs = [new("Home", "/"), new("Account settings")];
@@ -155,6 +174,7 @@ else
                 DisplayName = account.DisplayName,
                 ContactEmail = account.ContactEmail,
                 NotifyOnServiceRecord = account.NotifyOnServiceRecord,
+                Theme = SiteThemes.IsKnown(account.Theme) ? account.Theme : SiteThemes.Default,
             };
             ResetEditContext();
         }
@@ -182,11 +202,12 @@ else
         {
             var updated = await Api.PutAsync<Gisr.Shared.Accounts.AccountDto>(
                 "api/me/settings",
-                new Gisr.Shared.Accounts.UpdateAccountSettingsRequest(_model.DisplayName, _model.ContactEmail, _model.NotifyOnServiceRecord),
+                new Gisr.Shared.Accounts.UpdateAccountSettingsRequest(_model.DisplayName, _model.ContactEmail, _model.NotifyOnServiceRecord, _model.Theme),
                 cancellationToken: _lifetime.Token);
             if (updated is not null)
             {
                 User.Update(updated);
+                await Theme.ApplyAsync(updated.Theme);
                 _saved = true;
                 _ = HideSavedAsync(++_savedVersion);
             }
@@ -200,6 +221,7 @@ else
                 {
                     "displayName" => nameof(SettingsModel.DisplayName),
                     "contactEmail" => nameof(SettingsModel.ContactEmail),
+                    "theme" => nameof(SettingsModel.Theme),
                     _ => null,
                 };
                 if (property is not null)
@@ -239,6 +261,8 @@ else
     }
 
     private string FieldClass(string field) => _errors.ContainsKey(field) ? "form-control is-invalid" : "form-control";
+
+    private string SelectClass(string field) => _errors.ContainsKey(field) ? "form-select is-invalid" : "form-select";
 
     private string? Described(string field, string id) => _errors.ContainsKey(field) ? id : null;
 
