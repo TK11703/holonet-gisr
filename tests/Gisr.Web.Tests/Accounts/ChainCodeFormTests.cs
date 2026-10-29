@@ -39,7 +39,9 @@ public class ChainCodeFormTests : BunitContext
         Assert.Equal("Height", cut.Find("label[for=chain-height]").TextContent.Trim());
         Assert.Equal("5", cut.Find("#chain-height").GetAttribute("maxlength"));
         Assert.Equal("decimal", cut.Find("#chain-height").GetAttribute("inputmode"));
-        Assert.NotNull(cut.Find(".input-group > input#chain-height + select#chain-height-unit"));
+        Assert.NotNull(cut.Find(".input-group > .form-floating > input#chain-height"));
+        Assert.NotNull(cut.Find(".input-group > .form-floating > select#chain-height-unit"));
+        Assert.Equal("Unit", cut.Find("label[for=chain-height-unit]").TextContent.Trim());
         Assert.Equal("Height unit", cut.Find("#chain-height-unit").GetAttribute("aria-label"));
         Assert.Equal(new[] { "feet", "inches", "m", "cm", "mm", "units" }, cut.FindAll("#chain-height-unit option").Select(option => option.TextContent.Trim()));
     }
@@ -102,7 +104,7 @@ public class ChainCodeFormTests : BunitContext
             Assert.Contains("w-auto", group.QuerySelector("legend")!.ClassList);
         });
         Assert.Equal(new[] { "chain-height", "chain-height-unit", "chain-eye-color", "chain-skin-color", "chain-hair-color" },
-            groups[1].QuerySelectorAll(".row > .col-sm-6 > .input-group > input,.row > .col-sm-6 > .input-group > select,.row > .col-sm-6 > select").Select(field => field.Id));
+            groups[1].QuerySelectorAll(".row > .col-sm-6 input,.row > .col-sm-6 select").Select(field => field.Id));
         Assert.Empty(groups[0].QuerySelectorAll(".col-sm-6"));
         Assert.Empty(cut.FindAll("#chain-birth-date"));
         Assert.Equal(4, cut.FindAll("#chain-code-form .accordion textarea").Count);
@@ -205,14 +207,13 @@ public class ChainCodeFormTests : BunitContext
     {
         var cut = Render<ChainCodeForm>();
         var code = cut.Find("input#chain-code-value[readonly]");
-        Assert.Contains("p-1", code.ClassList);
         Assert.False(code.HasAttribute("name"));
         Assert.Equal("Your Chain Code", cut.Find("label[for=chain-code-value]").TextContent.Trim());
         Assert.NotNull(cut.Find(".card-body > div:first-child input#chain-code-value"));
         Assert.NotNull(cut.Find(".card-body > .row > .col-12.col-lg-6 input#chain-code-value"));
         Assert.Empty(cut.FindAll("label[for=chain-code-value] svg"));
-        Assert.NotNull(cut.Find(".input-group.input-group-sm > .input-group-text:first-child svg[aria-hidden=true]"));
-        Assert.NotNull(cut.Find(".input-group > .input-group-text + input#chain-code-value[readonly]"));
+        Assert.NotNull(cut.Find(".input-group > .input-group-text:first-child svg[aria-hidden=true]"));
+        Assert.NotNull(cut.Find(".input-group > .input-group-text + .form-floating > input#chain-code-value[readonly]"));
     }
 
     [Theory]
