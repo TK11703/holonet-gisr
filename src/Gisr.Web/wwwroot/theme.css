@@ -773,6 +773,51 @@ h1[tabindex="-1"]:focus-visible {
     }
 }
 
+.error-page {
+    max-width: 44rem;
+    margin: 2rem auto;
+    text-align: center;
+}
+
+.error-code {
+    color: var(--gisr-accent);
+    font-size: clamp(5rem, 22vw, 10rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 2.5rem color-mix(in srgb, var(--gisr-accent) 45%, transparent);
+}
+
+.error-title {
+    margin-top: 0.5rem;
+    font-size: 2.25rem;
+    font-weight: 700;
+}
+
+.error-subtitle {
+    color: var(--gisr-muted);
+    font-size: 1.15rem;
+    font-weight: 400;
+}
+
+.error-divider {
+    width: 12rem;
+    margin: 1.5rem auto;
+    border-top: 1px dashed var(--gisr-border);
+    opacity: 1;
+}
+
+.error-help {
+    color: var(--gisr-muted);
+}
+
+.error-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
 .breadcrumb {
     --bs-breadcrumb-divider-color: var(--gisr-muted);
     --bs-breadcrumb-item-active-color: var(--gisr-muted);
