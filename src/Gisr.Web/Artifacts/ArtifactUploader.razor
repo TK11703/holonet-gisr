@@ -1,62 +1,101 @@
+@implements IDisposable
 @inject ApiClient Api
 
 <fieldset id="artifact-uploader" class="border rounded px-3 pb-3 mb-4">
-    <legend class="float-none w-auto px-2 h6 mb-3">Add files</legend>
-    <label for="artifact-file" class="visually-hidden">Choose files or drag them here</label>
-    <InputFile id="artifact-file" class="form-control mb-3" multiple accept="@Accept" OnChange="OnFilesChosen" aria-describedby="artifact-file-help" title="@FileHelp" />
-    <div id="artifact-file-help" class="visually-hidden">@FileHelp</div>
+    <legend class="float-none w-auto px-2 h6 mb-3">Add artifacts</legend>
 
-        @if (_items.Count > 0)
-        {
-            <ul id="artifact-queue" class="list-group mb-3">
+    @if (_uploadedCount > 0)
+    {
+        <div id="artifact-upload-success" class="alert alert-success d-flex align-items-start gap-2" role="status">
+            <span class="flex-shrink-0"><Icon Name="check-circle" /></span>
+            <span>@(_uploadedCount == 1 ? "The artifact was uploaded successfully." : $"{_uploadedCount} artifacts were uploaded successfully.")</span>
+        </div>
+    }
+
+            <ul id="artifact-queue" class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-3 list-unstyled mb-3 p-0">
                 @foreach (var item in _items)
                 {
-                    <li class="list-group-item artifact-item" @key="item.Id">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div class="flex-grow-1">
-                                <span class="fw-semibold">@item.Name</span>
-                                <span class="text-secondary small">@ArtifactDisplay.Size(item.Size)</span>
+                    <li class="@(item.Fading ? "col artifact-item artifact-fade-out" : "col artifact-item")" @key="item.Id">
+                        <div class="artifact-queue-card">
+                            <div class="artifact-queue-preview">
+                                @if (item.PreviewUrl is not null)
+                                {
+                                    <img class="artifact-queue-thumb" src="@item.PreviewUrl" alt="@($"Preview of {item.Name}")" />
+                                }
+                                else
+                                {
+                                    <span class="artifact-icon"><Icon Name="file" Size="24" /></span>
+                                }
                             </div>
-                            @if (item.State != UploadState.Uploading)
+
+                            <div class="d-flex align-items-start justify-content-between gap-2">
+                                <div class="min-w-0">
+                                    <div class="fw-semibold text-truncate" title="@item.Name">@item.Name</div>
+                                    <div class="d-flex align-items-center gap-2 small text-secondary">
+                                        <span>@ArtifactDisplay.Size(item.Size)</span>
+                                        @if (item.State == UploadState.Uploading)
+                                        {
+                                            <span class="artifact-status" role="status">Uploading...</span>
+                                        }
+                                        else if (item.State == UploadState.Done)
+                                        {
+                                            <span class="badge text-bg-success artifact-status" role="status">Uploaded</span>
+                                        }
+                                        else if (item.Error is null)
+                                        {
+                                            <span class="badge text-bg-secondary artifact-status">Ready to upload</span>
+                                        }
+                                    </div>
+                                </div>
+                                @if (item.State != UploadState.Uploading)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 d-inline-flex flex-shrink-0 artifact-dismiss"
+                                            title="@($"Remove {item.Name} from this list; it will not be uploaded")" aria-label="@($"Remove {item.Name} from the list")"
+                                            @onclick="() => Dismiss(item)"><Icon Name="delete" /></button>
+                                }
+                            </div>
+
+                            @if (item.IsImage && item.State != UploadState.Done)
                             {
-                                <button type="button" class="btn btn-sm btn-outline-secondary artifact-dismiss" aria-label="@($"Remove {item.Name} from the list")"
-                                        @onclick="() => Dismiss(item)">Remove</button>
+                                <div class="form-floating">
+                                    <input id="@($"artifact-description-{item.Id}")" type="text" class="@(item.DescriptionInvalid ? "form-control artifact-description is-invalid" : "form-control artifact-description")"
+                                           maxlength="@DescriptionMaxLength" placeholder="Description" title="Required for images. Describe the image; it is used as alt text."
+                                           aria-required="true" aria-label="@($"Description for {item.Name}")" aria-invalid="@(item.DescriptionInvalid ? "true" : null)"
+                                           value="@item.Description" @oninput="e => OnDescriptionInput(item, e)" />
+                                    <label for="@($"artifact-description-{item.Id}")">Description <span class="text-danger" aria-hidden="true">*</span></label>
+                                </div>
+                            }
+
+                            @if (item.State == UploadState.Uploading)
+                            {
+                                <progress class="w-100" value="@item.Sent" max="@item.Size" aria-label="@($"Uploading {item.Name}")"></progress>
+                            }
+
+                            @if (item.Error is not null)
+                            {
+                                <div class="small text-danger artifact-error" role="alert">@item.Error</div>
                             }
                         </div>
-
-                        @if (item.IsImage && item.State != UploadState.Done)
-                        {
-                            <div class="form-floating mt-2">
-                                <input id="@($"artifact-description-{item.Id}")" type="text" class="@(item.DescriptionInvalid ? "form-control artifact-description is-invalid" : "form-control artifact-description")"
-                                       maxlength="500" placeholder="Description" title="Required for images. Describe the image; it is used as alt text."
-                                       aria-required="true" aria-label="@($"Description for {item.Name}")"                                       aria-invalid="@(item.DescriptionInvalid ? "true" : null)"
-                                       value="@item.Description" @oninput="e => item.Description = e.Value?.ToString() ?? string.Empty" />
-                                <label for="@($"artifact-description-{item.Id}")">Description <span class="text-danger" aria-hidden="true">*</span></label>
-                            </div>
-                        }
-
-                        @if (item.State == UploadState.Uploading)
-                        {
-                            <progress class="w-100 mt-2" value="@item.Sent" max="@item.Size" aria-label="@($"Uploading {item.Name}")"></progress>
-                            <div class="small text-secondary artifact-status" role="status">Uploading...</div>
-                        }
-                        else if (item.State == UploadState.Done)
-                        {
-                            <div class="small text-success artifact-status" role="status">Uploaded</div>
-                        }
-                        else if (item.Error is null)
-                        {
-                            <div class="small text-secondary artifact-status">Ready to upload</div>
-                        }
-
-                        @if (item.Error is not null)
-                        {
-                            <div class="small text-danger mt-1 artifact-error" role="alert">@item.Error</div>
-                        }
                     </li>
                 }
+                <li class="col artifact-add-item">
+                    <div class="artifact-add-tile">
+                        <label for="artifact-file" class="visually-hidden">Choose files or drag them here</label>
+                        @* Each selection keeps its own input; Blazor drops an input's earlier files when it is used again. *@
+                        @foreach (var pickerId in _pickers)
+                        {
+                            var isActive = pickerId == _pickers[^1];
+                            <InputFile @key="pickerId" id="@(isActive ? "artifact-file" : null)" class="@(isActive ? "artifact-add-input" : "d-none")" multiple accept="@Accept"
+                                       OnChange="e => OnFilesChosenAsync(pickerId, e)" aria-describedby="artifact-file-help" title="@FileHelp" />
+                        }
+                        <span class="artifact-add-plus" aria-hidden="true"><Icon Name="plus" Size="24" /></span>
+                        <span class="fw-semibold">@(_items.Count == 0 ? "Add items" : "Add more items")</span>
+                        <span class="small text-secondary">Click to select or drag and drop</span>
+                        <span class="small text-secondary">Images, PDF, DOCX, TXT or Markdown, up to 25 MB each</span>
+                        <span id="artifact-file-help" class="visually-hidden">@FileHelp</span>
+                    </div>
+                </li>
             </ul>
-        }
 
         <button type="button" id="upload-artifacts" class="btn btn-primary" disabled="@(_busy || !_items.Any(i => i.CanUpload))" @onclick="UploadAsync">Upload</button>
 </fieldset>
@@ -65,6 +104,10 @@
     public const long MaxFileSize = 26_214_400;
 
     private const int MaxFilesPerSelection = 100;
+    private const long PreviewMaxBytes = 524_288;
+    private static readonly TimeSpan FadeDuration = TimeSpan.FromMilliseconds(500);
+    private const int DescriptionMaxLength = 100;
+    private const string DescribeError = "Describe this image; the description is used as alt text.";
     private const string Accept = ".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx,.txt,.md,.markdown";
     private const string FileHelp = "JPEG, PNG, WebP, GIF, PDF, DOCX, TXT or Markdown, up to 25 MB each. Images need a description; it is used as alt text.";
 
@@ -76,9 +119,11 @@
         Failed,
     }
 
-    private sealed class UploadItem(int id, IBrowserFile file)
+    private sealed class UploadItem(int id, int pickerId, IBrowserFile file)
     {
         public int Id { get; } = id;
+
+        public int PickerId { get; } = pickerId;
 
         public IBrowserFile File { get; } = file;
 
@@ -90,11 +135,15 @@
 
         public string Description { get; set; } = string.Empty;
 
+        public string? PreviewUrl { get; set; }
+
         public UploadState State { get; set; } = UploadState.Ready;
 
         public string? Error { get; set; }
 
         public long Sent { get; set; }
+
+        public bool Fading { get; set; }
 
         public bool TooLarge => Size > MaxFileSize;
 
@@ -104,20 +153,35 @@
     }
 
     private readonly List<UploadItem> _items = [];
+    private readonly List<int> _pickers = [0];
     private int _nextId;
+    private int _nextPickerId = 1;
     private bool _busy;
+    private int _uploadedCount;
+    private CancellationTokenSource? _cleanup;
 
     [Parameter, EditorRequired]
     public Guid RecordId { get; set; }
 
+    // How long the success message stays before the uploaded items fade out.
+    [Parameter]
+    public TimeSpan SuccessDuration { get; set; } = TimeSpan.FromSeconds(5);
+
     [Parameter]
     public EventCallback<ArtifactDto> OnUploaded { get; set; }
 
-    private void OnFilesChosen(InputFileChangeEventArgs e)
+    private async Task OnFilesChosenAsync(int pickerId, InputFileChangeEventArgs e)
     {
-        foreach (var file in e.GetMultipleFiles(MaxFilesPerSelection))
+        var files = e.GetMultipleFiles(MaxFilesPerSelection);
+        if (files.Count == 0)
         {
-            var item = new UploadItem(_nextId++, file);
+            return;
+        }
+
+        var added = new List<UploadItem>();
+        foreach (var file in files)
+        {
+            var item = new UploadItem(_nextId++, pickerId, file);
             if (item.TooLarge)
             {
                 item.State = UploadState.Failed;
@@ -125,10 +189,55 @@
             }
 
             _items.Add(item);
+            added.Add(item);
+        }
+
+        _pickers.Add(_nextPickerId++);
+        StateHasChanged();
+
+        foreach (var item in added.Where(i => i.IsImage && !i.TooLarge))
+        {
+            item.PreviewUrl = await CreatePreviewAsync(item.File);
+            StateHasChanged();
         }
     }
 
-    private void Dismiss(UploadItem item) => _items.Remove(item);
+    // The browser downsizes the image, so only a small thumbnail reaches the server.
+    private static async Task<string?> CreatePreviewAsync(IBrowserFile file)
+    {
+        try
+        {
+            var resized = await file.RequestImageFileAsync("image/jpeg", 480, 480);
+            await using var stream = resized.OpenReadStream(PreviewMaxBytes);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            return $"data:image/jpeg;base64,{Convert.ToBase64String(buffer.ToArray())}";
+        }
+        catch (Exception ex) when (ex is IOException or JSException or NotSupportedException or InvalidOperationException or TimeoutException)
+        {
+            return null;
+        }
+    }
+
+    private void Dismiss(UploadItem item)
+    {
+        _items.Remove(item);
+        PruneInputs();
+    }
+
+    private void OnDescriptionInput(UploadItem item, ChangeEventArgs e)
+    {
+        item.Description = e.Value?.ToString() ?? string.Empty;
+        if (item.Error == DescribeError)
+        {
+            item.Error = null;
+            item.State = UploadState.Ready;
+        }
+    }
+
+    // Drops inputs whose files are no longer needed; the newest input stays as the drop target.
+    private void PruneInputs() =>
+        _pickers.RemoveAll(p => p != _pickers[^1] && !_items.Any(i => i.PickerId == p && i.State != UploadState.Done));
 
     private async Task UploadAsync()
     {
@@ -138,6 +247,7 @@
         }
 
         _busy = true;
+        var doneBefore = _items.Count(i => i.State == UploadState.Done);
         try
         {
             foreach (var item in _items.Where(i => i.CanUpload).ToList())
@@ -148,7 +258,46 @@
         finally
         {
             _busy = false;
+            PruneInputs();
         }
+
+        var uploaded = _items.Count(i => i.State == UploadState.Done) - doneBefore;
+        if (uploaded > 0)
+        {
+            _uploadedCount += uploaded;
+            _ = RemoveUploadedAfterDelayAsync();
+        }
+    }
+
+    // Restarts on each upload so a later batch gets its full display time.
+    private async Task RemoveUploadedAfterDelayAsync()
+    {
+        _cleanup?.Cancel();
+        _cleanup?.Dispose();
+        var cleanup = _cleanup = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(SuccessDuration, cleanup.Token);
+            _uploadedCount = 0;
+            foreach (var item in _items.Where(i => i.State == UploadState.Done))
+            {
+                item.Fading = true;
+            }
+
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(FadeDuration, cleanup.Token);
+            _items.RemoveAll(i => i.State == UploadState.Done);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    public void Dispose()
+    {
+        _cleanup?.Cancel();
+        _cleanup?.Dispose();
     }
 
     private async Task UploadOneAsync(UploadItem item)
@@ -157,7 +306,7 @@
         if (item.IsImage && string.IsNullOrWhiteSpace(item.Description))
         {
             item.State = UploadState.Failed;
-            item.Error = "Describe this image; the description is used as alt text.";
+            item.Error = DescribeError;
             return;
         }
 
@@ -191,6 +340,16 @@
         {
             item.State = UploadState.Failed;
             item.Error = "The file could not be read. Choose it again.";
+        }
+        catch (JSException)
+        {
+            item.State = UploadState.Failed;
+            item.Error = "The file is no longer available. Remove it and choose it again.";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            item.State = UploadState.Failed;
+            item.Error = "Upload failed. Try again.";
         }
     }
 

@@ -14,10 +14,6 @@
         </div>
         <figure class="lightbox-figure">
             <img class="lightbox-image" src="@ArtifactDisplay.MediaUrl(Current.Id, false, null)" alt="@Alt" />
-            @if (!string.IsNullOrWhiteSpace(Current.Description))
-            {
-                <figcaption class="pre-wrap">@Current.Description</figcaption>
-            }
         </figure>
         <div class="lightbox-nav">
             <button type="button" id="lightbox-previous" class="btn btn-outline-secondary" aria-label="Previous image"

@@ -111,6 +111,28 @@ public class ArtifactUploaderTests : BunitContext
     }
 
     [Fact]
+    public void AfterUploading_ASuccessMessageShows_ThenTheUploadedItemsAreRemoved()
+    {
+        _api.OnJson(HttpMethod.Post, UploadPath, Dto("orders.pdf"), HttpStatusCode.Created);
+        var cut = Render<ArtifactUploader>(p =>
+        {
+            p.Add(c => c.RecordId, _recordId);
+            p.Add(c => c.SuccessDuration, TimeSpan.FromMilliseconds(200));
+        });
+        Pick(cut, ("orders.pdf", 2048));
+
+        cut.Find("#upload-artifacts").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("uploaded successfully", cut.Find("#artifact-upload-success").TextContent, StringComparison.Ordinal));
+        Assert.Single(cut.FindAll("li.artifact-item"));
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Empty(cut.FindAll("#artifact-upload-success"));
+            Assert.Empty(cut.FindAll("li.artifact-item"));
+        }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public void AnImage_NeedsADescription_BeforeItCanBeUploaded()
     {
         var cut = RenderUploader();
@@ -124,6 +146,20 @@ public class ArtifactUploaderTests : BunitContext
         cut.WaitForAssertion(() => Assert.Contains("Describe this image", cut.Find("li.artifact-item .artifact-error").TextContent, StringComparison.Ordinal));
         Assert.Empty(_api.Calls);
         Assert.Equal("true", cut.Find("li.artifact-item input.artifact-description").GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public void TheDescriptionError_Clears_WhenADescriptionIsTyped()
+    {
+        var cut = RenderUploader();
+        Pick(cut, ("map.png", 100));
+        cut.Find("#upload-artifacts").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("li.artifact-item .artifact-error")));
+
+        cut.Find("li.artifact-item input.artifact-description").Input("A star map");
+
+        Assert.Empty(cut.FindAll("li.artifact-item .artifact-error"));
+        Assert.False(cut.Find("#upload-artifacts").HasAttribute("disabled"));
     }
 
     [Fact]

@@ -31,7 +31,7 @@
                             @if (artifact.IsImage)
                             {
                                 <a class="artifact-open" href="@ArtifactDisplay.MediaUrl(artifact.Id, false, ViewingId)" target="_blank" rel="noopener" title="@artifact.Description">
-                                    <img class="artifact-thumb" src="@ArtifactDisplay.MediaUrl(artifact.Id, true, ViewingId)" alt="@artifact.Description" loading="lazy" />
+                                    <img class="artifact-thumb" src="@ArtifactDisplay.MediaUrl(artifact.Id, true, ViewingId)" alt="@(string.IsNullOrWhiteSpace(artifact.Description) ? artifact.FileName : artifact.Description)" loading="lazy" />
                                 </a>
                             }
                             else
@@ -58,8 +58,8 @@
                             </div>
                             @if (CanChange && _confirmingId != artifact.Id)
                             {
-                                <button type="button" id="remove-@artifact.Id" class="btn btn-sm btn-outline-danger d-inline-flex artifact-remove flex-shrink-0"
-                                        title="@($"Remove {artifact.FileName}")" aria-label="@($"Remove {artifact.FileName}")"
+                                <button type="button" id="remove-@artifact.Id" class="btn btn-sm btn-outline-danger border-0 d-inline-flex artifact-remove flex-shrink-0"
+                                        title="@($"Remove {artifact.FileName} from this record")" aria-label="@($"Remove {artifact.FileName}")"
                                         @onclick="() => _confirmingId = artifact.Id"><Icon Name="delete" /></button>
                             }
                         </div>

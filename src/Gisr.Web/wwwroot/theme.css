@@ -524,6 +524,95 @@ h1[tabindex="-1"]:focus-visible {
     object-fit: cover;
 }
 
+.artifact-add-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    height: 100%;
+    min-height: 12rem;
+    padding: 1rem;
+    text-align: center;
+    background: transparent;
+    border: 2px dashed var(--gisr-border);
+    border-radius: var(--gisr-radius);
+}
+
+.artifact-add-tile:hover,
+.artifact-add-tile:focus-within {
+    border-color: var(--gisr-accent-strong);
+}
+
+.artifact-add-tile:focus-within {
+    outline: 2px solid var(--gisr-accent-strong);
+    outline-offset: 2px;
+}
+
+.artifact-add-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.artifact-add-plus {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 0.5rem;
+    color: var(--gisr-bg);
+    background: var(--gisr-accent-strong);
+    border-radius: 50%;
+}
+
+#artifact-queue .artifact-item {
+    transition: opacity 0.5s ease;
+}
+
+#artifact-queue .artifact-fade-out {
+    opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #artifact-queue .artifact-item {
+        transition: none;
+    }
+}
+
+.artifact-queue-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    height: 100%;
+    padding: 0.5rem;
+    background: var(--gisr-surface);
+    border: 1px solid var(--gisr-border);
+    border-radius: var(--gisr-radius);
+}
+
+.artifact-queue-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--gisr-bg-2);
+    border-radius: 0.5rem;
+}
+
+.artifact-queue-thumb {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .artifact-icon {
     display: inline-flex;
     align-items: center;

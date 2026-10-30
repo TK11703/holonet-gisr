@@ -177,7 +177,7 @@ public class RecordFormTests : BunitContext
 
         var pane = cut.Find("#pane-artifacts").InnerHtml;
 
-        Assert.True(pane.IndexOf("artifact-uploader", StringComparison.Ordinal) < pane.IndexOf("Added artifacts", StringComparison.Ordinal));
+        Assert.True(pane.IndexOf("artifact-uploader", StringComparison.Ordinal) < pane.IndexOf("Record artifacts", StringComparison.Ordinal));
     }
 
     [Fact]

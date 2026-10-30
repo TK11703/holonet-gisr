@@ -45,7 +45,7 @@
 }
 
 <section aria-labelledby="added-incidents-heading">
-    <h3 id="added-incidents-heading" class="h6">Added incidents</h3>
+    <h3 id="added-incidents-heading" class="h6">Record incidents</h3>
     @if (RecordDisplay.ErrorText(Errors, "incidents") is { } listError)
     {
         <div id="incidents-error" class="invalid-feedback d-block mb-2">@listError</div>
@@ -89,7 +89,7 @@
                             }
                             @if (CanChange)
                             {
-                                <button type="button" class="btn btn-outline-danger btn-sm d-inline-flex" title="Remove this incident"
+                                <button type="button" class="btn btn-outline-danger border-0 btn-sm d-inline-flex" title="Remove this incident"
                                         aria-label="@($"Remove incident {index + 1}")" @onclick="@(() => Items.Remove(item))"><Icon Name="delete" /></button>
                             }
                         </div>

@@ -223,7 +223,7 @@
                     {
                         <ArtifactUploader RecordId="recordId" OnUploaded="OnArtifactUploaded" />
                         <section id="artifacts" aria-labelledby="artifacts-heading">
-                            <h3 id="artifacts-heading" class="h6">Added artifacts</h3>
+                            <h3 id="artifacts-heading" class="h6">Record artifacts</h3>
                             <ArtifactList RecordId="recordId" Editable="true" RefreshKey="_artifactRefresh" />
                         </section>
                     }
@@ -266,14 +266,14 @@
         <button type="submit" form="record-form" id="save-record" class="btn btn-primary d-inline-flex align-items-center gap-2" disabled="@(_saving || AffiliationsLoading || _options.Count == 0 || Model.NeedsCitizen)">
             <Icon Name="save" /> Save Record
         </button>
-        <button type="button" id="delete-record" class="btn btn-outline-danger d-inline-flex align-items-center gap-2"
-                disabled="@(_saving || !Model.IsSaved || OnDelete is null)" @onclick="ConfirmDelete">
-            <Icon Name="delete" /> Delete record
-        </button>
         @if (CancelHref is not null)
         {
             <a id="cancel-record" class="btn btn-outline-secondary" href="@CancelHref">Cancel</a>
         }
+        <button type="button" id="delete-record" class="btn btn-outline-danger d-inline-flex align-items-center gap-2"
+                disabled="@(_saving || !Model.IsSaved || OnDelete is null)" @onclick="ConfirmDelete">
+            <Icon Name="delete" /> Delete record
+        </button>
     </footer>
 </div>
 

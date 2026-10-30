@@ -97,7 +97,7 @@ public class GalleryRecordTests : BunitContext
 
         var link = RenderPage().Find("a#open-record");
 
-        Assert.Equal("Open record", link.GetAttribute("title"));
+        Assert.Equal("Open the record this gallery belongs to", link.GetAttribute("title"));
         Assert.Equal("Open record", link.GetAttribute("aria-label"));
         Assert.Equal(string.Empty, link.TextContent.Trim());
     }

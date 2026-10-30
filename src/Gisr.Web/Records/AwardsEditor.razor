@@ -49,7 +49,7 @@
 </fieldset>
 
 <section aria-labelledby="added-awards-heading">
-    <h3 id="added-awards-heading" class="h6">Added awards</h3>
+    <h3 id="added-awards-heading" class="h6">Record awards</h3>
     @if (RecordDisplay.ErrorText(Errors, "awards") is { } listError)
     {
         <div id="awards-error" class="invalid-feedback d-block mb-2">@listError</div>
@@ -96,7 +96,7 @@
                             {
                                 <time class="small text-secondary text-nowrap" datetime="@RecordDisplay.Date(date)">@RecordDisplay.Date(date)</time>
                             }
-                            <button type="button" class="btn btn-outline-danger btn-sm d-inline-flex" title="Remove this award"
+                            <button type="button" class="btn btn-outline-danger border-0 btn-sm d-inline-flex" title="Remove this award"
                                     aria-label="@($"Remove award {index + 1}")" @onclick="@(() => Items.Remove(item))"><Icon Name="delete" /></button>
                         </div>
                     </div>

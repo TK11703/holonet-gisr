@@ -42,7 +42,7 @@ public class LightboxTests : BunitContext
     }
 
     [Fact]
-    public void ShowsTheLargeImage_WithTheDescriptionAsAltText_AndACaption()
+    public void ShowsTheLargeImage_WithTheDescriptionAsAltText_AndNoVisibleCaption()
     {
         SetupTrap();
 
@@ -51,7 +51,7 @@ public class LightboxTests : BunitContext
         var image = cut.Find("img.lightbox-image");
         Assert.Equal($"/media/artifacts/{Items[1].Id}", image.GetAttribute("src"));
         Assert.Equal("Second view", image.GetAttribute("alt"));
-        Assert.Equal("Second view", cut.Find("figcaption").TextContent.Trim());
+        Assert.Empty(cut.FindAll("figcaption"));
         Assert.Contains("2 of 3", cut.Find(".lightbox-counter").TextContent, StringComparison.Ordinal);
     }
 

@@ -168,7 +168,7 @@ public class RecordPagesTests : BunitContext
 
         var cut = Render<RecordEdit>(p => p.Add(c => c.Id, record.Id));
 
-        Assert.Equal("Added artifacts", cut.Find("section#artifacts h3").TextContent.Trim());
+        Assert.Equal("Record artifacts", cut.Find("section#artifacts h3").TextContent.Trim());
         Assert.Contains("orders.pdf", cut.Find("section#artifacts").TextContent, StringComparison.Ordinal);
         Assert.NotNull(cut.Find($"#remove-{artifact.Id}"));
         Assert.NotNull(cut.Find("#artifact-uploader"));
