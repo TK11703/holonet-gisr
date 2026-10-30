@@ -24,7 +24,7 @@ else if (!_canEdit)
 else
 {
     <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" OnDelete="DeleteAsync" OnReload="ReloadAsync"
-                CancelHref="@($"/records/{Id}")" AllowSealing="User.IsOfficer" AllowIncidentChanges="User.IsOfficer"
+                CancelHref="@($"/records/{Id}")" AllowSealing="User.IsOfficer" AllowIncidentChanges="User.IsOfficer" AllowSummaryEnhancement="true"
                 AffiliationOwner="@_affiliationOwner" AffiliationsFailed="_affiliationsFailed"
                 SubjectName="@_subjectName" SubjectOperatingNumber="@_subjectNumber" />
 }

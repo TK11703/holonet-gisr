@@ -15,6 +15,7 @@ param databaseName string = 'Gisr'
 param storageAccountName string = 'strgisr'
 param foundryAccountName string = 'aif-shared-acc'
 param embeddingDeployment string = 'text-embedding-3-large'
+param chatDeployment string = 'gpt-4.1-mini'
 
 @description('Image tag shared by both images, e.g. 20261008115247.')
 param imageTag string
@@ -106,6 +107,8 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'Storage__BlobEndpoint', value: 'https://${storageAccountName}.blob.${environment().suffixes.storage}' }
             { name: 'Search__OpenAiEndpoint', value: 'https://${foundryAccountName}.openai.azure.com/' }
             { name: 'Search__EmbeddingDeployment', value: embeddingDeployment }
+            { name: 'SummaryEnhancement__OpenAiEndpoint', value: 'https://${foundryAccountName}.openai.azure.com/' }
+            { name: 'SummaryEnhancement__ChatDeployment', value: chatDeployment }
             { name: 'Search__OcrFallback__Endpoint', value: 'https://${foundryAccountName}.services.ai.azure.com/' }
             { name: 'AzureAd__TenantId', value: tenantId }
             { name: 'AzureAd__ClientId', value: apiClientId }

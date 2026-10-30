@@ -16,7 +16,7 @@ else if (_model is null)
 else
 {
     <RecordForm Model="_model" Affiliations="_affiliations" OnSave="SaveAsync" CancelHref="/records"
-                ShowCitizenPicker="User.IsOfficer" AllowSealing="User.IsOfficer"
+                ShowCitizenPicker="User.IsOfficer" AllowSealing="User.IsOfficer" AllowSummaryEnhancement="true"
                 OnSubjectChanged="SubjectChangedAsync" AffiliationOwner="@(_model.SubjectObjectId is null ? null : _model.SubjectDisplayName)"
                 AffiliationsLoading="_loadingAffiliations" AffiliationsFailed="_affiliationsFailed"
                 SubjectName="@HeaderName" SubjectOperatingNumber="@HeaderNumber" />

@@ -31,6 +31,7 @@ builder.Services.AddGisrArtifactStore(
     builder.Configuration["Storage:BlobEndpoint"]);
 builder.Services.AddAccountServices();
 builder.Services.AddRecordServices();
+builder.Services.AddSummaryEnhancement(builder.Configuration);
 builder.Services.AddArtifactServices();
 builder.Services.AddGalleryServices();
 builder.Services.AddSearchServices(builder.Configuration);

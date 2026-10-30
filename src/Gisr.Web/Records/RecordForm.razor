@@ -149,6 +149,10 @@
                             {
                                 <div id="detail-summary-error" class="invalid-feedback d-block">@SummaryError</div>
                             }
+                            @if (AllowSummaryEnhancement)
+                            {
+                                <SummaryEnhancer Model="Model" OnChanged="OnSummaryEnhanced" />
+                            }
                         </div>
                     </div>
                     @if (RecordDisplay.ErrorText(_errors, "engagementDetail") is { } detailError)
@@ -351,6 +355,10 @@
     [Parameter]
     public bool AllowSealing { get; set; }
 
+    // Shows the button that sends the summary to a language model for improvement.
+    [Parameter]
+    public bool AllowSummaryEnhancement { get; set; }
+
     // Only Officers add or remove incidents.
     [Parameter]
     public bool AllowIncidentChanges { get; set; }
@@ -419,6 +427,10 @@
     }
 
     private void OnArtifactUploaded() => _artifactRefresh++;
+
+    // The enhanced text replaces the summary the validation message was about.
+    private void OnSummaryEnhanced() =>
+        _errors = _errors.Where(e => e.Key != "engagementDetail.summary").ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
 
     // An empty or now-earlier end date follows the start date, so the end only needs touching when it differs.
     private void OnStartChanged()

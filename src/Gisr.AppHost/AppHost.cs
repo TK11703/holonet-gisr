@@ -22,6 +22,8 @@ var api = builder.AddProject<Projects.Gisr_Api>("api")
     .WithReference(blobs).WaitFor(blobs)
     .WithEnvironment("Search__OpenAiEndpoint", "https://aif-shared-acc.openai.azure.com/")
     .WithEnvironment("Search__EmbeddingDeployment", "text-embedding-3-large")
+    .WithEnvironment("SummaryEnhancement__OpenAiEndpoint", "https://aif-shared-acc.openai.azure.com/")
+    .WithEnvironment("SummaryEnhancement__ChatDeployment", "gpt-4.1-mini")
     .WithEnvironment("Search__OcrFallback__Endpoint", "https://aif-shared-acc.services.ai.azure.com/")
     // Locally there is no managed identity: use the developer's `az login` rather than probing IMDS or another editor's account.
     .WithEnvironment("AZURE_TOKEN_CREDENTIALS", "AzureCliCredential")

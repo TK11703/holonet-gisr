@@ -201,6 +201,18 @@ paths:
         "400": { $ref: "#/components/responses/ValidationProblem" }
         "403": { $ref: "#/components/responses/Problem" }
         "404": { description: Subject account not found, content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetails" } } } }
+  /api/records/summary/enhance:
+    post:
+      tags: [Records]
+      operationId: enhanceRecordSummary
+      summary: Sends a draft summary to a language model and returns an improved version; nothing is saved.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/EnhanceSummaryRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EnhancedSummaryDto" } } } }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "503": { description: The language model is unavailable, content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetails" } } } }
   /api/records/{recordId}:
     parameters: [ { $ref: "#/components/parameters/RecordId" } ]
     get:
@@ -491,6 +503,16 @@ components:
       required: [code]
       properties:
         code: { type: string, minLength: 1, maxLength: 64, writeOnly: true }
+    EnhanceSummaryRequest:
+      type: object
+      required: [summary]
+      properties:
+        summary: { type: string, minLength: 1, maxLength: 4000 }
+    EnhancedSummaryDto:
+      type: object
+      required: [summary]
+      properties:
+        summary: { type: string, maxLength: 4000 }
     UnlockedRecordDto:
       type: object
       required: [record, viewToken, expiresAt]

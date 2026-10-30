@@ -1,0 +1,99 @@
+@inject ApiClient Api
+
+<div id="summary-enhancer" class="d-flex flex-wrap align-items-center gap-2 mt-2">
+    <button type="button" id="enhance-summary" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+            disabled="@_working" aria-describedby="enhance-summary-help" @onclick="EnhanceAsync">
+        <Icon Name="sparkle" /> @(_working ? "Enhancing..." : "Enhance with AI")
+    </button>
+    @if (_previous is not null)
+    {
+        <button type="button" id="undo-enhance-summary" class="btn btn-outline-secondary btn-sm" disabled="@_working" @onclick="UndoAsync">Undo</button>
+    }
+    <span id="enhance-summary-help" class="form-text mt-0">Rewrites your summary with an AI model. Review the result before saving.</span>
+</div>
+@if (_message is not null)
+{
+    <div id="enhance-summary-message" class="@(_failed ? "form-text text-danger" : "form-text")" role="@(_failed ? "alert" : "status")">@_message</div>
+}
+
+@code {
+    private string? _previous;
+    private string? _message;
+    private bool _failed;
+    private bool _working;
+
+    [Parameter, EditorRequired]
+    public RecordFormModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private async Task EnhanceAsync()
+    {
+        if (_working)
+        {
+            return;
+        }
+
+        var draft = Model.Summary;
+        if (string.IsNullOrWhiteSpace(draft))
+        {
+            Fail("Type a summary first, then enhance it.");
+            return;
+        }
+
+        _working = true;
+        _failed = false;
+        _message = null;
+        try
+        {
+            var result = await Api.PostAsync<EnhancedSummaryDto>("api/records/summary/enhance", new EnhanceSummaryRequest(draft));
+            if (result is null || string.IsNullOrWhiteSpace(result.Summary))
+            {
+                Fail("The summary could not be enhanced. Please try again.");
+                return;
+            }
+
+            _previous = draft;
+            Model.Summary = result.Summary;
+            _message = "Summary enhanced. Review it before saving.";
+            await OnChanged.InvokeAsync();
+        }
+        catch (ApiException ex) when (ex.Status == 400)
+        {
+            Fail("The summary is empty or too long to enhance.");
+        }
+        catch (ApiException ex) when (ex.Status == 503)
+        {
+            Fail("The AI service is unavailable right now. Please try again shortly.");
+        }
+        catch (ApiException)
+        {
+            Fail("The summary could not be enhanced. Please try again.");
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+
+    private async Task UndoAsync()
+    {
+        if (_previous is null)
+        {
+            return;
+        }
+
+        Model.Summary = _previous;
+        _previous = null;
+        _failed = false;
+        _message = "Your original summary is restored.";
+        await OnChanged.InvokeAsync();
+    }
+
+    private void Fail(string message)
+    {
+        _failed = true;
+        _message = message;
+    }
+}

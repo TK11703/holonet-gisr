@@ -35,6 +35,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public FakeOcrClient Ocr { get; } = new();
 
+    public FakeChatClient Chat { get; } = new();
+
     public TestClock Clock { get; } = new(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero));
 
     // Set before the first request; the host is built lazily.
@@ -72,6 +74,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(Embeddings);
             services.RemoveAll<IOcrClient>();
             services.AddSingleton<IOcrClient>(Ocr);
+            services.RemoveAll<IChatClient>();
+            services.AddSingleton<IChatClient>(Chat);
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
             services.PostConfigure<SearchOptions>(options => SearchOptionsOverride?.Invoke(options));

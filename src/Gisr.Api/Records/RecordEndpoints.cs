@@ -48,6 +48,14 @@ public static class RecordEndpoints
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
+        group.MapPost("/summary/enhance", async (EnhanceSummaryRequest request, SummaryEnhancementService enhancement, CancellationToken cancellationToken) =>
+                TypedResults.Ok(new EnhancedSummaryDto(await enhancement.EnhanceAsync(request.Summary, cancellationToken))))
+            .WithName("enhanceRecordSummary")
+            .WithSummary("Sends a draft summary to a language model and returns an improved version; nothing is saved")
+            .Produces<EnhancedSummaryDto>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+
         group.MapGet("/{recordId:guid}", async (Guid recordId, RecordService records, CancellationToken cancellationToken) =>
                 TypedResults.Ok(await records.GetAsync(recordId, cancellationToken)))
             .WithName("getRecord")
